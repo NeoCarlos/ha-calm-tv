@@ -1,7 +1,10 @@
 # TV setup: install, make it the home screen, debug
 
-Tested on a **Google TV Streamer (2024)**. Any Google TV / Android TV device on Android 12+
-(`minSdk 31`) should work.
+Built and tested on a **Google TV Streamer (2024)**. Other Google TV / Android TV devices on Android 12+
+(`minSdk 31`) should run it, but live blur and video backgrounds lean on the Streamer's hardware. On a
+slower device, try **Settings → Performance → Preset: Fast**, and turn on *Show frame rate* to
+compare. To make that the default for every TV, use `display` in `calm-tv.json`
+([configuration.md](configuration.md#display-look-options)).
 
 ## 1. Connect a computer to the TV with adb
 

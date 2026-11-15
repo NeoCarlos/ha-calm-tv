@@ -47,18 +47,12 @@ CleanFrame is under the MIT licence:
 Brand marks identify services. Their owners keep all trademark rights; this project claims no
 endorsement by or affiliation with them, or with Home Assistant, Nabu Casa or the Open Home Foundation.
 
-## Photographs
+## Backgrounds
 
-The photos in `src/wallpapers/` are from [Unsplash](https://unsplash.com), credited by photographer in
-[`src/wallpapers/README.md`](src/wallpapers/README.md). They're used under the
-[Unsplash License](https://unsplash.com/license), which allows copying, changing and sharing them, but
-not selling them unchanged or using them to build a competing photo service. Photographers keep their
-rights. `07-golden-horizon.jpg` is cropped from the original.
-
-## Video clips
-
-No video clips are included in this repository. `src/videos/README.md` explains how to add your own,
-and the licence rules to check before sharing any.
+The included backgrounds, "Mountain Lake Sunset" and "Stylized Forest Brook" (the photos in
+`src/wallpapers/`, the clips and thumbnails in `src/videos/`, and the README animation), were made for
+this project with Google Flow and are covered by the project's MIT licence. No third-party photos or video
+clips are included; `src/wallpapers/README.md` and `src/videos/README.md` explain how to add your own.
 
 ## Libraries
 

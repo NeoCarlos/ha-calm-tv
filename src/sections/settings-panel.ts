@@ -4,6 +4,10 @@ import { settings } from '../config';
 import { zones } from '../home-data';
 import { showSetup } from '../setup';
 import { child } from '../dom';
+import {
+  applyPreset, glass, glassSource, hasOverrides, preset, resetToConfig, setGlass, setShowFps,
+  setTransitions, setVideos, showFps, transitions, transitionsSource, videosOn, videosSource,
+} from '../look';
 
 // Line icons, matching the room panels' style.
 const line = (d: string) =>
@@ -14,9 +18,18 @@ const ICONS = {
   tv: line('<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>'),
   wallpaper: line('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="8.5" r="1.5"/>'),
   close: line('<path d="M6 6l12 12M18 6L6 18"/>'),
+  back: line('<path d="M15 5l-7 7 7 7"/>'),
+  chevron: line('<path d="M9 5l7 7-7 7"/>'),
   ha: line('<path d="M3 11l9-7 9 7"/><path d="M5 9.5V20h14V9.5"/><circle cx="12" cy="14" r="2"/><path d="M12 16v4"/>'),
   link: line('<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>'),
   file: line('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>'),
+  gauge: line('<path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/><circle cx="12" cy="16" r="1.2"/>'),
+  sparkle: line('<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>'),
+  video: line('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/>'),
+  glass: line('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 15l7-7M12 16l4-4"/>'),
+  fade: line('<rect x="3" y="6" width="11" height="12" rx="2"/><path d="M17 8v8M20 10v4"/>'),
+  counter: line('<path d="M4 18h16M6 15l3-4 3 2 5-6"/>'),
+  reset: line('<path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/>'),
 };
 
 /** The background choices, owned by the app. */
@@ -31,21 +44,34 @@ interface Row {
   icon: string;
   name: string;
   status: () => string;
-  run: () => void;
+  /** What OK does. Rows with a sub-menu open it instead. */
+  run?: () => void;
+  /** A list of its own, opened in place of this one; Back returns. */
+  menu?: Menu;
 }
+
+interface Menu {
+  title: string;
+  rows: Row[];
+}
+
+const onOff = (on: boolean) => (on ? 'On' : 'Off');
 
 /**
  * Calm TV's own settings, opened from the gear tile at the end of the app dock.
- * Reuses the room panel's look (.detail, .drow), as a single narrower column.
+ * Reuses the room panel's look (.detail, .drow), as a single narrower column. Rows can open a
+ * sub-menu (Performance, Home Assistant) in place of the list; Back returns to the list above.
  */
 export class SettingsPanel {
   private readonly el: HTMLElement;
   private readonly listEl: HTMLElement;
   private readonly closeEl: HTMLElement;
-  private rows: Row[];
+  private readonly titleEl: HTMLElement;
+  private readonly root: Menu;
+  /** The open menus, top level first; each remembers its focused row. */
+  private stack: { menu: Menu; focus: number }[] = [];
   private rowEls: HTMLElement[] = [];
   private open = false;
-  private focus = 0; // -1 = the close button
   private confirmSignOut = false;
   private confirmTimer = 0;
   /** OK presses right after opening belong to the press that opened the panel. */
@@ -53,88 +79,151 @@ export class SettingsPanel {
 
   constructor(mount: HTMLElement, private bg: BackgroundControls) {
     const onTv = !!native;
-    this.rows = [
-      {
-        icon: ICONS.google,
-        name: 'Google TV home',
-        status: () =>
-          onTv ? 'Switch to Google’s home screen. Open Calm TV from its apps to come back.' : 'Only on the TV',
-        run: () => {
-          this.close();
-          native?.openGoogleHome();
+
+    const connection = (): string =>
+      ha.status === 'signed-out' ? 'Not signed in'
+      : ha.status === 'connecting' ? 'Connecting…'
+      : ha.status === 'offline' ? 'Can’t reach Home Assistant'
+      : `Connected${ha.userName ? ` as ${ha.userName}` : ''}`;
+
+    const performance: Menu = {
+      title: 'Performance',
+      rows: [
+        {
+          icon: ICONS.sparkle,
+          name: 'Preset',
+          status: () => {
+            const p = preset();
+
+            return `${p} · OK for ${p === 'Beautiful' ? 'Fast' : 'Beautiful'}`;
+          },
+          run: () => applyPreset(preset() === 'Beautiful' ? 'Fast' : 'Beautiful'),
         },
-      },
-      {
-        icon: ICONS.ha,
-        name: 'Home Assistant',
-        status: () =>
-          ha.status === 'signed-out' ? 'Not signed in · OK to sign in'
-          : this.confirmSignOut ? 'Press OK again to sign out'
-          : ha.status === 'connecting' ? 'Connecting…'
-          : ha.status === 'offline' ? 'Can’t reach Home Assistant · trying again'
-          : `Connected${ha.userName ? ` as ${ha.userName}` : ''}`,
-        run: () => {
-          if (ha.status === 'signed-out') {
+        {
+          icon: ICONS.video,
+          name: 'Video backgrounds',
+          status: () => `${onOff(videosOn())} · ${videosSource()}`,
+          run: () => setVideos(!videosOn()),
+        },
+        {
+          icon: ICONS.glass,
+          name: 'Frosted glass',
+          status: () =>
+            `${glass() === 'blur' ? 'On' : 'Off (tinted)'} · ${glassSource()}${videosOn() ? '' : ' · free over photos'}`,
+          run: () => setGlass(glass() === 'blur' ? 'tint' : 'blur'),
+        },
+        {
+          icon: ICONS.fade,
+          name: 'Screen transitions',
+          status: () => `${transitions() === 'fade' ? 'Fade' : 'Instant'} · ${transitionsSource()}`,
+          run: () => setTransitions(transitions() === 'fade' ? 'instant' : 'fade'),
+        },
+        {
+          icon: ICONS.counter,
+          name: 'Show frame rate',
+          status: () => `${onOff(showFps())} · a counter in the top-right corner`,
+          run: () => setShowFps(!showFps()),
+        },
+        {
+          icon: ICONS.reset,
+          name: 'Reset to calm-tv.json',
+          status: () => (hasOverrides() ? 'Undo this TV’s changes above' : 'Nothing changed on this TV'),
+          run: () => resetToConfig(),
+        },
+      ],
+    };
+
+    const homeAssistant: Menu = {
+      title: 'Home Assistant',
+      rows: [
+        {
+          icon: ICONS.ha,
+          name: 'Connection',
+          status: () =>
+            ha.status === 'signed-out' ? 'Not signed in · OK to sign in'
+            : this.confirmSignOut ? 'Press OK again to sign out'
+            : connection(),
+          run: () => {
+            if (ha.status === 'signed-out') {
+              this.close();
+              ha.signIn();
+
+              return;
+            }
+
+            // Signing out takes two presses, so a stray OK can't do it.
+            if (!this.confirmSignOut) {
+              this.confirmSignOut = true;
+              clearTimeout(this.confirmTimer);
+              this.confirmTimer = window.setTimeout(() => {
+                this.confirmSignOut = false;
+                this.refresh();
+              }, 4000);
+            } else {
+              this.confirmSignOut = false;
+              ha.signOut();
+            }
+          },
+        },
+        {
+          icon: ICONS.link,
+          name: 'Address',
+          status: () => `${settings.haUrl || 'Not set'} · OK to change`,
+          run: () => {
             this.close();
-            ha.signIn();
-
-            return;
-          }
-
-          // Signing out takes two presses, so a stray OK can't do it.
-          if (!this.confirmSignOut) {
-            this.confirmSignOut = true;
-            clearTimeout(this.confirmTimer);
-            this.confirmTimer = window.setTimeout(() => { this.confirmSignOut = false; this.refresh(); }, 4000);
-          } else {
-            this.confirmSignOut = false;
-            ha.signOut();
-          }
-
-          this.paint();
+            showSetup({ canCancel: true });
+          },
         },
-      },
-      {
-        icon: ICONS.link,
-        name: 'Home Assistant address',
-        status: () => `${settings.haUrl || 'Not set'} · OK to change`,
-        run: () => {
-          this.close();
-          showSetup({ canCancel: true });
-        },
-      },
-      {
-        icon: ICONS.file,
-        name: 'Home setup (calm-tv.json)',
-        status: () => {
-          const rooms = `${zones.length} room${zones.length === 1 ? '' : 's'}`;
+        {
+          icon: ICONS.file,
+          name: 'Home setup (calm-tv.json)',
+          status: () => {
+            const rooms = `${zones.length} room${zones.length === 1 ? '' : 's'}`;
 
-          if (!settings.source) return `Not found${settings.error ? ` (${settings.error})` : ''} · OK to look again`;
-          const from = settings.source === 'last saved copy' ? 'Using the last saved copy' : `From ${settings.source}`;
+            if (!settings.source) return `Not found${settings.error ? ` (${settings.error})` : ''} · OK to look again`;
+            const from = settings.source === 'last saved copy' ? 'Using the last saved copy' : `From ${settings.source}`;
 
-          return `${from} · ${rooms}${settings.error ? ` · newest copy has a problem: ${settings.error}` : ''} · OK to reload`;
+            return `${from} · ${rooms}${settings.error ? ` · newest copy has a problem: ${settings.error}` : ''} · OK to reload`;
+          },
+          run: () => location.reload(),
         },
-        run: () => location.reload(),
-      },
-      {
-        icon: ICONS.tv,
-        name: 'TV settings',
-        status: () => (onTv ? 'Network, display, accounts, and more' : 'Only on the TV'),
-        run: () => {
-          this.close();
-          native?.openSettings();
+      ],
+    };
+
+    this.root = {
+      title: 'Settings',
+      rows: [
+        {
+          icon: ICONS.wallpaper,
+          name: 'Background',
+          status: () => `${this.bg.name()} · ${this.bg.mode() === 'video' ? 'video' : 'photo'} · OK to choose`,
+          run: () => {
+            this.close();
+            this.bg.openPicker();
+          },
         },
-      },
-      {
-        icon: ICONS.wallpaper,
-        name: 'Background',
-        status: () => `${this.bg.name()} · ${this.bg.mode() === 'video' ? 'video' : 'photo'} · OK to choose`,
-        run: () => {
-          this.close();
-          this.bg.openPicker();
+        { icon: ICONS.gauge, name: 'Performance', status: () => preset(), menu: performance },
+        { icon: ICONS.ha, name: 'Home Assistant', status: connection, menu: homeAssistant },
+        {
+          icon: ICONS.google,
+          name: 'Google TV home',
+          status: () => (onTv ? 'Switch to Google’s home screen. Open Calm TV from its apps to come back.' : 'Only on the TV'),
+          run: () => {
+            this.close();
+            native?.openGoogleHome();
+          },
         },
-      },
-    ];
+        {
+          icon: ICONS.tv,
+          name: 'TV settings',
+          status: () => (onTv ? 'Network, display, accounts, and more' : 'Only on the TV'),
+          run: () => {
+            this.close();
+            native?.openSettings();
+          },
+        },
+      ],
+    };
 
     this.el = document.createElement('div');
     this.el.className = 'detail settings';
@@ -142,7 +231,7 @@ export class SettingsPanel {
       <div class="detail-scrim"></div>
       <div class="detail-panel">
         <div class="detail-head">
-          <div class="detail-title">Settings</div>
+          <div class="detail-title"></div>
           <button class="detail-close" aria-label="Close">${ICONS.close}</button>
         </div>
         <div class="dcol-list"></div>
@@ -150,17 +239,9 @@ export class SettingsPanel {
     mount.appendChild(this.el);
     this.listEl = child(this.el, '.dcol-list');
     this.closeEl = child(this.el, '.detail-close');
+    this.titleEl = child(this.el, '.detail-title');
     this.closeEl.addEventListener('click', () => this.close());
-    this.el.querySelector('.detail-scrim')!.addEventListener('click', () => this.close());
-
-    this.rows.forEach((r, i) => {
-      const row = document.createElement('button');
-      row.className = 'drow';
-      row.addEventListener('mouseenter', () => { this.focus = i; this.render(); });
-      row.addEventListener('click', () => { this.focus = i; r.run(); });
-      this.listEl.appendChild(row);
-      this.rowEls.push(row);
-    });
+    child(this.el, '.detail-scrim').addEventListener('click', () => this.close());
   }
 
   isOpen(): boolean {
@@ -168,11 +249,11 @@ export class SettingsPanel {
   }
 
   show(): void {
-    this.focus = 0;
+    this.stack = [{ menu: this.root, focus: 0 }];
     this.confirmSignOut = false;
     this.openedAt = Date.now();
     this.open = true;
-    this.paint();
+    this.build();
     this.el.classList.add('open');
   }
 
@@ -181,9 +262,43 @@ export class SettingsPanel {
     this.el.classList.remove('open');
   }
 
-  /** Repaint the status lines (e.g. the Home Assistant connection changed). */
+  /** Repaint the status lines (e.g. the Home Assistant connection or a performance choice changed). */
   refresh(): void {
     if (this.open) this.paint();
+  }
+
+  private get level(): { menu: Menu; focus: number } {
+    return this.stack[this.stack.length - 1];
+  }
+
+  /** OK on a row: open its sub-menu, or do what it says. */
+  private activate(i: number): void {
+    const row = this.level.menu.rows[i];
+
+    if (!row) return;
+
+    if (row.menu) {
+      this.stack.push({ menu: row.menu, focus: 0 });
+      this.confirmSignOut = false;
+      this.build();
+
+      return;
+    }
+
+    row.run?.();
+
+    if (this.open) this.paint();
+  }
+
+  /** Back: up one menu, or close from the top. */
+  private back(): void {
+    if (this.stack.length > 1) {
+      this.stack.pop();
+      this.confirmSignOut = false;
+      this.build();
+    } else {
+      this.close();
+    }
   }
 
   handleKey(e: KeyboardEvent): void {
@@ -191,7 +306,7 @@ export class SettingsPanel {
 
     if (k === 'Escape' || k === 'Backspace') {
       e.preventDefault();
-      this.close();
+      this.back();
 
       return;
     }
@@ -201,7 +316,8 @@ export class SettingsPanel {
 
       if (e.repeat || Date.now() - this.openedAt < 400) return;
 
-      if (this.focus < 0) this.close(); else this.rows[this.focus].run();
+      if (this.level.focus < 0) this.back();
+      else this.activate(this.level.focus);
 
       return;
     }
@@ -213,28 +329,55 @@ export class SettingsPanel {
 
     if (k === 'ArrowUp') {
       e.preventDefault();
-      this.focus = Math.max(-1, this.focus - 1);
+      this.level.focus = Math.max(-1, this.level.focus - 1);
       this.render();
     }
     else if (k === 'ArrowDown') {
       e.preventDefault();
-      this.focus = Math.min(this.rows.length - 1, this.focus + 1);
+      this.level.focus = Math.min(this.level.menu.rows.length - 1, this.level.focus + 1);
       this.render();
     }
     else if (k.startsWith('Arrow')) e.preventDefault();
   }
 
+  /** Builds the rows of the current menu. */
+  private build(): void {
+    const sub = this.stack.length > 1;
+    this.titleEl.textContent = this.level.menu.title;
+    // In a sub-menu the round button goes back a level; at the top it closes.
+    this.closeEl.innerHTML = sub ? ICONS.back : ICONS.close;
+    this.closeEl.setAttribute('aria-label', sub ? 'Back' : 'Close');
+    this.listEl.textContent = '';
+    this.rowEls = this.level.menu.rows.map((r, i) => {
+      const row = document.createElement('button');
+      row.className = 'drow';
+      row.addEventListener('mouseenter', () => {
+        this.level.focus = i;
+        this.render();
+      });
+      row.addEventListener('click', () => {
+        this.level.focus = i;
+        this.activate(i);
+      });
+      this.listEl.appendChild(row);
+
+      return row;
+    });
+    this.paint();
+  }
+
   private paint(): void {
-    this.rows.forEach((r, i) => {
+    this.level.menu.rows.forEach((r, i) => {
+      const more = r.menu ? `<div class="dmore">${ICONS.chevron}</div>` : '';
       this.rowEls[i].innerHTML =
         `<div class="dicon">${r.icon}</div>` +
-        `<div class="dmeta"><div class="dname">${r.name}</div><div class="dstatus">${r.status()}</div></div>`;
+        `<div class="dmeta"><div class="dname">${r.name}</div><div class="dstatus">${r.status()}</div></div>${more}`;
     });
     this.render();
   }
 
   private render(): void {
-    this.closeEl.classList.toggle('focus', this.focus < 0);
-    this.rowEls.forEach((el, i) => el.classList.toggle('focus', i === this.focus));
+    this.closeEl.classList.toggle('focus', this.level.focus < 0);
+    this.rowEls.forEach((el, i) => el.classList.toggle('focus', i === this.level.focus));
   }
 }

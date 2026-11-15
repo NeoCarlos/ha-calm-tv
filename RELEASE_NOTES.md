@@ -1,5 +1,21 @@
 # Release notes
 
+## Unreleased
+
+- **Settings → Performance:** a Beautiful / Fast preset, switches for video backgrounds, frosted glass
+  and screen transitions (new: Instant), and a frame-rate counter for comparing on the TV. Each TV
+  keeps its own choices; `display` in calm-tv.json sets the default (now including `transitions`).
+- **Settings, reorganized:** Background, Performance, Home Assistant (connection, address, home setup),
+  Google TV home and TV settings. Sub-menus open in place; Back returns.
+- **The background picker follows the video setting:** videos while they're on, photos while they're off.
+
+- **Backgrounds:** the repo now ships two backgrounds made for the project, "Mountain Lake Sunset"
+  and "Stylized Forest Brook", each as a photo and a seamlessly looping video (crossfaded with
+  itself), in place of the eight Unsplash photos. Other photos you add stay in your own builds but out
+  of git.
+- **README:** opens with an animation of the video background and live blur.
+- The chosen photo is remembered by name, so adding or removing photos doesn't change it.
+
 ## 0.1.0
 
 The first shared version: a calm Google TV home screen driven by Home Assistant.

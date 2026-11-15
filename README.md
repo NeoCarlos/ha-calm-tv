@@ -4,11 +4,30 @@ A calmer home screen for Google TV, driven by Home Assistant. A photograph (or a
 video), the time, your apps, and your home: lights, curtains, thermostat, cameras, calendar and
 weather, all made for the TV remote.
 
-![The Apps screen: a clock over a photo of Yosemite Valley, with a frosted dock of streaming apps](docs/images/calm-tv-apps.jpg)
+![The Apps screen over a looping video of a mountain lake at sunset: clouds drift and the water ripples behind a frosted, live-blurred dock of streaming apps](docs/images/calm-tv-motion.webp)
+
+*The video background and live blur, recorded from the browser preview.*
 
 I built this for one TV, a Google TV Streamer in my living room, and I'm sharing it as a starting
 point to build on. Nothing about my home is in the code: each TV reads its rooms, apps and calendars
 from a small `calm-tv.json` file, so you can adapt it without touching the app.
+
+## Built for the Google TV Streamer
+
+HA Calm TV was built and tested on the **Google TV Streamer (2024)**: MediaTek MT8696, 4 GB of RAM,
+Android TV 14. That hardware is the reason it can afford the nicest parts of the design:
+
+- **Live blur:** the frosted bars blur whatever is moving behind them, including a video.
+- **Looping video backgrounds**, decoded in hardware and kept running behind the screens.
+
+On the Streamer that holds 60 fps at rest, dipping to about 52 fps while switching screens over a
+video. Other Google TV and Android TV devices (Android 12 or newer) should run it, but I haven't
+tried any, and cheaper ones with less memory, like the Chromecast with Google TV, may struggle.
+
+You can check on your own TV: **Settings → Performance** has a *Beautiful* / *Fast* preset, separate
+switches for video backgrounds, frosted glass and screen transitions, and a frame-rate counter, so
+you can flip a setting and see the difference straight away. Each TV keeps its own choices; to set
+a default for every TV, use `display` in `calm-tv.json`. Your mileage may vary.
 
 **Use it at your own risk.** It replaces the TV's home screen, and controls real devices in your
 house. Try it in a browser first, then on the TV when you're ready; the setup guide explains how to

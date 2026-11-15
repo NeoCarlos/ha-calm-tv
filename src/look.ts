@@ -1,0 +1,142 @@
+import * as v from 'valibot';
+import { settings } from './config';
+
+/**
+ * The look-and-performance choices: video backgrounds, frosted glass and screen transitions.
+ *
+ * Each comes from, in order: this TV's own choice (Settings → Performance, kept in localStorage),
+ * else calm-tv.json's "display", else the built-in default (everything on, "Beautiful").
+ * So calm-tv.json sets a default for every TV, and each TV can still be tuned on the spot.
+ */
+
+const KEY = 'calmtv.look';
+
+export type Glass = 'blur' | 'tint';
+
+export type Transitions = 'fade' | 'instant';
+
+export type Preset = 'Beautiful' | 'Fast' | 'Custom';
+
+export type Source = 'set on this TV' | 'from calm-tv.json' | 'default';
+
+/** This TV's own choices; null means "not set here, use calm-tv.json or the default". */
+const OverridesSchema = v.object({
+  videos: v.fallback(v.nullable(v.boolean()), null),
+  glass: v.fallback(v.nullable(v.picklist(['blur', 'tint'])), null),
+  transitions: v.fallback(v.nullable(v.picklist(['fade', 'instant'])), null),
+  /** A small frame-rate counter in the corner, for comparing settings on the TV. */
+  showFps: v.fallback(v.boolean(), false),
+});
+
+type Overrides = v.InferOutput<typeof OverridesSchema>;
+
+function loadOverrides(): Overrides {
+  let saved = null;
+
+  try {
+    saved = JSON.parse(localStorage.getItem(KEY) ?? 'null');
+  } catch {
+    /* unreadable: nothing set on this TV */
+  }
+
+  return v.parse(OverridesSchema, saved ?? {});
+}
+
+const overrides = loadOverrides();
+const listeners: (() => void)[] = [];
+
+function changed(): void {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(overrides));
+  } catch {
+    /* storage off: the choice lasts until the app restarts */
+  }
+
+  listeners.forEach((fn) => fn());
+}
+
+/** Runs whenever any of these choices changes. */
+export function onLookChange(fn: () => void): void {
+  listeners.push(fn);
+}
+
+const display = () => settings.config.display;
+
+export function videosOn(): boolean {
+  return overrides.videos ?? display()?.videos ?? true;
+}
+
+export function glass(): Glass {
+  return overrides.glass ?? display()?.glass ?? 'blur';
+}
+
+export function transitions(): Transitions {
+  return overrides.transitions ?? display()?.transitions ?? 'fade';
+}
+
+export function showFps(): boolean {
+  return overrides.showFps;
+}
+
+/** Where a choice's current value comes from. */
+export function videosSource(): Source {
+  return overrides.videos !== null ? 'set on this TV' : display()?.videos !== undefined ? 'from calm-tv.json' : 'default';
+}
+
+export function glassSource(): Source {
+  return overrides.glass !== null ? 'set on this TV' : display()?.glass !== undefined ? 'from calm-tv.json' : 'default';
+}
+
+export function transitionsSource(): Source {
+  return overrides.transitions !== null ? 'set on this TV' : display()?.transitions !== undefined ? 'from calm-tv.json' : 'default';
+}
+
+export function setVideos(on: boolean): void {
+  overrides.videos = on;
+  changed();
+}
+
+export function setGlass(value: Glass): void {
+  overrides.glass = value;
+  changed();
+}
+
+export function setTransitions(value: Transitions): void {
+  overrides.transitions = value;
+  changed();
+}
+
+export function setShowFps(on: boolean): void {
+  overrides.showFps = on;
+  changed();
+}
+
+/** "Beautiful" is everything on; "Fast" is everything off; anything in between is "Custom". */
+export function preset(): Preset {
+  if (videosOn() && glass() === 'blur' && transitions() === 'fade') return 'Beautiful';
+
+  if (!videosOn() && glass() === 'tint' && transitions() === 'instant') return 'Fast';
+
+  return 'Custom';
+}
+
+export function applyPreset(name: 'Beautiful' | 'Fast'): void {
+  const beautiful = name === 'Beautiful';
+  overrides.videos = beautiful;
+  overrides.glass = beautiful ? 'blur' : 'tint';
+  overrides.transitions = beautiful ? 'fade' : 'instant';
+  changed();
+}
+
+/** True if this TV overrides any of calm-tv.json's choices. */
+export function hasOverrides(): boolean {
+  return overrides.videos !== null || overrides.glass !== null || overrides.transitions !== null;
+}
+
+/** Back to calm-tv.json's choices (or the defaults). The frame-rate counter is left as it is. */
+export function resetToConfig(): void {
+  overrides.videos = null;
+  overrides.glass = null;
+  overrides.transitions = null;
+  changed();
+}

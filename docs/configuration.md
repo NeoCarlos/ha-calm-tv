@@ -47,7 +47,7 @@ default app dock.
   "calendar": { "events": "calendar.family", "meals": "calendar.meal_plan" },
   "doorbell": { "window": false, "camera": "camera.front_door", "ringing": "input_boolean.doorbell_ringing" },
   "rooms": [ … ],         // the Smart Home bar
-  "display": { "glass": "blur", "videos": true },
+  "display": { "glass": "blur", "videos": true, "transitions": "fade" },
   "backgrounds": { "photos": [ … ], "videos": [ … ] }
 }
 ```
@@ -147,17 +147,24 @@ services → Entities.
 ### `display`: look options
 
 ```json
-{ "glass": "blur", "videos": true }
+{ "glass": "blur", "videos": true, "transitions": "fade" }
 ```
+
+These are **defaults for every TV**. Each TV can override them in **Settings → Performance**
+(preset *Beautiful* = all on, *Fast* = all off, or each switch on its own), and its rows say whether a
+value is the default, from calm-tv.json, or set on this TV. *Reset to calm-tv.json* there undoes a
+TV's own changes.
 
 - `glass`: how the bars along the bottom look.
   - `"blur"` (the default): frosted glass that blurs the background behind it. Over a photo this is
     free, because the blur is pre-computed. Over a video it's a live blur, which costs a few frames per
     second while switching screens on a TV.
   - `"tint"`: plain dark glass with no blur. The lightest option, and the same darkness as the frosted bars.
-- `videos`: `false` hides video backgrounds. Settings → Background then offers only photos, and a TV set to a
-  video shows a photo instead. Its video choice is remembered for when videos are turned back on.
-  Default `true`.
+- `videos`: `true` (the default) shows a looping video background, and Settings → Background offers
+  videos; `false` shows a photo, and the picker offers photos. Each kind remembers its own choice,
+  so turning videos off and on again returns to the same clip.
+- `transitions`: how screens change. `"fade"` (the default) cross-fades; `"instant"` switches with no
+  animation, the lightest option on slow devices.
 
 ### `backgrounds`: extra photos and videos
 

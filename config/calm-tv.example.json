@@ -290,7 +290,8 @@
   ],
   "display": {
     "glass": "blur",
-    "videos": true
+    "videos": true,
+    "transitions": "fade"
   },
   "backgrounds": {
     "photos": [

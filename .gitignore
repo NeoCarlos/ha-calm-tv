@@ -13,6 +13,16 @@ dist
 #   !src/videos/01-my-clip.jpg
 src/videos/*
 !src/videos/README.md
+!src/videos/00-mountain-lake-sunset.mp4
+!src/videos/00-mountain-lake-sunset.jpg
+!src/videos/01-stylized-forest-brook.mp4
+!src/videos/01-stylized-forest-brook.jpg
+
+# Photos: only ones we own are committed (others still build into your own app from this folder).
+src/wallpapers/*
+!src/wallpapers/README.md
+!src/wallpapers/00-mountain-lake-sunset.jpg
+!src/wallpapers/01-stylized-forest-brook.jpg
 
 # Local tools and design drafts
 .claude/

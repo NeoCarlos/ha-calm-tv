@@ -22,9 +22,29 @@ ffmpeg -ss 1.5 -i 01-my-clip.mp4 -frames:v 1 -vf scale=480:270 -q:v 4 01-my-clip
 Drop `fps=30` to keep the original frame rate if it's 30 or lower. Rebuild the app afterwards
 (`npm run tv:install`).
 
+## Making a clip loop seamlessly
+
+Most clips don't end where they start, so they jump once per loop. Crossfading the clip with itself
+fixes that: start the loop 1.5 s in, and blend its last 1.5 s into its own first 1.5 s. The result is
+1.5 s shorter and ends on exactly the frame it starts with. For a 10 s clip (`offset` = length − 2 × 1.5):
+
+```bash
+ffmpeg -i input.mp4 -an -filter_complex "[0:v]fps=24,format=yuv420p,split[a][b];\
+[a]trim=start=1.5,setpts=PTS-STARTPTS,settb=AVTB[main];\
+[b]trim=end=1.5,setpts=PTS-STARTPTS,settb=AVTB[head];\
+[main][head]xfade=transition=fade:duration=1.5:offset=7[x];\
+[x]scale='min(1920,iw)':-2:flags=lanczos[out]" -map "[out]" -map_metadata -1 \
+  -c:v libx264 -preset slow -crf 22 -maxrate 8M -bufsize 16M -pix_fmt yuv420p \
+  -profile:v high -movflags +faststart 01-my-clip.mp4
+```
+
+It works best when the camera holds still and only things like water, mist or clouds move; a moving
+camera can show double edges during the blend. Both included clips were made this way.
+
 **Without rebuilding:** put clips in Home Assistant's `www` folder and list them under
 `backgrounds.videos` in `calm-tv.json` (docs/configuration.md).
 
-No clips are included in this repository: clips in this folder are ignored by git unless you
-whitelist one by name in `.gitignore`. Free stock-video sites generally allow personal use but not
-republishing the files, so only commit a clip you made or clearly have the rights to share.
+Two clips are included, `00-mountain-lake-sunset.mp4` and `01-stylized-forest-brook.mp4`, made for
+this project and covered by its MIT licence. Any other clip in this folder is ignored by git unless you whitelist it by name in
+`.gitignore`. Free stock-video sites generally allow personal use but not republishing the files, so
+only commit a clip you made or clearly have the rights to share.

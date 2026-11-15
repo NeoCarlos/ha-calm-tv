@@ -1,6 +1,7 @@
 import { child } from '../dom';
-// Choose the background: a strip of thumbnails along the bottom, videos first, then photos.
-// While it's open the screens fade away, so the chosen background shows full screen behind it.
+// Choose the background: a strip of thumbnails along the bottom, of videos while video backgrounds
+// are on (Settings → Performance), of photos otherwise. While it's open the screens fade away, so
+// the chosen background shows full screen behind it.
 
 export interface BgChoice {
   kind: 'video' | 'photo';
@@ -14,7 +15,6 @@ export interface BgOption extends BgChoice {
 
 const TILE_W = 288;
 const TILE_GAP = 24;
-const GROUP_GAP = 56;
 const SHELF_W = 1760;
 const EDGE = 80;
 
@@ -25,6 +25,7 @@ function esc(s: string): string {
 export class BackgroundPicker {
   private readonly el: HTMLElement;
   private readonly track: HTMLElement;
+  private readonly titleEl: HTMLElement;
   private tiles: { el: HTMLElement; opt: BgOption; x: number }[] = [];
   private focus = 0;
   private offset = 0;
@@ -32,7 +33,7 @@ export class BackgroundPicker {
 
   constructor(
     mount: HTMLElement,
-    private options: BgOption[],
+    private options: () => BgOption[],
     private current: () => BgChoice,
     private choose: (c: BgChoice) => void,
   ) {
@@ -44,27 +45,27 @@ export class BackgroundPicker {
       <div class="bgpick-shelf"><div class="bgpick-track"></div></div>`;
     mount.appendChild(this.el);
     this.track = child(this.el, '.bgpick-track');
+    this.titleEl = child(this.el, '.bgpick-title');
+  }
 
-    let x = 0;
-    let lastKind = '';
-
-    for (const opt of this.options) {
-      if (opt.kind !== lastKind) {
-        if (lastKind) x += GROUP_GAP - TILE_GAP;
-        this.track.insertAdjacentHTML('beforeend', `<div class="bgpick-group" style="left:${x}px">${opt.kind === 'video' ? 'Videos' : 'Photos'}</div>`);
-        lastKind = opt.kind;
-      }
-
+  /** Builds a tile per option; the options change with the video setting. */
+  private build(): void {
+    this.track.textContent = '';
+    this.tiles = [];
+    this.options().forEach((opt, i) => {
       const el = document.createElement('div');
+      const x = i * (TILE_W + TILE_GAP);
       el.className = 'bgpick-tile';
       el.style.left = `${x}px`;
       el.innerHTML = `<div class="bgpick-img" style="background-image:url('${opt.thumb}')"></div><div class="bgpick-name">${esc(opt.name)}</div>`;
-      el.addEventListener('mouseenter', () => { this.focus = this.tiles.findIndex((t) => t.el === el); this.render(); });
+      el.addEventListener('mouseenter', () => {
+        this.focus = i;
+        this.render();
+      });
       el.addEventListener('click', () => this.pick());
       this.track.appendChild(el);
       this.tiles.push({ el, opt, x });
-      x += TILE_W + TILE_GAP;
-    }
+    });
   }
 
   isOpen(): boolean {
@@ -72,7 +73,9 @@ export class BackgroundPicker {
   }
 
   show(): void {
+    this.build();
     const cur = this.current();
+    this.titleEl.textContent = cur.kind === 'video' ? 'Video background' : 'Photo background';
     const i = this.tiles.findIndex((t) => t.opt.kind === cur.kind && t.opt.index === cur.index);
     this.focus = Math.max(0, i);
     this.open = true;

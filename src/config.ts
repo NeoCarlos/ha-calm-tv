@@ -68,6 +68,8 @@ const ConfigSchema = v.object({
       glass: v.optional(v.picklist(['blur', 'tint'], 'should be "blur" or "tint"')),
       /** false hides video backgrounds; only photos are offered (default true). */
       videos: v.optional(v.boolean('should be true or false')),
+      /** How screens change: "fade" (the default) or "instant" (no animation; lightest on the TV). */
+      transitions: v.optional(v.picklist(['fade', 'instant'], 'should be "fade" or "instant"')),
     }),
   ),
   /** Extra backgrounds, e.g. files in Home Assistant's www folder ("/local/beach.jpg"). */

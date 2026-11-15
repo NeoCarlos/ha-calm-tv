@@ -1,6 +1,7 @@
 import { wallpapers } from './wallpapers';
 import { videos } from './videos';
-import { settings } from './config';
+import { glass, onLookChange, showFps, transitions, videosOn } from './look';
+import { fpsCounter } from './fps';
 import { load, save } from './state';
 import { AppsSection } from './sections/apps-section';
 import { SmartHomeSection } from './sections/smarthome-section';
@@ -20,8 +21,6 @@ import { conditionLabel } from './sections/weather-section';
 import type { Connection } from 'home-assistant-js-websocket';
 import { DoorbellWindow, doorbellEnabled, doorbellRinging } from './doorbell';
 
-/** calm-tv.json "display": "videos": false hides video backgrounds (on by default). */
-const videosAllowed = () => settings.config.display?.videos !== false;
 
 /** An element of the page's own markup (index.html). */
 const qs = (selector: string) => child(document, selector);
@@ -45,12 +44,13 @@ export class CalmTv {
   private doorbell!: DoorbellWindow;
 
   start(): void {
+    // The picker offers videos while video backgrounds are on (Settings → Performance), photos otherwise.
     this.picker = new BackgroundPicker(
       qs('#stage'),
-      [
-        ...(videosAllowed() ? videos.map((v, index) => ({ kind: 'video' as const, index, name: v.name, thumb: v.thumb })) : []),
-        ...wallpapers.map((w, index) => ({ kind: 'photo' as const, index, name: w.name, thumb: w.url })),
-      ],
+      () =>
+        this.bgMode === 'video'
+          ? videos.map((v, index) => ({ kind: 'video' as const, index, name: v.name, thumb: v.thumb }))
+          : wallpapers.map((w, index) => ({ kind: 'photo' as const, index, name: w.name, thumb: w.url })),
       () => ({ kind: this.bgMode, index: this.bgMode === 'video' ? this.vid : this.wp }),
       (c) => this.chooseBackground(c),
     );
@@ -218,9 +218,18 @@ export class CalmTv {
     const css = `url("${wallpapers[this.wp].url}")`;
     qs('#photo').style.backgroundImage = css;
     this.setBarImages(css);
-    // calm-tv.json "display": "glass": "tint" swaps the frosted bars for plain tinted glass.
-    document.documentElement.classList.toggle('glass-tint', settings.config.display?.glass === 'tint');
-    this.setBackground(this.persist.bg);
+    this.applyLook();
+    onLookChange(() => this.applyLook());
+  }
+
+  /** Applies Settings → Performance (or calm-tv.json's defaults): glass, transitions, video, fps. */
+  private applyLook(): void {
+    const root = document.documentElement;
+    root.classList.toggle('glass-tint', glass() === 'tint');
+    root.classList.toggle('instant', transitions() === 'instant');
+    this.setBackground();
+    fpsCounter(showFps());
+    this.settings?.refresh();
   }
 
   // ---------- video background ----------
@@ -233,20 +242,17 @@ export class CalmTv {
 
     return n >= 0 && n < videos.length ? n : 0;
   }
-  /** Photo or video behind everything. The photo stays underneath, so it shows while a clip loads. */
-  /** The background showing now (a saved video choice shows a photo while videos are turned off). */
+  /** The background showing now: a video while video backgrounds are on, otherwise a photo. */
   private bgMode: 'photo' | 'video' = 'photo';
-  private setBackground(mode: 'photo' | 'video'): void {
-    if (mode === 'video' && !videos.length) mode = 'photo';
+  /**
+   * Shows a video or a photo, following the video setting. Each kind remembers its own choice, so
+   * turning videos off and on again returns to the same clip. The photo stays underneath a video,
+   * so it shows while a clip loads.
+   */
+  private setBackground(): void {
+    const mode = videosOn() && videos.length ? 'video' : 'photo';
 
-    // Videos turned off in calm-tv.json: show a photo, but keep the saved choice for when they're back.
-    if (mode === 'video' && !videosAllowed()) {
-      mode = 'photo';
-    } else {
-      this.persist.bg = mode;
-      save(this.persist);
-    }
-
+    if (mode === this.bgMode && (mode === 'photo' || video().getAttribute('src'))) return;
     this.bgMode = mode;
     document.documentElement.classList.toggle('bg-video', mode === 'video');
     const v = video();
@@ -308,6 +314,9 @@ export class CalmTv {
     document.querySelectorAll<HTMLElement>('.gb-img').forEach((el) => (el.style.backgroundImage = css));
   }
   private get wp(): number {
+    const byName = wallpapers.findIndex((w) => w.name === this.persist.wpName);
+
+    if (byName >= 0) return byName;
     const n = this.persist.wp;
 
     return n >= 0 && n < wallpapers.length ? n : 0;
@@ -315,15 +324,13 @@ export class CalmTv {
   /** From the background picker: a clip or a photo. */
   private chooseBackground(c: BgChoice): void {
     if (c.kind === 'video') {
-      const changed = this.bgMode !== 'video' || this.vid !== c.index;
+      if (c.index === this.vid) return;
       this.persist.vid = c.index;
       this.persist.vidName = videos[c.index]?.name ?? '';
-
-      if (changed) this.setBackground('video');
-    } else {
-      if (c.index !== this.wp) this.showPhoto(c.index);
-
-      if (this.bgMode !== 'photo') this.setBackground('photo');
+      save(this.persist);
+      void this.playVideo(c.index);
+    } else if (c.index !== this.wp) {
+      this.showPhoto(c.index);
     }
   }
   /** Cross-fades to the next wallpaper; returns its name. */
@@ -333,6 +340,7 @@ export class CalmTv {
   /** Cross-fades to photo n; returns its name. */
   private showPhoto(n: number): string {
     this.persist.wp = n;
+    this.persist.wpName = wallpapers[n]?.name ?? '';
     save(this.persist);
     const css = `url("${wallpapers[n].url}")`;
     const incoming = qs(this.frontA ? '#photo2' : '#photo');

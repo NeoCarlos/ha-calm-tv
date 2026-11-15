@@ -7,12 +7,12 @@ const KEY = 'calmtv';
  * or damaged value falls back to its default without losing the others.
  */
 const PersistSchema = v.object({
-  /** Index of the selected wallpaper. */
+  /** Index of the selected photo (older saves only; see wpName). */
   wp: v.fallback(v.number(), 0),
+  /** Name of the selected photo, so adding or removing photos doesn't change the choice. */
+  wpName: v.fallback(v.string(), ''),
   /** Thermostat set point, in degrees. */
   setpoint: v.fallback(v.number(), 66),
-  /** Background: a photo, or a looping video clip. */
-  bg: v.fallback(v.picklist(['photo', 'video']), 'photo'),
   /** Index of the selected video clip (older saves only; see vidName). */
   vid: v.fallback(v.number(), 0),
   /** Name of the selected video clip, so adding or removing clips doesn't change the choice. */

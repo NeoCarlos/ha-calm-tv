@@ -108,14 +108,20 @@ export const settings = {
   haUrl: '',
 };
 
+/**
+ * VITE_HA_URL from .env.local, for the browser preview only. Vite also reads .env.local for builds,
+ * so it's ignored outside dev: a shared build must never carry someone's Home Assistant address.
+ */
+const devHaUrl = import.meta.env.DEV ? import.meta.env.VITE_HA_URL ?? '' : '';
+
 /** Home Assistant's address: set on the TV (Settings or adb), or VITE_HA_URL / the saved one in a browser. */
 function readHaUrl(): string {
   if (native?.getHaUrl) return native.getHaUrl();
 
   try {
-    return import.meta.env.VITE_HA_URL || localStorage.getItem(HA_URL_KEY) || '';
+    return devHaUrl || localStorage.getItem(HA_URL_KEY) || '';
   } catch {
-    return import.meta.env.VITE_HA_URL || '';
+    return devHaUrl;
   }
 }
 

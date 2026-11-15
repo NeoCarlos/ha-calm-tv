@@ -1,5 +1,5 @@
-// Real brand icons as raw SVG strings. Files live in src/icons/*.svg.
-// CleanFrame's set (from the CC0 Simple Icons collection); Plex pulled from Simple Icons directly.
+// Brand icons as raw SVG strings, from src/icons/*.svg. Sources and licences for each are in
+// THIRD_PARTY_NOTICES.md (Simple Icons, Custom Brand Icons, Material Icons, CleanFrame's set).
 const raw = import.meta.glob<string>('./icons/*.svg', {
   query: '?raw',
   import: 'default',

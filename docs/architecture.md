@@ -69,6 +69,27 @@ Plain TypeScript and DOM, built with Vite. There's no framework, so it stays sma
   haven't started.
 - **`Prefs`:** the HA address, and the "using Google's home" switch.
 
+## Project layout
+
+| Path | What it is |
+| --- | --- |
+| `index.html` | The stage: background layers, section track, overlays |
+| `src/main.ts` | Start-up: loads the config, then builds the screens |
+| `src/config.ts` | `calm-tv.json`: its schema, loading, the HA address |
+| `src/ha.ts` | Home Assistant connection: OAuth sign-in, live states, service calls |
+| `src/ha-data.ts` | Schemas that decode HA attributes, forecasts and calendar events |
+| `src/app.ts` | The orchestrator: sections, remote input, backgrounds, HA wiring |
+| `src/home-data.ts` | Rooms built from the config, and how HA states become status lines |
+| `src/apps.ts` | The app dock (config `apps`, or a built-in default lineup) |
+| `src/sections/` | One file per screen, plus room detail, settings, background picker |
+| `src/setup.ts` | The first-run "Connect to Home Assistant" screen |
+| `src/camera-stream.ts`, `src/doorbell.ts` | Live camera video over WebRTC; the optional doorbell window |
+| `src/dom.ts`, `src/state.ts` | Checked element lookups; settings remembered between starts |
+| `src/wallpapers/`, `src/videos/`, `src/icons/`, `src/fonts/` | Built-in photos, clips, app icons and the Manrope font |
+| `src/style.css` | All styling, in 1920×1080 stage coordinates |
+| `android/` | The Android TV app: WebView, Home-button service, JS bridge, config loader |
+| `config/calm-tv.example.json` | A complete example home |
+
 ## Adding things
 
 - **A new device type:**

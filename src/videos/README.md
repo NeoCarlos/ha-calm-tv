@@ -25,6 +25,6 @@ Drop `fps=30` to keep the original frame rate if it's 30 or lower. Rebuild the a
 **Without rebuilding:** put clips in Home Assistant's `www` folder and list them under
 `backgrounds.videos` in `calm-tv.json` (docs/configuration.md).
 
-The included clips come from free stock-video sites. Their licences allow free use, including personal
-projects like this one, but not reselling or republishing the files as stock footage. Keep that in mind
-before posting this project publicly. For your own clips, check the source's licence.
+No clips are included in this repository: clips in this folder are ignored by git unless you
+whitelist one by name in `.gitignore`. Free stock-video sites generally allow personal use but not
+republishing the files, so only commit a clip you made or clearly have the rights to share.

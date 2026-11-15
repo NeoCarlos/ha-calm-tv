@@ -84,6 +84,7 @@ Plain TypeScript and DOM, built with Vite. There's no framework, so it stays sma
 | `src/sections/` | One file per screen, plus room detail, settings, background picker |
 | `src/setup.ts` | The first-run "Connect to Home Assistant" screen |
 | `src/camera-stream.ts`, `src/doorbell.ts` | Live camera video over WebRTC; the optional doorbell window |
+| `src/demo.ts` | Demo mode (`?demo`): a made-up home standing in for Home Assistant, loaded only with `?demo` |
 | `src/dom.ts`, `src/state.ts` | Checked element lookups; settings remembered between starts |
 | `src/wallpapers/`, `src/videos/`, `src/icons/`, `src/fonts/` | Built-in photos, clips, app icons and the Manrope font |
 | `src/style.css` | All styling, in 1920×1080 stage coordinates |

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Demo mode:** open the app with `?demo` to try every screen against a made-up home (the example
+  config), with sample calendar events, a week of weather and cameras that play a clip. No Home
+  Assistant needed. `?demo&at=2026-11-14T18:30` sets the clock, for repeatable recordings.
+- **README:** a section per feature, each with an animation recorded from demo mode.
+  `npm run record:demo` re-records them (needs Chrome, ffmpeg and img2webp).
 - **Settings → Performance:** switches for video backgrounds, frosted glass and screen transitions
   (new: Instant), and a frame-rate counter for comparing on the TV. Each TV
   keeps its own choices; `display` in calm-tv.json sets the default (now including `transitions`).

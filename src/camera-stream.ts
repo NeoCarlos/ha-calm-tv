@@ -1,4 +1,4 @@
-import type { Connection } from 'home-assistant-js-websocket';
+import type { HaLink } from './ha';
 
 // Live camera video over WebRTC, negotiated through Home Assistant's websocket, the same way
 // HA's own frontend plays Nest cameras (which have no snapshots or MJPEG stream).
@@ -18,12 +18,35 @@ export interface CameraStream {
   stop(): void;
 }
 
+/** Demo mode only (see demo.ts): the looping clip a camera plays instead of a live stream. */
+interface DemoCameras {
+  clip?: (entityId: string) => string;
+}
+
+export const demoCameras: DemoCameras = {};
+
+function playClip(url: string, video: HTMLVideoElement): CameraStream {
+  video.loop = true;
+  video.src = url;
+  video.play().catch(() => {});
+
+  return {
+    stop() {
+      video.removeAttribute('src');
+      video.load();
+    },
+  };
+}
+
 export async function playCamera(
-  conn: Connection,
+  conn: HaLink,
   entityId: string,
   video: HTMLVideoElement,
   onError: (msg: string) => void,
 ): Promise<CameraStream> {
+  const clip = demoCameras.clip?.(entityId);
+
+  if (clip) return playClip(clip, video);
   let stopped = false;
   let unsub: (() => Promise<void>) | null = null;
   const cfg = await conn.sendMessagePromise<ClientConfig>({ type: 'camera/webrtc/get_client_config', entity_id: entityId });

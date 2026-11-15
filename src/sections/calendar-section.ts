@@ -1,6 +1,5 @@
-import type { Connection } from 'home-assistant-js-websocket';
 import type { Section } from './section';
-import { ha } from '../ha';
+import { ha, type HaLink } from '../ha';
 import { settings } from '../config';
 import { calendarEvents, type CalendarEvent, type CalendarResponse } from '../ha-data';
 
@@ -277,7 +276,7 @@ export class CalendarSection implements Section {
     this.paint();
   }
 
-  private async fetch(conn: Connection, entity: string, from: Date, to: Date): Promise<CalendarEvent[]> {
+  private async fetch(conn: HaLink, entity: string, from: Date, to: Date): Promise<CalendarEvent[]> {
     const r = await conn.sendMessagePromise<CalendarResponse>({
       type: 'call_service',
       domain: 'calendar',

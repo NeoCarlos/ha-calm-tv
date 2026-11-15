@@ -3,7 +3,6 @@ import {
   type AuthData,
   type Connection,
   type HassEntities,
-  callService,
   createConnection,
   createLongLivedTokenAuth,
   getAuth,
@@ -23,6 +22,9 @@ export type HaStatus = 'signed-out' | 'connecting' | 'connected' | 'offline';
 
 /** The values this app passes to Home Assistant services (entity ids, options, levels). */
 export type ServiceData = Record<string, string | number | boolean>;
+
+/** The two calls the screens make on Home Assistant's websocket (also answered by demo mode's stand-in). */
+export type HaLink = Pick<Connection, 'sendMessagePromise' | 'subscribeMessage'>;
 
 /** Saved sign-in tokens, as home-assistant-js-websocket stores them. */
 const AuthDataSchema = v.object({
@@ -66,24 +68,46 @@ class HomeAssistant {
   entities: HassEntities = {};
   userName = '';
   private conn: Connection | null = null;
+  /** What the screens use: the connection's messages, or demo mode's stand-in. */
+  private link: HaLink | null = null;
   private auth: Auth | null = null;
   private retryTimer = 0;
   private retryDelay = 5000;
   private statusListeners: Listener[] = [];
   private entityListeners: Listener[] = [];
-  private connectedListeners: ((c: Connection) => void)[] = [];
+  private connectedListeners: ((c: HaLink) => void)[] = [];
+  /** Demo mode (see demo.ts): a stand-in connection and its states, used by start() instead of signing in. */
+  private demo: { link: HaLink; subscribe: (fn: (e: HassEntities) => void) => void } | null = null;
 
   onStatus(fn: Listener): void { this.statusListeners.push(fn); }
   onEntities(fn: Listener): void { this.entityListeners.push(fn); }
   /** Runs each time a connection is (re)established, e.g. to (re)subscribe to forecasts. */
-  onConnected(fn: (c: Connection) => void): void {
+  onConnected(fn: (c: HaLink) => void): void {
     this.connectedListeners.push(fn);
 
-    if (this.conn && this.status === 'connected') fn(this.conn);
+    if (this.link && this.status === 'connected') fn(this.link);
+  }
+
+  /** Demo mode: start() talks to `link` and takes its states from `subscribe`. */
+  useDemo(link: HaLink, subscribe: (fn: (e: HassEntities) => void) => void): void {
+    this.demo = { link, subscribe };
   }
 
   /** Connect if we have tokens or just came back from the sign-in page. Never redirects by itself. */
   async start(): Promise<void> {
+    if (this.demo) {
+      const { link, subscribe } = this.demo;
+      this.link = link;
+      this.userName = 'Demo';
+      this.connected(link);
+      subscribe((ents) => {
+        this.entities = ents;
+        this.entityListeners.forEach((fn) => fn());
+      });
+
+      return;
+    }
+
     // Dev on the Mac only (see vite.config.ts): connect with the dev token when the server offers one.
     if (import.meta.env.DEV && new URLSearchParams(location.search).has('devtoken')) {
       const r = await fetch('/__dev-token').catch(() => null);
@@ -126,18 +150,18 @@ class HomeAssistant {
   }
 
   async call(domain: string, service: string, data: ServiceData): Promise<void> {
-    if (!this.conn) return;
+    if (!this.link) return;
 
     try {
-      await callService(this.conn, domain, service, data);
+      await this.link.sendMessagePromise({ type: 'call_service', domain, service, service_data: data });
     } catch (e) {
       console.warn('HA service call failed', domain, service, data, e);
     }
   }
 
   /** The live connection, when connected. */
-  get connection(): Connection | null {
-    return this.status === 'connected' ? this.conn : null;
+  get connection(): HaLink | null {
+    return this.status === 'connected' ? this.link : null;
   }
 
   /** A path on HA (e.g. a camera picture) as a full URL. */
@@ -156,6 +180,7 @@ class HomeAssistant {
       if (location.search.includes('auth_callback')) history.replaceState(null, '', location.pathname);
       const conn = await createConnection({ auth: this.auth });
       this.conn = conn;
+      this.link = conn;
       this.retryDelay = 5000;
       conn.addEventListener('ready', () => this.connected(conn));
       conn.addEventListener('disconnected', () => this.setStatus('offline'));
@@ -189,9 +214,9 @@ class HomeAssistant {
     }
   }
 
-  private connected(conn: Connection): void {
+  private connected(link: HaLink): void {
     this.setStatus('connected');
-    this.connectedListeners.forEach((fn) => fn(conn));
+    this.connectedListeners.forEach((fn) => fn(link));
   }
 
   /** The tokens were refused (e.g. the TV user was removed or signed out in HA). */
@@ -206,6 +231,7 @@ class HomeAssistant {
     clearTimeout(this.retryTimer);
     this.conn?.close();
     this.conn = null;
+    this.link = null;
     this.auth = null;
     this.userName = '';
   }

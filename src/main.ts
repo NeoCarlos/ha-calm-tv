@@ -10,8 +10,10 @@ import { showSetup, SIGN_IN_NEXT } from './setup';
 import { ha } from './ha';
 
 async function main(): Promise<void> {
-  // Everything specific to a home comes from calm-tv.json (see config.ts).
-  await loadConfig();
+  // Everything specific to a home comes from calm-tv.json (see config.ts), or the made-up home in demo mode.
+  if (new URLSearchParams(location.search).has('demo')) (await import('./demo')).startDemo();
+  else await loadConfig();
+
   loadHome();
   loadApps();
   const bg = settings.config.backgrounds;

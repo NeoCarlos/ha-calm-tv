@@ -13,12 +13,11 @@ import { BackgroundPicker, type BgChoice } from './sections/background-picker';
 import type { Section } from './sections/section';
 import type { App } from './types';
 import { native } from './native';
-import { ha } from './ha';
+import { ha, type HaLink } from './ha';
 import { attributes, forecastEntries, WeatherAttributes, type ForecastEntry, type ForecastMessage } from './ha-data';
 import { child, find, itemAt } from './dom';
 import { applyStates, WEATHER } from './home-data';
 import { conditionLabel } from './sections/weather-section';
-import type { Connection } from 'home-assistant-js-websocket';
 import { DoorbellWindow, doorbellEnabled, doorbellRinging } from './doorbell';
 
 
@@ -117,7 +116,7 @@ export class CalmTv {
     });
 
     // Forecasts aren't entity states; subscribe once per connection (the library resubscribes after a drop).
-    const subscribed = new WeakSet<Connection>();
+    const subscribed = new WeakSet<HaLink>();
     ha.onConnected((conn) => {
       if (subscribed.has(conn)) return;
       subscribed.add(conn);

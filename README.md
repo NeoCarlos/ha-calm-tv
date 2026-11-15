@@ -12,6 +12,58 @@ I built this for one TV, a Google TV Streamer in my living room, and I'm sharing
 point to build on. Nothing about my home is in the code: each TV reads its rooms, apps and calendars
 from a small `calm-tv.json` file, so you can adapt it without touching the app.
 
+## What it does
+
+These are recorded from the app's demo mode, with a made-up home, so you can try every one of them
+in a browser yourself (see [Try the interface](#try-the-interface)). They're shown over a still
+photo to keep them small; the video backgrounds are at the top and under
+[Make it yours](#make-it-yours).
+
+### Your home at a glance
+
+Each room shows what's on, and turns amber when something needs you: a door left unlocked, the
+garage open, a vacuum out of water. Open a room to switch and dim its lights with the remote; the
+change goes straight to Home Assistant.
+
+![Moving across the rooms on the Smart Home screen, opening the living room and brightening the ceiling light step by step; the room then reads "3 lights on"](docs/images/demo-smart-home.webp)
+
+### Thermostat and scenes
+
+The indoor temperature is the big number on the Smart Home screen; open the thermostat in its room
+to change the set point with ↑ and ↓. Scenes (from Hue, or any `select` entity) are a short list to
+pick from.
+
+![Raising the kitchen thermostat from 68° to 70°, then choosing the Relax scene for the office](docs/images/demo-thermostat-and-scenes.webp)
+
+### Cameras
+
+Cameras play live, over WebRTC through Home Assistant, the same way its own dashboard does (in the
+demo they play a background clip). An optional doorbell window can pop up over whatever you're
+watching.
+
+![Opening the Outside room and its doorbell camera's live view](docs/images/demo-cameras.webp)
+
+### Calendar
+
+Today's date, tonight's dinner from a meal-plan calendar, and the next two weeks of events. The month
+grid rings the day of the event you're on, and shades trips that span several days.
+
+![Stepping through the coming events; the ring in the month calendar follows each one, and a three-day cabin weekend is shaded](docs/images/demo-calendar.webp)
+
+### Weather
+
+A week from Home Assistant's forecast. Each day opens into hour-by-hour temperatures with the chance
+of rain.
+
+![Stepping from today through the week, from sunny days into two rainy ones, with the hourly bars changing each time](docs/images/demo-weather.webp)
+
+### Make it yours
+
+Photos or slow looping videos behind everything, with the bars frosted over them. Add your own, or
+use the two made for the project.
+
+![Opening Settings, then switching the video background from a mountain lake at sunset to a forest brook and back](docs/images/demo-backgrounds.webp)
+
 ## Built for the Google TV Streamer
 
 HA Calm TV was built and tested on the **Google TV Streamer (2024)**: MediaTek MT8696, 4 GB of RAM,
@@ -47,7 +99,11 @@ npm ci
 npm run dev
 ```
 
-Open [localhost:5173](http://localhost:5173) and use the arrow keys, Enter and Escape, or the mouse.
+Open [localhost:5173/?demo](http://localhost:5173/?demo) to try the whole app against a made-up
+home: no Home Assistant needed. Its lights, scenes, curtains and thermostat respond, the cameras play
+a clip, and the calendar and weather are filled with sample days. Use the arrow keys, Enter and
+Escape, or the mouse.
+
 To see your own home, copy `config/calm-tv.example.json` to `calm-tv.json`, fill in your entities,
 and put `VITE_HA_URL=http://<your-ha>:8123` in a `.env.local` file. Then sign in from the Smart Home
 screen.

@@ -159,7 +159,7 @@ function where(issue: v.BaseIssue<unknown>): string {
  * Decodes the text of calm-tv.json. Throws an Error naming where the first problem is,
  * e.g. `rooms → 2 → groups: …`, so a typo shows up clearly in Settings instead of a blank screen.
  */
-function decodeConfig(text: string): CalmTvConfig {
+export function decodeConfig(text: string): CalmTvConfig {
   let json;
 
   try {

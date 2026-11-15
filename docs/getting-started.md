@@ -17,6 +17,11 @@ See [configuration.md](configuration.md) for every option.
 
 ## 2. Try it in a browser (15 minutes)
 
+To look around first, run `npm install` and `npm run dev`, then open http://localhost:5173/?demo.
+That's a made-up home with sample calendar and weather, and no Home Assistant needed.
+
+Then point it at your own home:
+
 ```bash
 npm install
 echo "VITE_HA_URL=http://<your-ha>:8123" > .env.local

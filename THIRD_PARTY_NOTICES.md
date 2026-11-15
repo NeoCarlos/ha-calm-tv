@@ -51,7 +51,9 @@ endorsement by or affiliation with them, or with Home Assistant, Nabu Casa or th
 
 The included backgrounds, "Mountain Lake Sunset" and "Stylized Forest Brook" (the photos in
 `src/wallpapers/`, the clips and thumbnails in `src/videos/`, and the README animation), were made for
-this project with Google Flow and are covered by the project's MIT licence. No third-party photos or video
+this project with Google Flow and are covered by the project's MIT licence. So is the placeholder
+doorbell view that demo mode's cameras show (`src/demo-media/doorbell-camera.mp4`), also made for
+the project. No third-party photos or video
 clips are included; `src/wallpapers/README.md` and `src/videos/README.md` explain how to add your own.
 
 ## Libraries

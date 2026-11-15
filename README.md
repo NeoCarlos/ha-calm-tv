@@ -38,7 +38,7 @@ pick from.
 ### Cameras
 
 Cameras play live, over WebRTC through Home Assistant, the same way its own dashboard does (in the
-demo they play a background clip). An optional doorbell window can pop up over whatever you're
+demo, a placeholder doorbell view). An optional doorbell window can pop up over whatever you're
 watching.
 
 ![Opening the Outside room and its doorbell camera's live view](docs/images/demo-cameras.webp)

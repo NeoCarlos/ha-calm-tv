@@ -1,6 +1,7 @@
 import type { HassEntities, HassEntity, MessageBase } from 'home-assistant-js-websocket';
 import * as v from 'valibot';
 import exampleConfig from '../config/calm-tv.example.json?raw';
+import doorbellView from './demo-media/doorbell-camera.mp4?url';
 import { decodeConfig, settings } from './config';
 import { ha, type HaLink } from './ha';
 import { demoCameras } from './camera-stream';
@@ -14,7 +15,7 @@ import { wallpapers } from './wallpapers';
  *
  *  - The home is config/calm-tv.example.json; its lights, scenes, curtains and thermostat respond.
  *  - Sample calendar events, tonight's dinner and a week of weather are made around today.
- *  - Cameras play one of the bundled background clips as their live view.
+ *  - Cameras show a placeholder doorbell view (src/demo-media/) as their live view.
  *  - Only the backgrounds shipped in the repo are offered.
  *  - ?demo&at=2026-11-14T18:30 sets the clock (it keeps running from there), so recordings match.
  *  - In the browser console: ctDemo.ring() rings the doorbell.
@@ -22,13 +23,6 @@ import { wallpapers } from './wallpapers';
 
 /** The backgrounds made for the project (the only ones in the repo). */
 const OWN_BACKGROUNDS = ['Mountain Lake Sunset', 'Stylized Forest Brook'];
-
-/** Which background clip each camera plays. */
-const CAMERA_CLIPS = new Map([
-  ['camera.front_door', 'Mountain Lake Sunset'],
-  ['camera.driveway', 'Mountain Lake Sunset'],
-  ['camera.back_door', 'Stylized Forest Brook'],
-]);
 
 /** Starts the clock at `at` (local time) and lets it run on from there. */
 function setClock(at: string): void {
@@ -394,8 +388,8 @@ export function startDemo(): void {
     if (own.length) list.splice(0, list.length, ...own);
   }
 
-  const clipUrl = (name: string) => videos.find((c) => c.name === name)?.url ?? videos[0]?.url ?? '';
-  demoCameras.clip = (entityId) => clipUrl(CAMERA_CLIPS.get(entityId) ?? OWN_BACKGROUNDS[0]);
+  // Every camera shows the placeholder doorbell view (a still photo, as a short looping video).
+  demoCameras.clip = () => doorbellView;
 
   const home = new DemoHome();
 

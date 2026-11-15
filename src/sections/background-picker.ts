@@ -1,3 +1,4 @@
+import { child } from '../dom';
 // Choose the background: a strip of thumbnails along the bottom, videos first, then photos.
 // While it's open the screens fade away, so the chosen background shows full screen behind it.
 
@@ -42,7 +43,7 @@ export class BackgroundPicker {
       <div class="bgpick-head"><span class="bgpick-title">Background</span><span class="bgpick-hint">OK to choose · Back when done</span></div>
       <div class="bgpick-shelf"><div class="bgpick-track"></div></div>`;
     mount.appendChild(this.el);
-    this.track = this.el.querySelector('.bgpick-track') as HTMLElement;
+    this.track = child(this.el, '.bgpick-track');
 
     let x = 0;
     let lastKind = '';

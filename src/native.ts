@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 // The Android side of Calm TV, when running inside the TV app (android/).
 // In a desktop browser there is no bridge, and launches stay faked.
 
@@ -30,12 +31,15 @@ declare global {
 
 export const native: CalmTvNative | undefined = window.CalmTvNative;
 
+/** What the TV app's apps() returns. */
+const InstalledApps = v.array(v.object({ pkg: v.string(), label: v.optional(v.string()) }));
+
 /** Package names of installed TV apps, or null when not running on the TV. */
 export function installedPackages(): Set<string> | null {
   if (!native) return null;
 
   try {
-    const list = JSON.parse(native.apps()) as { pkg: string }[];
+    const list = v.parse(InstalledApps, JSON.parse(native.apps()));
 
     return new Set(list.map((a) => a.pkg));
   } catch {

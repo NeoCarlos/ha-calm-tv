@@ -1,6 +1,13 @@
 import type { HassEntities, HassEntity } from 'home-assistant-js-websocket';
 import type { Device, Zone, ZoneState } from './types';
 import { settings, type DeviceConfig, type RoomConfig, type RoomIcon } from './config';
+import { attributes, CameraAttributes, ClimateAttributes, LightAttributes, SelectAttributes, SensorAttributes } from './ha-data';
+
+/** A room card's summary: its color state and status line. */
+export interface ZoneSummary {
+  state: ZoneState;
+  status: string;
+}
 
 // Zone icons (hand-drawn line icons, recolored via currentColor).
 const zi = {
@@ -20,14 +27,14 @@ function device(d: DeviceConfig): Device {
     type: d.type,
     entity: d.entity,
     name: d.name ?? d.entity,
-    ...(d.batteries ? { batteries: d.batteries } : {}),
-    ...(d.operator ? { operator: d.operator } : {}),
-    ...(d.keypad ? { keypad: d.keypad } : {}),
+    batteries: d.batteries,
+    operator: d.operator,
+    keypad: d.keypad,
   };
 }
 
 function room(r: RoomConfig): Zone {
-  const groups = r.groups.map((g) => ({ title: g.title, devices: (g.devices ?? []).map(device) }));
+  const groups = r.groups.map((g) => ({ title: g.title, devices: g.devices.map(device) }));
   const all = groups.flatMap((g) => g.devices);
   // A room's locks are the same rows as in its groups when listed there (so they share live state).
   const locks = (r.locks ?? []).map((id) => all.find((d) => d.entity === id) ?? device({ type: 'lock', entity: id }));
@@ -64,7 +71,11 @@ export const cap = (s?: string) => (s ? s[0].toUpperCase() + s.slice(1).replace(
 const num = (s?: HassEntity) => (s && !isNaN(parseFloat(s.state)) ? Math.round(parseFloat(s.state)) : undefined);
 
 function minBattery(ents: HassEntities, ids: string[] = []): number | undefined {
-  const levels = ids.map((id) => num(ents[id])).filter((n): n is number => n !== undefined);
+  const levels = ids.flatMap((id) => {
+    const level = num(ents[id]);
+
+    return level === undefined ? [] : [level];
+  });
 
   return levels.length ? Math.min(...levels) : undefined;
 }
@@ -79,20 +90,20 @@ function applyDevice(d: Device, ents: HassEntities): void {
     return;
   }
 
-  const a = s.attributes;
   const held = (d.holdUntil ?? 0) > Date.now();
   const battery = minBattery(ents, d.batteries);
   const batteryText = battery !== undefined ? ` · ${battery}% battery` : '';
 
   switch (d.type) {
     case 'light': {
-      const modes = a.supported_color_modes as string[] | undefined;
+      const a = attributes(s, LightAttributes);
+      const modes = a.supported_color_modes;
       d.dimmable = !!modes && !(modes.length === 1 && modes[0] === 'onoff');
 
       if (!held) {
         d.on = s.state === 'on';
 
-        if (typeof a.brightness === 'number') d.brightness = Math.max(1, Math.round((a.brightness / 255) * 100));
+        if (a.brightness !== undefined) d.brightness = Math.max(1, Math.round((a.brightness / 255) * 100));
       }
 
       d.status = d.on ? (d.dimmable && d.brightness ? `On · ${d.brightness}%` : 'On') : '';
@@ -119,30 +130,31 @@ function applyDevice(d: Device, ents: HassEntities): void {
 
     case 'camera':
       d.on = s.state === 'streaming';
-      d.picture = a.entity_picture as string | undefined;
+      d.picture = attributes(s, CameraAttributes).entity_picture;
       d.status = 'Live view';
       break;
     case 'climate': {
-      d.current = typeof a.current_temperature === 'number' ? Math.round(a.current_temperature) : undefined;
-      d.minTemp = a.min_temp as number | undefined;
-      d.maxTemp = a.max_temp as number | undefined;
+      const a = attributes(s, ClimateAttributes);
+      d.current = a.current_temperature === undefined ? undefined : Math.round(a.current_temperature);
+      d.minTemp = a.min_temp;
+      d.maxTemp = a.max_temp;
 
       if (!held) {
         d.mode = s.state;
-        d.setpoint = typeof a.temperature === 'number' ? Math.round(a.temperature) : undefined;
+        d.setpoint = a.temperature === undefined ? undefined : Math.round(a.temperature);
       }
 
       const lo = a.target_temp_low, hi = a.target_temp_high;
 
       const target =
-        d.setpoint !== undefined ? `${d.setpoint}°` : typeof lo === 'number' && typeof hi === 'number' ? `${Math.round(lo)}–${Math.round(hi)}°` : '';
+        d.setpoint !== undefined ? `${d.setpoint}°` : lo !== undefined && hi !== undefined ? `${Math.round(lo)}–${Math.round(hi)}°` : '';
 
       d.status = [target, cap(d.mode === 'heat_cool' ? 'heat/cool' : d.mode)].filter(Boolean).join(' · ');
       break;
     }
 
     case 'scene':
-      d.options = (a.options as string[] | undefined) ?? [];
+      d.options = attributes(s, SelectAttributes).options ?? [];
 
       if (!EMPTY.includes(s.state.toLowerCase())) d.picked = s.state;
       d.status = d.picked ?? 'Choose a scene';
@@ -150,10 +162,10 @@ function applyDevice(d: Device, ents: HassEntities): void {
     case 'sensor':
       if (d.entity.startsWith('binary_sensor.')) {
         d.on = s.state === 'on';
-        d.occupancy = a.device_class === 'occupancy';
+        d.occupancy = attributes(s, SensorAttributes).device_class === 'occupancy';
         d.status = d.occupancy ? (d.on ? 'Someone there' : 'Clear') : d.on ? 'Open' : 'Closed';
       } else {
-        const unit = (a.unit_of_measurement as string | undefined) ?? '';
+        const unit = attributes(s, SensorAttributes).unit_of_measurement ?? '';
         d.status = `${num(s) ?? s.state}${unit.startsWith('°') ? '°' : unit ? ` ${unit}` : ''}`;
       }
 
@@ -217,7 +229,7 @@ export function applyStates(ents: HassEntities): void {
 }
 
 /** The bar's summary line and color: urgent first, then maintenance, then what's on. */
-export function summarize(zone: Zone): { state: ZoneState; status: string } {
+export function summarize(zone: Zone): ZoneSummary {
   if (zone.urgent) return { state: 'warn', status: zone.urgent };
 
   if (zone.maintText) return { state: 'warn', status: zone.maintText };

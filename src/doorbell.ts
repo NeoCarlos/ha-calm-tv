@@ -1,6 +1,7 @@
 import { ha } from './ha';
 import { playCamera, type CameraStream } from './camera-stream';
 import { settings } from './config';
+import { child, find } from './dom';
 
 // When the doorbell rings, a small live video window appears in the corner, even over other apps.
 // It follows an input_boolean that an HA automation turns on for ~60 seconds per ring. Both come
@@ -29,8 +30,8 @@ export class DoorbellWindow {
       <div class="dbell-msg">Connecting…</div>
       <div class="dbell-tag"><span class="dot"></span>Front door</div>
       ${hint ? `<div class="dbell-hint">${hint}</div>` : ''}`;
-    this.video = this.el.querySelector('video') as HTMLVideoElement;
-    this.msg = this.el.querySelector('.dbell-msg') as HTMLElement;
+    this.video = find(this.el, 'video', HTMLVideoElement);
+    this.msg = child(this.el, '.dbell-msg');
     mount.appendChild(this.el);
   }
 

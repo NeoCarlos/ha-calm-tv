@@ -15,7 +15,9 @@ export interface Wallpaper {
 }
 
 /** light, switch: on/off. cover: curtains/blinds. lock, sensor: status only. scene: a scene picker (an HA select entity, e.g. from Hue). */
-export type DeviceType = 'light' | 'switch' | 'lock' | 'camera' | 'climate' | 'cover' | 'sensor' | 'scene';
+export const DEVICE_TYPES = ['light', 'switch', 'lock', 'camera', 'climate', 'cover', 'sensor', 'scene'] as const;
+
+export type DeviceType = (typeof DEVICE_TYPES)[number];
 
 export interface Device {
   name: string;

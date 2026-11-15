@@ -43,6 +43,10 @@ Plain TypeScript and DOM, built with Vite. There's no framework, so it stays sma
   - Weather uses `weather/subscribe_forecast`, daily and hourly.
   - Calendars use `calendar.get_events` with `return_response`, every 5 minutes.
   - Cameras use `camera/webrtc/offer` (`camera-stream.ts`), the same handshake HA's own frontend uses.
+- **Outside data is decoded where it enters** (Valibot): `ha-data.ts` for Home Assistant's entity
+  attributes, forecasts and calendar events; `config.ts` for `calm-tv.json`; `state.ts` for saved
+  settings. A field that arrives missing or malformed becomes `undefined` instead of breaking a screen.
+  `dom.ts` holds the checked element lookups.
 - **Backgrounds:** photos in `src/wallpapers/` and clips in `src/videos/` are found automatically at
   build time. More can be listed in the config. The choice is remembered in `localStorage`.
 

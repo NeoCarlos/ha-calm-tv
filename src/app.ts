@@ -12,7 +12,9 @@ import { BackgroundPicker, type BgChoice } from './sections/background-picker';
 import type { Section } from './sections/section';
 import type { App } from './types';
 import { native } from './native';
-import { ha, type ForecastEntry } from './ha';
+import { ha } from './ha';
+import { attributes, forecastEntries, WeatherAttributes, type ForecastEntry, type ForecastMessage } from './ha-data';
+import { child, find, itemAt } from './dom';
 import { applyStates, WEATHER } from './home-data';
 import { conditionLabel } from './sections/weather-section';
 import type { Connection } from 'home-assistant-js-websocket';
@@ -21,13 +23,9 @@ import { DoorbellWindow, doorbellEnabled, doorbellRinging } from './doorbell';
 /** calm-tv.json "display": "videos": false hides video backgrounds (on by default). */
 const videosAllowed = () => settings.config.display?.videos !== false;
 
-function qs<T extends Element = HTMLElement>(sel: string): T {
-  const el = document.querySelector(sel);
-
-  if (!el) throw new Error(`Missing element: ${sel}`);
-
-  return el as unknown as T;
-}
+/** An element of the page's own markup (index.html). */
+const qs = (selector: string) => child(document, selector);
+const video = () => find(document, '#video', HTMLVideoElement);
 
 export class CalmTv {
   private persist = load();
@@ -103,12 +101,9 @@ export class CalmTv {
       if (ha.status === 'connected' && ha.entities[doorbellRinging()]) ringing = r;
       applyStates(ha.entities);
       const w = ha.entities[WEATHER];
-      this.home.setOutside(
-        w && typeof w.attributes.temperature === 'number'
-          ? { temp: w.attributes.temperature, condition: conditionLabel(w.state) }
-          : {},
-      );
-      weather.setCurrent(w ? { condition: w.state, temperature: w.attributes.temperature as number | undefined } : null);
+      const temperature = w ? attributes(w, WeatherAttributes).temperature : undefined;
+      this.home.setOutside(temperature === undefined || !w ? {} : { temp: temperature, condition: conditionLabel(w.state) });
+      weather.setCurrent(temperature === undefined || !w ? null : { condition: w.state, temperature });
       this.detail.refresh();
     };
 
@@ -129,7 +124,7 @@ export class CalmTv {
 
       const sub = (forecast_type: 'daily' | 'hourly', fn: (f: ForecastEntry[]) => void) =>
         conn
-          .subscribeMessage<{ forecast: ForecastEntry[] | null }>((m) => fn(m.forecast ?? []), {
+          .subscribeMessage<ForecastMessage>((m) => fn(forecastEntries(m)), {
             type: 'weather/subscribe_forecast',
             entity_id: WEATHER,
             forecast_type,
@@ -200,7 +195,7 @@ export class CalmTv {
     this.overlay = 'launch';
     qs('#launchMark').innerHTML = a.mark;
     qs('#launchTxt').textContent = `Opening ${a.name}`;
-    const bar = qs<HTMLElement>('#launch .lbar i');
+    const bar = qs('#launch .lbar i');
     bar.style.animation = 'none';
     void bar.offsetWidth;
     bar.style.animation = '';
@@ -254,7 +249,7 @@ export class CalmTv {
 
     this.bgMode = mode;
     document.documentElement.classList.toggle('bg-video', mode === 'video');
-    const v = qs<HTMLVideoElement>('#video');
+    const v = video();
 
     if (mode === 'video') void this.playVideo(this.vid);
     else {
@@ -273,7 +268,7 @@ export class CalmTv {
    */
   private async playVideo(i: number): Promise<void> {
     const clip = videos[i];
-    const v = qs<HTMLVideoElement>('#video');
+    const v = video();
 
     if (!clip) return;
 
@@ -302,7 +297,7 @@ export class CalmTv {
   }
   /** Only play while Calm TV is on screen. */
   private pauseVideo(paused: boolean): void {
-    const v = qs<HTMLVideoElement>('#video');
+    const v = video();
 
     if (this.bgMode !== 'video' || !v.src) return;
 
@@ -412,7 +407,7 @@ export class CalmTv {
 
     const sections = qs('#sections');
     sections.addEventListener('mouseover', (e) => {
-      const el = (e.target as HTMLElement).closest('[data-item]') as HTMLElement | null;
+      const el = itemAt(e.target);
 
       if (!el) return;
       const sec = Number(el.dataset.sec);
@@ -423,7 +418,7 @@ export class CalmTv {
       this.sections[sec].focus(it);
     });
     sections.addEventListener('click', (e) => {
-      const el = (e.target as HTMLElement).closest('[data-item]') as HTMLElement | null;
+      const el = itemAt(e.target);
 
       if (!el) return;
       const sec = Number(el.dataset.sec);

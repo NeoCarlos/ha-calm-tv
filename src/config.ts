@@ -1,5 +1,6 @@
+import * as v from 'valibot';
 import { native } from './native';
-import type { DeviceType } from './types';
+import { DEVICE_TYPES } from './types';
 
 /**
  * calm-tv.json: everything specific to one home, so the same app works anywhere.
@@ -10,70 +11,95 @@ import type { DeviceType } from './types';
  *    pushed onto the TV with adb (android/.../ConfigFile.kt reads both).
  *  - In a desktop browser (npm run dev): calm-tv.json in the project folder.
  *  - Either way, the last good copy is kept, in case neither can be reached on a later start.
+ *
+ * The schemas below are the format's source of truth: the file is decoded with them, and the
+ * types the rest of the app uses are derived from them.
  */
-export interface CalmTvConfig {
-  /** The app dock, in order. `icon` is a file name from src/icons/ (e.g. "netflix"); `package` the Android TV app. */
-  apps?: { name: string; package: string; icon?: string }[];
-  /** Weather entity for the Weather screen and the Smart Home "Outside" line. */
-  weather?: string;
-  /** Calendar entities: `events` fill the Calendar bar; `meals` (optional) gives "Dinner · …" from today's all-day event. */
-  calendar?: { events?: string; meals?: string };
-  /** Doorbell video window (off unless `window` is true): its camera, and an input_boolean that is on while it rings. */
-  doorbell?: { window?: boolean; camera?: string; ringing?: string };
-  /** Rooms in the Smart Home bar, in order. */
-  rooms?: RoomConfig[];
-  /** Look options. */
-  display?: {
-    /** The bars' glass: "blur" (frosted, the default) or "tint" (plain dark glass, no blur; lightest on the TV). */
-    glass?: 'blur' | 'tint';
-    /** false hides video backgrounds; only photos are offered (default true). */
-    videos?: boolean;
-  };
-  /** Extra backgrounds, e.g. files in Home Assistant's www folder ("/local/beach.jpg"). */
-  backgrounds?: {
-    photos?: { name: string; url: string }[];
-    videos?: { name: string; url: string; thumb?: string }[];
-  };
-}
 
-export type RoomIcon = 'couch' | 'cutlery' | 'desk' | 'bed' | 'stairs' | 'house';
+/** An entity id, like "light.kitchen". */
+const EntityId = v.pipe(v.string(), v.regex(/^[a-z_]+\.[a-z0-9_]+$/, 'should be an entity id like "light.kitchen"'));
 
-export interface RoomConfig {
-  name: string;
-  icon?: RoomIcon;
-  /** Summary when nothing is on (default "All off"). */
-  whenIdle?: string;
-  /** Lock entities: the room turns amber if one is left unlocked for 10 minutes. */
-  locks?: string[];
-  /** A sensor whose state is a short "needs attention" note (shown when nothing is urgent). */
-  maintenance?: string;
-  /** A robot vacuum: entity id stems of the vacuum and its dock (Roborock integration naming). */
-  vacuum?: { label: string; vacuum: string; dock: string };
-  /** A binary sensor that becomes the room's urgent status while on, e.g. a garage door. */
-  alert?: { entity: string; text: string };
-  groups: { title: string; devices: DeviceConfig[] }[];
-}
-
-export interface DeviceConfig {
-  type: DeviceType;
-  entity: string;
+const DeviceSchema = v.object({
+  type: v.picklist(DEVICE_TYPES, `should be one of ${DEVICE_TYPES.join(', ')}`),
+  entity: EntityId,
   /** Shown name (defaults to the entity id). */
-  name?: string;
+  name: v.optional(v.string()),
   /** Battery sensors; the lowest is shown (covers, locks). */
-  batteries?: string[];
+  batteries: v.optional(v.array(EntityId)),
   /** Lock: sensor saying how it was last locked. */
-  operator?: string;
+  operator: v.optional(EntityId),
   /** Lock: a keypad's battery sensor. */
-  keypad?: string;
-}
+  keypad: v.optional(EntityId),
+});
 
-const DEVICE_TYPES: DeviceType[] = ['light', 'switch', 'lock', 'camera', 'climate', 'cover', 'sensor', 'scene'];
+export const ROOM_ICONS = ['couch', 'cutlery', 'desk', 'bed', 'stairs', 'house'] as const;
+
+const RoomSchema = v.object({
+  name: v.pipe(v.string(), v.nonEmpty('needs a name')),
+  icon: v.optional(v.picklist(ROOM_ICONS, `should be one of ${ROOM_ICONS.join(', ')}`)),
+  /** Summary when nothing is on (default "All off"). */
+  whenIdle: v.optional(v.string()),
+  /** Lock entities: the room turns amber if one is left unlocked for 10 minutes. */
+  locks: v.optional(v.array(EntityId)),
+  /** A sensor whose state is a short "needs attention" note (shown when nothing is urgent). */
+  maintenance: v.optional(EntityId),
+  /** A robot vacuum: entity id stems of the vacuum and its dock (Roborock integration naming). */
+  vacuum: v.optional(v.object({ label: v.string(), vacuum: v.string(), dock: v.string() })),
+  /** A binary sensor that becomes the room's urgent status while on, e.g. a garage door. */
+  alert: v.optional(v.object({ entity: EntityId, text: v.string() })),
+  groups: v.array(v.object({ title: v.string(), devices: v.optional(v.array(DeviceSchema), []) })),
+});
+
+const ConfigSchema = v.object({
+  /** The app dock, in order. `icon` is a file name from src/icons/ (e.g. "netflix"); `package` the Android TV app. */
+  apps: v.optional(v.array(v.object({ name: v.string(), package: v.string(), icon: v.optional(v.string()) }))),
+  /** Weather entity for the Weather screen and the Smart Home "Outside" line. */
+  weather: v.optional(EntityId),
+  /** Calendar entities: `events` fill the Calendar bar; `meals` (optional) gives "Dinner · …" from today's all-day event. */
+  calendar: v.optional(v.object({ events: v.optional(EntityId), meals: v.optional(EntityId) })),
+  /** Doorbell video window (off unless `window` is true): its camera, and an input_boolean that is on while it rings. */
+  doorbell: v.optional(v.object({ window: v.optional(v.boolean()), camera: v.optional(EntityId), ringing: v.optional(EntityId) })),
+  /** Rooms in the Smart Home bar, in order. */
+  rooms: v.optional(v.array(RoomSchema)),
+  /** Look options. */
+  display: v.optional(
+    v.object({
+      /** The bars' glass: "blur" (frosted, the default) or "tint" (plain dark glass, no blur; lightest on the TV). */
+      glass: v.optional(v.picklist(['blur', 'tint'], 'should be "blur" or "tint"')),
+      /** false hides video backgrounds; only photos are offered (default true). */
+      videos: v.optional(v.boolean('should be true or false')),
+    }),
+  ),
+  /** Extra backgrounds, e.g. files in Home Assistant's www folder ("/local/beach.jpg"). */
+  backgrounds: v.optional(
+    v.object({
+      photos: v.optional(v.array(v.object({ name: v.string(), url: v.string() }))),
+      videos: v.optional(v.array(v.object({ name: v.string(), url: v.string(), thumb: v.optional(v.string()) }))),
+    }),
+  ),
+});
+
+export type CalmTvConfig = v.InferOutput<typeof ConfigSchema>;
+
+export type RoomConfig = v.InferOutput<typeof RoomSchema>;
+
+export type DeviceConfig = v.InferOutput<typeof DeviceSchema>;
+
+export type RoomIcon = (typeof ROOM_ICONS)[number];
+
+/** What the TV app's loadConfig() returns: the file and where it came from, or why there's none. */
+const NativeConfigResult = v.object({
+  source: v.fallback(v.optional(v.string(), ''), ''),
+  text: v.fallback(v.optional(v.string(), ''), ''),
+  error: v.fallback(v.optional(v.string(), ''), ''),
+});
+
 const CACHE_KEY = 'ct.config';
 const HA_URL_KEY = 'ct.haUrl';
 
 export const settings = {
   /** The loaded configuration ({} if none). */
-  config: {} as CalmTvConfig,
+  config: v.parse(ConfigSchema, {}),
   /** Where it came from: "Home Assistant", "this TV", "this project folder", "last saved copy", or "". */
   source: '',
   /** Why the newest copy couldn't be used, if it couldn't. */
@@ -114,30 +140,32 @@ export function saveHaUrl(raw: string): string {
   }
 }
 
-/** Checks the shape enough to fail with a clear message instead of a blank screen. */
-function validate(c: unknown): CalmTvConfig {
-  if (!c || typeof c !== 'object' || Array.isArray(c)) throw new Error('it should be a JSON object { … }');
-  const cfg = c as CalmTvConfig;
-  const glass = cfg.display?.glass;
+/** "rooms → 2 → groups" for an issue at rooms[1].groups (counted from 1, as people do). */
+function where(issue: v.BaseIssue<unknown>): string {
+  const keys = (issue.path ?? []).map((item) => (item.type === 'array' ? String(item.key + 1) : String(item.key)));
 
-  if (glass !== undefined && glass !== 'blur' && glass !== 'tint') throw new Error(`"display": "glass" should be "blur" or "tint", not "${glass}"`);
-  const vids = cfg.display?.videos;
+  return keys.length ? keys.join(' → ') : 'the file';
+}
 
-  if (vids !== undefined && typeof vids !== 'boolean') throw new Error(`"display": "videos" should be true or false`);
-  (cfg.rooms ?? []).forEach((r, i) => {
-    if (!r?.name) throw new Error(`room ${i + 1} has no "name"`);
+/**
+ * Decodes the text of calm-tv.json. Throws an Error naming where the first problem is,
+ * e.g. `rooms → 2 → groups: …`, so a typo shows up clearly in Settings instead of a blank screen.
+ */
+function decodeConfig(text: string): CalmTvConfig {
+  let json;
 
-    if (!Array.isArray(r.groups)) throw new Error(`room "${r.name}" needs "groups": [ … ]`);
-    r.groups.forEach((g) =>
-      (g.devices ?? []).forEach((d) => {
-        if (!d?.entity) throw new Error(`a device in "${r.name}" has no "entity"`);
+  try {
+    json = JSON.parse(text);
+  } catch (e) {
+    throw new Error(`isn't valid JSON (${e instanceof Error ? e.message : 'unreadable'})`);
+  }
 
-        if (!DEVICE_TYPES.includes(d.type)) throw new Error(`"${d.entity}" has type "${d.type}"; use one of ${DEVICE_TYPES.join(', ')}`);
-      }),
-    );
-  });
+  const result = v.safeParse(ConfigSchema, json);
 
-  return cfg;
+  if (result.success) return result.output;
+  const first = result.issues[0];
+
+  throw new Error(`${where(first)}: ${first.message}`);
 }
 
 async function fetchProjectFile(): Promise<string> {
@@ -160,13 +188,22 @@ export async function loadConfig(): Promise<void> {
   let source = '';
 
   if (native?.loadConfig) {
+    let answer;
+
     try {
-      const r = JSON.parse(native.loadConfig()) as { source?: string; text?: string; error?: string };
-      text = r.text ?? '';
-      source = r.source ?? '';
-      settings.error = r.error ?? '';
-    } catch (e) {
-      settings.error = String(e);
+      answer = JSON.parse(native.loadConfig());
+    } catch {
+      answer = null;
+    }
+
+    const r = v.safeParse(NativeConfigResult, answer);
+
+    if (r.success) {
+      text = r.output.text;
+      source = r.output.source;
+      settings.error = r.output.error;
+    } else {
+      settings.error = 'the TV app sent an unreadable answer';
     }
   } else {
     text = await fetchProjectFile();
@@ -177,15 +214,19 @@ export async function loadConfig(): Promise<void> {
 
   if (text) {
     try {
-      settings.config = validate(JSON.parse(text));
+      settings.config = decodeConfig(text);
       settings.source = source;
       settings.error = '';
 
-      try { localStorage.setItem(CACHE_KEY, text); } catch { /* storage full or off */ }
+      try {
+        localStorage.setItem(CACHE_KEY, text);
+      } catch {
+        /* storage full or off */
+      }
 
       return;
     } catch (e) {
-      settings.error = `calm-tv.json from ${source}: ${(e as Error).message}`;
+      settings.error = `calm-tv.json from ${source}: ${e instanceof Error ? e.message : 'unreadable'}`;
     }
   }
 
@@ -194,7 +235,7 @@ export async function loadConfig(): Promise<void> {
     const cached = localStorage.getItem(CACHE_KEY);
 
     if (cached) {
-      settings.config = validate(JSON.parse(cached));
+      settings.config = decodeConfig(cached);
       settings.source = 'last saved copy';
     }
   } catch {

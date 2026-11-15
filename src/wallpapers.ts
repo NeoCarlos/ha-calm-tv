@@ -2,11 +2,11 @@ import type { Wallpaper } from './types';
 
 // Auto-discover every image dropped into src/wallpapers/.
 // Add real photos there (jpg/png/webp) and they appear automatically — no code changes needed.
-const modules = import.meta.glob('./wallpapers/*.{jpg,jpeg,png,webp,avif,svg}', {
+const modules = import.meta.glob<string>('./wallpapers/*.{jpg,jpeg,png,webp,avif,svg}', {
   eager: true,
   query: '?url',
   import: 'default',
-}) as Record<string, string>;
+});
 
 function prettyName(path: string): string {
   const file = path.split('/').pop() ?? path;

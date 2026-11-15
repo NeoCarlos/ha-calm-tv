@@ -1,4 +1,5 @@
 import { saveHaUrl, settings } from './config';
+import { child, find } from './dom';
 
 /** Set by the setup screen: open Home Assistant's sign-in as soon as the page has reloaded. */
 export const SIGN_IN_NEXT = 'ct.signInNext';
@@ -23,8 +24,8 @@ export function showSetup(opts: { canCancel: boolean }): void {
       <div class="setup-hint">${opts.canCancel ? 'Back to cancel · ' : ''}Calm TV then loads calm-tv.json from Home Assistant's www folder.</div>
     </div>`;
   (document.querySelector('#stage') ?? document.body).appendChild(el);
-  const input = el.querySelector('input') as HTMLInputElement;
-  const msg = el.querySelector('.setup-msg') as HTMLElement;
+  const input = find(el, 'input', HTMLInputElement);
+  const msg = child(el, '.setup-msg');
   input.value = settings.haUrl || 'http://';
 
   const close = () => {

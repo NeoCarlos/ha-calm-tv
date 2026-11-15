@@ -11,6 +11,7 @@ import {
   ERR_CANNOT_CONNECT,
   ERR_INVALID_AUTH,
 } from 'home-assistant-js-websocket';
+import * as v from 'valibot';
 import { settings } from './config';
 
 // Home Assistant's address comes from the TV's settings (or VITE_HA_URL in a browser): see config.ts.
@@ -20,24 +21,27 @@ const TOKENS_KEY = 'ct.haTokens';
 
 export type HaStatus = 'signed-out' | 'connecting' | 'connected' | 'offline';
 
-export interface ForecastEntry {
-  datetime: string;
-  condition?: string;
-  temperature?: number;
-  templow?: number;
-  precipitation?: number;
-  precipitation_probability?: number;
-}
+/** The values this app passes to Home Assistant services (entity ids, options, levels). */
+export type ServiceData = Record<string, string | number | boolean>;
+
+/** Saved sign-in tokens, as home-assistant-js-websocket stores them. */
+const AuthDataSchema = v.object({
+  hassUrl: v.string(),
+  clientId: v.nullable(v.string()),
+  expires: v.number(),
+  refresh_token: v.string(),
+  access_token: v.string(),
+  expires_in: v.number(),
+});
 
 type Listener = () => void;
 
 function loadTokens(): AuthData | null {
   try {
-    const raw = localStorage.getItem(TOKENS_KEY);
-    const data = raw ? (JSON.parse(raw) as AuthData) : null;
+    const saved = v.safeParse(AuthDataSchema, JSON.parse(localStorage.getItem(TOKENS_KEY) ?? 'null'));
 
     // Tokens belong to one Home Assistant: forget them if the address was changed.
-    return data && data.hassUrl === settings.haUrl ? data : null;
+    return saved.success && saved.output.hassUrl === settings.haUrl ? saved.output : null;
   } catch {
     return null;
   }
@@ -121,7 +125,7 @@ class HomeAssistant {
     try { await auth?.revoke(); } catch { /* offline: the tokens are forgotten here anyway */ }
   }
 
-  async call(domain: string, service: string, data: Record<string, unknown>): Promise<void> {
+  async call(domain: string, service: string, data: ServiceData): Promise<void> {
     if (!this.conn) return;
 
     try {

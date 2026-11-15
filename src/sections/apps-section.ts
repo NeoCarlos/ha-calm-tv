@@ -1,6 +1,7 @@
 import { apps } from '../apps';
 import type { App } from '../types';
 import type { Section } from './section';
+import { child } from '../dom';
 
 // Icon-only tiles; the label appears only for the focused app.
 const TW = 150;
@@ -37,10 +38,10 @@ export class AppsSection implements Section {
         <div class="gb-edge"></div>
         <div class="gb-shelf"><div class="gb-track"></div></div>
       </div>`;
-    this.track = s.querySelector('.gb-track') as HTMLElement;
-    this.shelf = s.querySelector('.gb-shelf') as HTMLElement;
-    this.clockEl = s.querySelector('#clock') as HTMLElement;
-    this.dateEl = s.querySelector('#cdate') as HTMLElement;
+    this.track = child(s, '.gb-track');
+    this.shelf = child(s, '.gb-shelf');
+    this.clockEl = child(s, '#clock');
+    this.dateEl = child(s, '#cdate');
 
     const top = (DOCK_H - TH) / 2;
     apps.forEach((a, i) => {

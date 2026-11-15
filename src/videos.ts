@@ -1,8 +1,8 @@
 // Auto-discover every looping clip dropped into src/videos/ (1080p mp4, no audio, ideally under ~20 MB:
 // each clip is loaded whole into memory to loop smoothly). A .jpg with the same name is its thumbnail
 // in the background picker. They ship inside the TV app like the photos; nothing is hosted anywhere.
-const clips = import.meta.glob('./videos/*.{mp4,webm}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
-const thumbs = import.meta.glob('./videos/*.jpg', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+const clips = import.meta.glob<string>('./videos/*.{mp4,webm}', { eager: true, query: '?url', import: 'default' });
+const thumbs = import.meta.glob<string>('./videos/*.jpg', { eager: true, query: '?url', import: 'default' });
 
 export interface Clip {
   name: string;

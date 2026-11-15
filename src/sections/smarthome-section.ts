@@ -2,6 +2,7 @@ import type { Section } from './section';
 import type { Zone } from '../types';
 import { zones, summarize, primaryClimate } from '../home-data';
 import { ha } from '../ha';
+import { child } from '../dom';
 
 const ZW = 340;
 const ZPITCH = 364;
@@ -27,6 +28,8 @@ export class SmartHomeSection implements Section {
   private track!: HTMLElement;
   private shelf!: HTMLElement;
   private curEl!: HTMLElement;
+  /** The big temperature, hidden while there's no reading. */
+  private tempEl!: HTMLElement;
   private subEl!: HTMLElement;
   private outEl!: HTMLElement;
   private first = 0;
@@ -52,11 +55,12 @@ export class SmartHomeSection implements Section {
         <div class="gb-edge"></div>
         <div class="gb-shelf"><div class="gb-track"></div></div>
       </div>`;
-    this.shelf = s.querySelector('.gb-shelf') as HTMLElement;
-    this.track = s.querySelector('.gb-track') as HTMLElement;
-    this.curEl = s.querySelector('.t-cur') as HTMLElement;
-    this.subEl = s.querySelector('.therm-sub') as HTMLElement;
-    this.outEl = s.querySelector('.therm-out') as HTMLElement;
+    this.shelf = child(s, '.gb-shelf');
+    this.track = child(s, '.gb-track');
+    this.curEl = child(s, '.t-cur');
+    this.tempEl = child(s, '.therm-temp');
+    this.subEl = child(s, '.therm-sub');
+    this.outEl = child(s, '.therm-out');
     this.buildCards();
 
     return s;
@@ -71,7 +75,7 @@ export class SmartHomeSection implements Section {
     c.innerHTML = `<div class="zplate"></div><div class="zbody"><div class="zicon">${icon}</div><div class="zmeta"><div class="zname">${name}</div><div class="zstatus"></div></div></div>`;
     this.track.appendChild(c);
     this.cards.push(c);
-    this.statusEls.push(c.querySelector('.zstatus') as HTMLElement);
+    this.statusEls.push(child(c, '.zstatus'));
 
     return c;
   }
@@ -105,7 +109,7 @@ export class SmartHomeSection implements Section {
     const c = primaryClimate();
     const live = ha.status === 'connected' && c && !c.unavailable;
     this.curEl.textContent = live && c.current !== undefined ? String(c.current) : '';
-    (this.curEl.parentElement as HTMLElement).style.visibility = this.curEl.textContent ? '' : 'hidden';
+    this.tempEl.style.visibility = this.curEl.textContent ? '' : 'hidden';
     this.subEl.textContent = live ? (c.setpoint !== undefined ? `Set to ${c.setpoint}°` : c.status ?? '') : '';
     const o = this.outside;
     this.outEl.textContent =

@@ -2,6 +2,7 @@ import type { Device, Zone } from '../types';
 import { cap } from '../home-data';
 import { ha } from '../ha';
 import { playCamera, type CameraStream } from '../camera-stream';
+import { child, find } from '../dom';
 
 const wrap = (inner: string) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
@@ -96,11 +97,11 @@ export class ZoneDetail {
       </div>
       <div class="detail-control" hidden></div>`;
     mount.appendChild(this.el);
-    this.colsEl = this.el.querySelector('.detail-cols') as HTMLElement;
-    this.titleEl = this.el.querySelector('.detail-title') as HTMLElement;
-    this.footEl = this.el.querySelector('.detail-foot') as HTMLElement;
-    this.closeEl = this.el.querySelector('.detail-close') as HTMLElement;
-    this.controlEl = this.el.querySelector('.detail-control') as HTMLElement;
+    this.colsEl = child(this.el, '.detail-cols');
+    this.titleEl = child(this.el, '.detail-title');
+    this.footEl = child(this.el, '.detail-foot');
+    this.closeEl = child(this.el, '.detail-close');
+    this.controlEl = child(this.el, '.detail-control');
 
     this.closeEl.addEventListener('click', () => this.close());
     this.el.querySelector('.detail-scrim')!.addEventListener('click', () => this.close());
@@ -358,8 +359,8 @@ export class ZoneDetail {
 
   /** Live camera video (WebRTC through HA). Stops when the view closes. */
   private startCamera(d: Device): void {
-    const video = this.controlEl.querySelector('.cam-img') as HTMLVideoElement;
-    const msg = this.controlEl.querySelector('.cam-msg') as HTMLElement;
+    const video = find(this.controlEl, '.cam-img', HTMLVideoElement);
+    const msg = child(this.controlEl, '.cam-msg');
     const fail = (m: string) => { if (this.controlDevice === d) msg.textContent = m; };
 
     video.addEventListener('playing', () => msg.remove(), { once: true });
@@ -418,12 +419,12 @@ export class ZoneDetail {
 
     if (!d) return;
     const state = this.controlEl.querySelector('.ctl-state');
-    const fill = this.controlEl.querySelector('.ctl-fill') as HTMLElement | null;
+    const fill = this.controlEl.querySelector('.ctl-fill');
     const card = this.controlEl.querySelector('.ctl-card');
 
     if (state) state.textContent = d.on ? `On · ${d.brightness ?? 100}%` : 'Off';
 
-    if (fill) fill.style.width = `${d.on ? d.brightness ?? 100 : 0}%`;
+    if (fill instanceof HTMLElement) fill.style.width = `${d.on ? d.brightness ?? 100 : 0}%`;
 
     if (card) card.classList.toggle('is-on', !!d.on);
   }

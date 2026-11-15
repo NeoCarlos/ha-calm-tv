@@ -2,6 +2,22 @@ import type { Connection } from 'home-assistant-js-websocket';
 import type { Section } from './section';
 import { ha } from '../ha';
 import { settings } from '../config';
+import { calendarEvents, type CalendarEvent, type CalendarResponse } from '../ha-data';
+
+/** The calendar entities to read: events for the bar, meals for "Dinner · …". */
+interface CalendarIds {
+  events?: string;
+  meals?: string;
+}
+
+declare global {
+  interface Window {
+    /** Dev on the Mac only: show sample events without the HA calendars. */
+    ctCalendar?: (events: CalendarEvent[], dinner?: string) => void;
+  }
+}
+
+import { child } from '../dom';
 
 // The bar: one column per day that has events, two events per column (a busy day takes more columns).
 const COL_W = 300;
@@ -21,13 +37,6 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-/** One event as HA's calendar.get_events returns it. All-day events use plain dates, end exclusive. */
-interface HaEvent {
-  start: string;
-  end: string;
-  summary: string;
-}
-
 interface Ev {
   start: Date;
   end: Date;
@@ -46,8 +55,14 @@ interface Item {
   x: number;
 }
 
+/** A calendar time: "2026-11-14" is local midnight of an all-day date; full timestamps are kept. */
+interface When {
+  d: Date;
+  allDay: boolean;
+}
+
 /** "2026-11-14" as local midnight; full timestamps as they are. */
-function parseWhen(s: string): { d: Date; allDay: boolean } {
+function parseWhen(s: string): When {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
 
   if (m) return { d: new Date(+m[1], +m[2] - 1, +m[3]), allDay: true };
@@ -104,7 +119,7 @@ function rowTime(e: Ev, day: Date, now: Date): string {
   return shortTime(e.start);
 }
 
-function toEv(h: HaEvent): Ev {
+function toEv(h: CalendarEvent): Ev {
   const s = parseWhen(h.start);
   const e = parseWhen(h.end);
 
@@ -161,7 +176,7 @@ export class CalendarSection implements Section {
 
     // Dev on the Mac only: show sample events without the HA calendars, e.g. ctCalendar([...], 'Tacos').
     if (import.meta.env.DEV) {
-      (window as unknown as Record<string, unknown>).ctCalendar = (evs: HaEvent[], dinner = '') => {
+      window.ctCalendar = (evs: CalendarEvent[], dinner = '') => {
         this.events = evs.map(toEv).sort((a, b) => a.start.getTime() - b.start.getTime());
         this.dinner = dinner;
         this.loaded = true;
@@ -193,22 +208,22 @@ export class CalendarSection implements Section {
         <div class="gb-edge"></div>
         <div class="gb-shelf"><div class="gb-track"></div><div class="cal-empty"></div></div>
       </div>`;
-    this.shelf = s.querySelector('.gb-shelf') as HTMLElement;
-    this.track = s.querySelector('.gb-track') as HTMLElement;
-    this.dowEl = s.querySelector('.cal-dow') as HTMLElement;
-    this.dateEl = s.querySelector('.cal-date') as HTMLElement;
-    this.nextEl = s.querySelector('.cal-next') as HTMLElement;
-    this.dinnerEl = s.querySelector('.cal-dinner') as HTMLElement;
-    this.emptyEl = s.querySelector('.cal-empty') as HTMLElement;
-    this.monthName = s.querySelector('.cal-mname') as HTMLElement;
-    this.gridEl = s.querySelector('.cal-grid') as HTMLElement;
+    this.shelf = child(s, '.gb-shelf');
+    this.track = child(s, '.gb-track');
+    this.dowEl = child(s, '.cal-dow');
+    this.dateEl = child(s, '.cal-date');
+    this.nextEl = child(s, '.cal-next');
+    this.dinnerEl = child(s, '.cal-dinner');
+    this.emptyEl = child(s, '.cal-empty');
+    this.monthName = child(s, '.cal-mname');
+    this.gridEl = child(s, '.cal-grid');
     this.paint();
 
     return s;
   }
 
   /** Which calendar entities hold the events and the meals. */
-  private calendars(): { events?: string; meals?: string } {
+  private calendars(): CalendarIds {
     const ids = Object.keys(ha.entities).filter((id) => id.startsWith('calendar.'));
     const set = settings.config.calendar;
 
@@ -262,8 +277,8 @@ export class CalendarSection implements Section {
     this.paint();
   }
 
-  private async fetch(conn: Connection, entity: string, from: Date, to: Date): Promise<HaEvent[]> {
-    const r = await conn.sendMessagePromise<{ response: Record<string, { events: HaEvent[] }> }>({
+  private async fetch(conn: Connection, entity: string, from: Date, to: Date): Promise<CalendarEvent[]> {
+    const r = await conn.sendMessagePromise<CalendarResponse>({
       type: 'call_service',
       domain: 'calendar',
       service: 'get_events',
@@ -272,7 +287,7 @@ export class CalendarSection implements Section {
       return_response: true,
     });
 
-    return r.response?.[entity]?.events ?? [];
+    return calendarEvents(r, entity);
   }
 
   /** Draws the top, the month and the day columns from what was last loaded. */

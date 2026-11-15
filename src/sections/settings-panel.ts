@@ -3,6 +3,7 @@ import { ha } from '../ha';
 import { settings } from '../config';
 import { zones } from '../home-data';
 import { showSetup } from '../setup';
+import { child } from '../dom';
 
 // Line icons, matching the room panels' style.
 const line = (d: string) =>
@@ -28,7 +29,7 @@ export interface BackgroundControls {
 
 interface Row {
   icon: string;
-  name: string | (() => string);
+  name: string;
   status: () => string;
   run: () => void;
 }
@@ -147,8 +148,8 @@ export class SettingsPanel {
         <div class="dcol-list"></div>
       </div>`;
     mount.appendChild(this.el);
-    this.listEl = this.el.querySelector('.dcol-list') as HTMLElement;
-    this.closeEl = this.el.querySelector('.detail-close') as HTMLElement;
+    this.listEl = child(this.el, '.dcol-list');
+    this.closeEl = child(this.el, '.detail-close');
     this.closeEl.addEventListener('click', () => this.close());
     this.el.querySelector('.detail-scrim')!.addEventListener('click', () => this.close());
 
@@ -227,7 +228,7 @@ export class SettingsPanel {
     this.rows.forEach((r, i) => {
       this.rowEls[i].innerHTML =
         `<div class="dicon">${r.icon}</div>` +
-        `<div class="dmeta"><div class="dname">${typeof r.name === 'function' ? r.name() : r.name}</div><div class="dstatus">${r.status()}</div></div>`;
+        `<div class="dmeta"><div class="dname">${r.name}</div><div class="dstatus">${r.status()}</div></div>`;
     });
     this.render();
   }

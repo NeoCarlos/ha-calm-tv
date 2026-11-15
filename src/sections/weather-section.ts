@@ -1,5 +1,6 @@
 import type { Section } from './section';
-import type { ForecastEntry } from '../ha';
+import type { ForecastEntry } from '../ha-data';
+import { child } from '../dom';
 
 const WW = 180;
 const WPITCH = 192;
@@ -19,30 +20,29 @@ const moon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-
 type Icon = keyof typeof wi;
 
 // Home Assistant weather conditions: icon and wording.
-const CONDITIONS: Record<string, [Icon, string]> = {
-  sunny: ['clear', 'Sunny'],
-  'clear-night': ['clear', 'Clear'],
-  partlycloudy: ['partly', 'Partly cloudy'],
-  cloudy: ['cloud', 'Cloudy'],
-  fog: ['cloud', 'Fog'],
-  windy: ['cloud', 'Windy'],
-  'windy-variant': ['cloud', 'Windy'],
-  exceptional: ['cloud', 'Unusual weather'],
-  rainy: ['rain', 'Rain'],
-  pouring: ['rain', 'Heavy rain'],
-  lightning: ['rain', 'Thunderstorms'],
-  'lightning-rainy': ['rain', 'Thunderstorms'],
-  hail: ['rain', 'Hail'],
-  snowy: ['snow', 'Snow'],
-  'snowy-rainy': ['snow', 'Sleet'],
-};
+const CONDITIONS = new Map<string, readonly [Icon, string]>([
+  ['sunny', ['clear', 'Sunny']],
+  ['clear-night', ['clear', 'Clear']],
+  ['partlycloudy', ['partly', 'Partly cloudy']],
+  ['cloudy', ['cloud', 'Cloudy']],
+  ['fog', ['cloud', 'Fog']],
+  ['windy', ['cloud', 'Windy']],
+  ['windy-variant', ['cloud', 'Windy']],
+  ['exceptional', ['cloud', 'Unusual weather']],
+  ['rainy', ['rain', 'Rain']],
+  ['pouring', ['rain', 'Heavy rain']],
+  ['lightning', ['rain', 'Thunderstorms']],
+  ['lightning-rainy', ['rain', 'Thunderstorms']],
+  ['hail', ['rain', 'Hail']],
+  ['snowy', ['snow', 'Snow']],
+  ['snowy-rainy', ['snow', 'Sleet']],
+]);
 
-const iconOf = (c?: string): Icon => CONDITIONS[c ?? '']?.[0] ?? 'cloud';
-export const conditionLabel = (c?: string): string => CONDITIONS[c ?? '']?.[1] ?? (c ? c[0].toUpperCase() + c.slice(1) : '');
+const iconOf = (c?: string): Icon => CONDITIONS.get(c ?? '')?.[0] ?? 'cloud';
+export const conditionLabel = (c?: string): string => CONDITIONS.get(c ?? '')?.[1] ?? (c ? c[0].toUpperCase() + c.slice(1) : '');
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const hourLabel = (hour: number) => `${hour % 12 || 12}${hour < 12 ? 'AM' : 'PM'}`;
 const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
@@ -56,17 +56,23 @@ const dayOf = (f: ForecastEntry): Date => {
 const localIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const HOURS_AHEAD = 8;
 
+/** The weather entity's state right now. */
+export interface CurrentWeather {
+  condition: string;
+  temperature: number;
+}
+
 /** Rain inside a bar: the chance if the forecast has one, otherwise the amount (inches). */
 function rainText(f: ForecastEntry): string {
-  if (typeof f.precipitation_probability === 'number') return f.precipitation_probability >= 10 ? `${Math.round(f.precipitation_probability)}%` : '';
+  if (f.precipitation_probability !== undefined) return f.precipitation_probability >= 10 ? `${Math.round(f.precipitation_probability)}%` : '';
 
-  if (typeof f.precipitation === 'number' && f.precipitation >= 0.01) return `${f.precipitation.toFixed(2).replace(/^0/, '')}″`;
+  if (f.precipitation !== undefined && f.precipitation >= 0.01) return `${f.precipitation.toFixed(2).replace(/^0/, '')}″`;
 
   return '';
 }
 
 function rainShare(f: ForecastEntry): number {
-  if (typeof f.precipitation_probability === 'number') return f.precipitation_probability / 100;
+  if (f.precipitation_probability !== undefined) return f.precipitation_probability / 100;
 
   return Math.min(1, (f.precipitation ?? 0) / 0.15); // 0.15″ in an hour is heavy rain
 }
@@ -115,9 +121,9 @@ export class WeatherSection implements Section {
         <div class="gb-edge"></div>
         <div class="gb-shelf"><div class="gb-track"></div></div>
       </div>`;
-    this.heroEl = s.querySelector('.wx-hero') as HTMLElement;
-    this.shelf = s.querySelector('.gb-shelf') as HTMLElement;
-    this.track = s.querySelector('.gb-track') as HTMLElement;
+    this.heroEl = child(s, '.wx-hero');
+    this.shelf = child(s, '.gb-shelf');
+    this.track = child(s, '.gb-track');
     this.renderHero();
 
     return s;
@@ -134,8 +140,8 @@ export class WeatherSection implements Section {
   }
 
   /** The weather entity's current condition and temperature (null when unknown). */
-  setCurrent(c: { condition?: string; temperature?: number } | null): void {
-    const next = c && typeof c.temperature === 'number' ? { datetime: new Date().toISOString(), condition: c.condition, temperature: c.temperature } : null;
+  setCurrent(c: CurrentWeather | null): void {
+    const next = c ? { datetime: new Date().toISOString(), condition: c.condition, temperature: c.temperature } : null;
 
     if (next?.condition === this.current?.condition && next?.temperature === this.current?.temperature) return;
     this.current = next;
@@ -169,7 +175,7 @@ export class WeatherSection implements Section {
       c.dataset.sec = String(this.secIndex);
       c.dataset.item = String(i);
       c.style.left = `${i * WPITCH}px`;
-      const lo = typeof d.templow === 'number' ? `<span class="wd-lo">${Math.round(d.templow)}°</span>` : '';
+      const lo = d.templow !== undefined ? `<span class="wd-lo">${Math.round(d.templow)}°</span>` : '';
       c.innerHTML = `<div class="wplate"></div><div class="wbody"><div class="wd-name">${name}</div><div class="wd-ico">${wi[iconOf(d.condition)]}</div><div class="wd-temps"><span class="wd-hi">${Math.round(d.temperature ?? 0)}°</span>${lo}</div></div>`;
       this.track.appendChild(c);
       this.cards.push(c);
@@ -199,7 +205,7 @@ export class WeatherSection implements Section {
     const isTomorrow = sameDay(date, new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
     const title = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : DAYS[date.getDay()];
     const cond = isToday && this.current ? this.current.condition : d.condition;
-    const temps = `High ${Math.round(d.temperature ?? 0)}° &nbsp;Low ${typeof d.templow === 'number' ? `${Math.round(d.templow)}°` : '–'}`;
+    const temps = `High ${Math.round(d.temperature ?? 0)}° &nbsp;Low ${d.templow !== undefined ? `${Math.round(d.templow)}°` : '–'}`;
     const sep = '<span class="wx-sep">·</span>';
     const head = `<div class="wx-head"><div class="wx-title">${title}</div><div class="wx-sub">${conditionLabel(cond)}${sep}${temps}</div></div>`;
 

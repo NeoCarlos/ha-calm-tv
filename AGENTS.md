@@ -32,6 +32,7 @@ Follow [docs/getting-started.md](docs/getting-started.md):
 npm install
 npm run dev               # browser preview; reads ./calm-tv.json and .env.local
 npm run typecheck         # run after every change
+npm run lint              # anti-slop rules (tools/oxlint/anti-slop); must stay at zero findings
 npm run tv:apk            # needs JAVA_HOME (JDK 17+) and the Android SDK (ANDROID_HOME or android/local.properties)
 npm run tv:install        # build + install on the adb-connected TV
 adb logcat -s CalmTV  # TV logs
@@ -42,6 +43,13 @@ To check the TV's page, open `chrome://inspect` with adb connected (debug builds
 ## Conventions
 
 - **Plain TypeScript and DOM, no framework.** All CSS is in `src/style.css`, on a fixed 1920×1080 stage.
+- **Decode outside data where it enters, with Valibot schemas.** Home Assistant attributes, forecasts and
+  calendar events (`src/ha-data.ts`), `calm-tv.json` (`src/config.ts`), saved settings (`src/state.ts`)
+  and the TV bridge's answers. After that, code works with typed values: no `typeof` checks, no `as`
+  casts, no `Record<string, unknown>`.
+- **Look up the screens' own markup with `child()` / `find()`** (`src/dom.ts`), not `querySelector(...) as …`.
+- **Lint must pass with zero findings.** Don't disable rules, lower severities or add suppression comments;
+  fix the code. The rules' reasoning is in `tools/oxlint/anti-slop/`.
 - **Remote first:** every action must work with arrows, OK and Back. The mouse is a bonus.
 - **Calm design:** few elements, generous spacing, status text over badges. Ask before adding clutter.
 - **Keep comments plain and explain why.** Update `docs/` when behavior or config changes.

@@ -53,6 +53,16 @@ export class SettingsPanel {
     const onTv = !!native;
     this.rows = [
       {
+        icon: ICONS.google,
+        name: 'Google TV home',
+        status: () =>
+          onTv ? 'Switch to Google’s home screen. Open Calm TV from its apps to come back.' : 'Only on the TV',
+        run: () => {
+          this.close();
+          native?.openGoogleHome();
+        },
+      },
+      {
         icon: ICONS.ha,
         name: 'Home Assistant',
         status: () =>
@@ -94,16 +104,6 @@ export class SettingsPanel {
           return `${from} · ${rooms}${settings.error ? ` · newest copy has a problem: ${settings.error}` : ''} · OK to reload`;
         },
         run: () => location.reload(),
-      },
-      {
-        icon: ICONS.google,
-        name: 'Google TV home',
-        status: () =>
-          onTv ? 'Switch to Google’s home screen. Open Calm TV from its apps to come back.' : 'Only on the TV',
-        run: () => {
-          this.close();
-          native?.openGoogleHome();
-        },
       },
       {
         icon: ICONS.tv,

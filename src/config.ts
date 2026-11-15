@@ -51,7 +51,11 @@ const RoomSchema = v.object({
 });
 
 const ConfigSchema = v.object({
-  /** The app dock, in order. `icon` is a file name from src/icons/ (e.g. "netflix"); `package` the Android TV app. */
+  /**
+   * The app dock, in order. `package` is the Android TV app. `icon` is a built-in icon's name from
+   * src/icons/ (e.g. "netflix"), or your own file: "/local/calm-tv/icons/moonlight.svg" in Home
+   * Assistant's www folder, or a full address.
+   */
   apps: v.optional(v.array(v.object({ name: v.string(), package: v.string(), icon: v.optional(v.string()) }))),
   /** Weather entity for the Weather screen and the Smart Home "Outside" line. */
   weather: v.optional(EntityId),

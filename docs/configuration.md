@@ -60,10 +60,19 @@ default app dock.
 
 - `package`: the Android TV app's package name. Find it with
   `adb shell pm list packages`, or on the app's Play Store page URL (`id=…`).
-- `icon`: optional; a file name from `src/icons/` without `.svg`. Built in: `youtube`, `netflix`,
-  `primevideo`, `disneyplus`, `hulu`, `appletv`, `peacock`, `googletv`, `hbomax`, `plex`, `stremio`.
-  Without an icon, the tile shows the app's name. New icons need a rebuild: add an SVG to `src/icons/`.
-  Simple Icons (CC0) is a good source.
+- `icon`: optional. Either a built-in icon's name, or your own file.
+  - **Built in** (the file names in `src/icons/`, without `.svg`):
+    - Streaming: `youtube`, `netflix`, `primevideo`, `disneyplus`, `hulu`, `appletv`, `peacock`,
+      `googletv`, `hbomax`, `paramountplus`, `crunchyroll`, `tubi`, `youtubekids`, `twitch`
+    - Media servers: `plex`, `jellyfin`, `emby`, `kodi`, `stremio`
+    - Music: `spotify`, `youtubemusic`, `applemusic`, `tidal`
+    - Games: `steam`, `nvidia` (GeForce NOW), `playstation`
+    - Smart home: `homeassistant`
+  - **Your own file**, with no rebuild: put an SVG or PNG in Home Assistant's `www` folder and give
+    its path, e.g. `"icon": "/local/calm-tv/icons/moonlight.svg"` (or a full `https://` address).
+    It's shown as a white silhouette like the built-in icons, so a one-colour logo on a transparent
+    background works best. [Simple Icons](https://simpleicons.org) (CC0) has thousands.
+  - Without an icon, the tile shows the app's name.
 - Apps that aren't installed on the TV are hidden automatically.
 - Leave `apps` out entirely for a default lineup of common streaming apps.
 

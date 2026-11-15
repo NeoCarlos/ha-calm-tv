@@ -157,6 +157,8 @@ html.glass-tint .gb-veil { background: rgba(8, 14, 18, 0.5); }
 .mark svg { width: 76px; height: 76px; display: block; fill: currentColor; }
 .mark svg path { fill: currentColor; }
 .mark svg text { fill: currentColor; }
+/* Your own icon files (calm-tv.json "icon": "/local/…"): any colours become a white silhouette. */
+.mark-img { width: 76px; height: 76px; object-fit: contain; display: block; filter: brightness(0) invert(1); }
 .tile.is-focus .mark { opacity: 1; }
 
 /* ---------- Smart Home section ---------- */

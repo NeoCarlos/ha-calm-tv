@@ -8,6 +8,11 @@
 - **On-screen remote** in demo mode on touch screens: arrows, OK and Back, under the picture in
   portrait and beside it in landscape.
 - Demo mode never opens a Home Assistant sign-in page.
+- **More app icons:** Jellyfin, Emby, Kodi, Spotify, YouTube Music, Apple Music, TIDAL, Home Assistant,
+  Twitch, Steam, NVIDIA (GeForce NOW), PlayStation, Crunchyroll, Paramount+, Tubi and YouTube Kids
+  (from Simple Icons). And `icon` in calm-tv.json can now be your own SVG or PNG in Home
+  Assistant's `www` folder, with no rebuild.
+- **Peacock icon:** the current P-and-dots mark.
 - **Demo mode on a TV:** `adb shell am start -n io.github.neocarlos.hacalmtv/.MainActivity --es demo ""`
   opens it (`--es demo off` goes back). Demo mode now keeps its own saved choices, so trying it never
   changes the TV's real background or settings.

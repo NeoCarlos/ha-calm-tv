@@ -26,7 +26,13 @@
       "package": "com.plexapp.android"
     },
     {
+      "name": "Jellyfin",
+      "icon": "jellyfin",
+      "package": "org.jellyfin.androidtv"
+    },
+    {
       "name": "Spotify",
+      "icon": "spotify",
       "package": "com.spotify.tv.android"
     }
   ],

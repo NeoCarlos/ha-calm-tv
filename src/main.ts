@@ -6,7 +6,8 @@ import { loadHome } from './home-data';
 import { loadApps } from './apps';
 import { wallpapers } from './wallpapers';
 import { videos } from './videos';
-import { showSetup } from './setup';
+import { showSetup, SIGN_IN_NEXT } from './setup';
+import { ha } from './ha';
 
 async function main(): Promise<void> {
   // Everything specific to a home comes from calm-tv.json (see config.ts).
@@ -22,7 +23,19 @@ async function main(): Promise<void> {
     return;
   }
   new CalmTv().start();
-  if (!settings.haUrl) showSetup({ canCancel: false });
+  if (!settings.haUrl) {
+    showSetup({ canCancel: false });
+    return;
+  }
+  // Just set up (or changed) the address: go straight to Home Assistant's sign-in, unless the
+  // saved sign-in already works for it.
+  let next = false;
+  try { next = !!sessionStorage.getItem(SIGN_IN_NEXT); sessionStorage.removeItem(SIGN_IN_NEXT); } catch { /* ignore */ }
+  if (next) {
+    const go = () => { if (ha.status === 'signed-out') { next = false; void ha.signIn(); } };
+    ha.onStatus(() => { if (next) go(); });
+    go();
+  }
 }
 
 void main();

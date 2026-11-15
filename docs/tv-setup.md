@@ -49,23 +49,23 @@ Press Home. You should land on Calm TV.
 - **Remove it completely:** `adb uninstall io.github.neocarlos.hacalmtv`, then remove the service from
   `enabled_accessibility_services` as above.
 
-## 4. Point it at Home Assistant
+## 4. Point it at Home Assistant and sign in
 
 On first start Calm TV asks for **Home Assistant's address**. Type it with the remote, for
-example `http://192.168.1.20:8123`, and press OK. Or skip the typing:
+example `http://192.168.1.20:8123`, and press OK. It goes straight on to Home Assistant's own login
+page: sign in as the TV's user ([home-assistant.md](home-assistant.md)), and you're back in Calm TV,
+connected. That's the only sign-in.
+
+To skip typing the address, set it from a computer, then sign in from Settings → **Home Assistant**:
 
 ```bash
 adb shell am start -n io.github.neocarlos.hacalmtv/.MainActivity --es haUrl http://192.168.1.20:8123
 ```
 
-Change it later in Settings → **Home Assistant address**.
+Change the address later in Settings → **Home Assistant address**. Signing out is in Settings → Home
+Assistant, and takes two presses of OK so a stray press can't do it.
 
-## 5. Sign in
-
-Settings → **Home Assistant** → OK. Home Assistant's own login page opens; sign in as the TV's user
-([home-assistant.md](home-assistant.md)). You come back to Calm TV, connected.
-
-## 6. Give it your home
+## 5. Give it your home
 
 Put `calm-tv.json` in Home Assistant's `www` folder, or push it to the TV:
 
@@ -75,7 +75,7 @@ adb push calm-tv.json /sdcard/Android/data/io.github.neocarlos.hacalmtv/files/ca
 
 Then reopen Calm TV. See [configuration.md](configuration.md).
 
-## 7. Building the APK yourself
+## 6. Building the APK yourself
 
 You need these:
 - **Node.js 20+**
@@ -98,7 +98,7 @@ clears the saved address and sign-in.
 `npm run build` alone only builds the web page into `dist/`. The TV app carries its own copy, made by
 `build:android`, so always use `tv:apk` or `tv:install` for the TV.
 
-## 8. Developing
+## 7. Developing
 
 **In a desktop browser (fastest):**
 1. Put `VITE_HA_URL=http://<ha>:8123` in `.env.local`, and your `calm-tv.json` in the project
@@ -122,5 +122,5 @@ adb shell am start -n io.github.neocarlos.hacalmtv/.MainActivity --es devUrl "" 
 **Inspecting the TV's page:** with adb connected, open `chrome://inspect` in Chrome on the computer.
 Debug builds expose the WebView there: console, DOM, network, `localStorage`.
 
-**Logs:** `adb logcat -s CalmTV`. Remote key presses are logged in debug builds under the `CalmTVKeys` tag,
+**Logs:** `adb logcat -s CalmTV` for the Android side, and `adb logcat | grep '\[CalmTV\]'` for the page, which logs every Home Assistant connection change, sign-in and sign-out. Remote key presses are logged in debug builds under the `CalmTVKeys` tag,
 except keys that type text.

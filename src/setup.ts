@@ -1,5 +1,8 @@
 import { saveHaUrl, settings } from './config';
 
+/** Set by the setup screen: open Home Assistant's sign-in as soon as the page has reloaded. */
+export const SIGN_IN_NEXT = 'ct.signInNext';
+
 /**
  * The one-time "Connect to Home Assistant" screen: asks for Home Assistant's address (typed with
  * the remote's on-screen keyboard) and reloads with it. Shown at start when no address is saved,
@@ -38,7 +41,9 @@ export function showSetup(opts: { canCancel: boolean }): void {
         msg.textContent = 'That doesn’t look like an address. Example: http://192.168.1.20:8123';
         return;
       }
-      msg.textContent = `Saved ${url} · loading…`;
+      msg.textContent = `Saved ${url} · opening Home Assistant’s sign-in…`;
+      // Straight on to signing in after the reload, so setup is one step.
+      try { sessionStorage.setItem(SIGN_IN_NEXT, '1'); } catch { /* storage off: sign in from Settings */ }
       location.reload();
     } else if ((e.key === 'Escape' || (e.key === 'Backspace' && !input.value)) && opts.canCancel) {
       e.preventDefault();

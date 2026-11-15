@@ -44,6 +44,10 @@ export class SettingsPanel {
   private rowEls: HTMLElement[] = [];
   private open = false;
   private focus = 0; // -1 = the close button
+  private confirmSignOut = false;
+  private confirmTimer = 0;
+  /** OK presses right after opening belong to the press that opened the panel. */
+  private openedAt = 0;
 
   constructor(mount: HTMLElement, private bg: BackgroundControls) {
     const onTv = !!native;
@@ -53,12 +57,22 @@ export class SettingsPanel {
         name: 'Home Assistant',
         status: () =>
           ha.status === 'signed-out' ? 'Not signed in · OK to sign in'
+          : this.confirmSignOut ? 'Press OK again to sign out'
           : ha.status === 'connecting' ? 'Connecting…'
-          : ha.status === 'offline' ? 'Can’t reach Home Assistant · trying again · OK to sign out'
-          : `Connected${ha.userName ? ` as ${ha.userName}` : ''} · OK to sign out`,
+          : ha.status === 'offline' ? 'Can’t reach Home Assistant · trying again'
+          : `Connected${ha.userName ? ` as ${ha.userName}` : ''}`,
         run: () => {
-          if (ha.status === 'signed-out') { this.close(); ha.signIn(); }
-          else { ha.signOut(); this.paint(); }
+          if (ha.status === 'signed-out') { this.close(); ha.signIn(); return; }
+          // Signing out takes two presses, so a stray OK can't do it.
+          if (!this.confirmSignOut) {
+            this.confirmSignOut = true;
+            clearTimeout(this.confirmTimer);
+            this.confirmTimer = window.setTimeout(() => { this.confirmSignOut = false; this.refresh(); }, 4000);
+          } else {
+            this.confirmSignOut = false;
+            ha.signOut();
+          }
+          this.paint();
         },
       },
       {
@@ -144,6 +158,8 @@ export class SettingsPanel {
 
   show(): void {
     this.focus = 0;
+    this.confirmSignOut = false;
+    this.openedAt = Date.now();
     this.open = true;
     this.paint();
     this.el.classList.add('open');
@@ -164,9 +180,11 @@ export class SettingsPanel {
     if (k === 'Escape' || k === 'Backspace') { e.preventDefault(); this.close(); return; }
     if (k === 'Enter' || k === ' ') {
       e.preventDefault();
+      if (e.repeat || Date.now() - this.openedAt < 400) return;
       if (this.focus < 0) this.close(); else this.rows[this.focus].run();
       return;
     }
+    if (this.confirmSignOut && k.startsWith('Arrow')) { this.confirmSignOut = false; this.paint(); }
     if (k === 'ArrowUp') { e.preventDefault(); this.focus = Math.max(-1, this.focus - 1); this.render(); }
     else if (k === 'ArrowDown') { e.preventDefault(); this.focus = Math.min(this.rows.length - 1, this.focus + 1); this.render(); }
     else if (k.startsWith('Arrow')) e.preventDefault();

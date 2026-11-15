@@ -102,6 +102,7 @@ class HomeAssistant {
   }
 
   async signOut(): Promise<void> {
+    console.info('[CalmTV] Signed out of Home Assistant from Settings');
     const auth = this.auth;
     this.teardown();
     saveTokens(null);
@@ -156,7 +157,7 @@ class HomeAssistant {
       const badCallback = location.search.includes('auth_callback');
       if (badCallback) history.replaceState(null, '', location.pathname);
       if (err === ERR_INVALID_AUTH || badCallback) {
-        if (badCallback) console.warn('HA sign-in callback failed', err);
+        if (badCallback) console.warn('[CalmTV] Home Assistant sign-in callback failed', err);
         this.lostAuth();
       } else {
         // ERR_CANNOT_CONNECT (HA or Tailscale down) or a network error: try again, backing off to 1 minute.
@@ -175,6 +176,7 @@ class HomeAssistant {
 
   /** The tokens were refused (e.g. the TV user was removed or signed out in HA). */
   private lostAuth(): void {
+    console.warn('[CalmTV] Home Assistant refused the saved sign-in; signed out');
     this.teardown();
     saveTokens(null);
     this.setStatus('signed-out');
@@ -189,6 +191,7 @@ class HomeAssistant {
   }
 
   private setStatus(s: HaStatus): void {
+    if (s !== this.status) console.info(`[CalmTV] Home Assistant: ${s}`);
     this.status = s;
     this.statusListeners.forEach((fn) => fn());
   }

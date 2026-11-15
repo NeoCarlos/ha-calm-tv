@@ -320,6 +320,8 @@ export class CalmTv {
   private wireInput(): void {
     document.addEventListener('keydown', (e) => {
       const k = e.key;
+      // A held-down OK repeats; only the first press counts, everywhere.
+      if (e.repeat && (k === 'Enter' || k === ' ')) { e.preventDefault(); return; }
       if (this.doorbell.isOpen() && (k === 'Escape' || k === 'Backspace')) {
         e.preventDefault();
         this.doorbell.hide();

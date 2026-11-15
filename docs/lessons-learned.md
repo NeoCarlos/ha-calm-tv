@@ -41,6 +41,12 @@ fixed them. Read this before changing animations, video, the Android side or the
 
 - **Sign in with OAuth, not tokens in code.** `home-assistant-js-websocket`'s `getAuth` opens HA's
   login page and returns to the app. Use a separate non-admin user for the TV.
+- **Don't let one OK sign you out.** A panel that opens with a destructive row focused, plus a remote
+  OK that's held or pressed twice, signs people out without them noticing, and it then looks like the
+  app "forgot" the sign-in. Signing out takes two presses, OK presses in the first moment after a panel
+  opens are ignored, and held-down OK never repeats an action.
+- **One step to set up.** Typing the HA address leads straight into HA's login page, instead of asking
+  people to find a sign-in button afterwards.
 - **Nest cameras have no snapshots or MJPEG,** only WebRTC. `camera-stream.ts` does the same
   `camera/webrtc/offer` handshake as HA's frontend. Nest wants transceivers in the order audio,
   video, then a data channel. Streams can take several seconds; say so on screen.

@@ -479,7 +479,12 @@ export class CalmTv {
     clearTimeout(this.hintTimer);
   }
   private fit(): void {
-    const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
-    qs('#stage').style.transform = `translate(-50%, -50%) scale(${s})`;
+    // Demo mode's on-screen remote (demo-remote.ts) takes the right edge of a phone held sideways.
+    const side = document.documentElement.classList.contains('with-remote') && window.innerWidth > window.innerHeight && window.innerHeight < 600 ? 190 : 0;
+    const width = window.innerWidth - side;
+    const s = Math.min(width / 1920, window.innerHeight / 1080);
+    const stage = qs('#stage');
+    stage.style.left = side ? `${width / 2}px` : '';
+    stage.style.transform = `translate(-50%, -50%) scale(${s})`;
   }
 }

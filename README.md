@@ -8,6 +8,9 @@ weather, all made for the TV remote.
 
 *The video background and live blur, recorded from the browser preview.*
 
+**[Try the live demo](https://neocarlos.github.io/ha-calm-tv/)** in your browser: a made-up home, no Home
+Assistant needed. Use the arrow keys, Enter and Escape, or the on-screen remote on a phone.
+
 I built this for one TV, a Google TV Streamer in my living room, and I'm sharing it as a starting
 point to build on. Nothing about my home is in the code: each TV reads its rooms, apps and calendars
 from a small `calm-tv.json` file, so you can adapt it without touching the app.
@@ -100,7 +103,7 @@ npm run dev
 ```
 
 Open [localhost:5173/?demo](http://localhost:5173/?demo) to try the whole app against a made-up
-home: no Home Assistant needed. Its lights, scenes, curtains and thermostat respond, the cameras play
+home (the same as the [live demo](https://neocarlos.github.io/ha-calm-tv/)): no Home Assistant needed. Its lights, scenes, curtains and thermostat respond, the cameras play
 a clip, and the calendar and weather are filled with sample days. Use the arrow keys, Enter and
 Escape, or the mouse.
 

@@ -96,8 +96,11 @@ const NativeConfigResult = v.object({
   error: v.fallback(v.optional(v.string(), ''), ''),
 });
 
-/** Demo mode (index.html?demo): a made-up home instead of Home Assistant (see demo.ts). */
-export const demoMode = new URLSearchParams(location.search).has('demo');
+/**
+ * Demo mode (index.html?demo): a made-up home instead of Home Assistant (see demo.ts). The hosted
+ * demo is built with VITE_DEMO_SITE=1, so it's always in demo mode.
+ */
+export const demoMode = import.meta.env.VITE_DEMO_SITE === '1' || new URLSearchParams(location.search).has('demo');
 
 const CACHE_KEY = 'ct.config';
 const HA_URL_KEY = 'ct.haUrl';

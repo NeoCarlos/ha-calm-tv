@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Live demo:** [neocarlos.github.io/ha-calm-tv](https://neocarlos.github.io/ha-calm-tv/), built from
+  the repo by a GitHub Pages workflow (`npm run build:site`): always in demo mode, with the background
+  videos re-encoded about 60% smaller for the web.
+- **On-screen remote** in demo mode on touch screens: arrows, OK and Back, under the picture in
+  portrait and beside it in landscape.
+- Demo mode never opens a Home Assistant sign-in page.
 - **Demo mode on a TV:** `adb shell am start -n io.github.neocarlos.hacalmtv/.MainActivity --es demo ""`
   opens it (`--es demo off` goes back). Demo mode now keeps its own saved choices, so trying it never
   changes the TV's real background or settings.

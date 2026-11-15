@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:site": "tsc && VITE_DEMO_SITE=1 vite build",
     "build:android": "tsc && vite build --outDir android/app/src/main/assets/web --emptyOutDir",
     "tv:install": "npm run build:android && cd android && ./gradlew installDebug -q",
     "tv:apk": "npm run build:android && cd android && ./gradlew assembleDebug -q && echo android/app/build/outputs/apk/debug/app-debug.apk",

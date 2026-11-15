@@ -133,6 +133,8 @@ class HomeAssistant {
 
   /** Opens Home Assistant's sign-in page; it returns to Calm TV when done. */
   async signIn(): Promise<void> {
+    // Demo mode never leaves for a sign-in page (the hosted demo has no Home Assistant).
+    if (this.demo) return;
     saveTokens(null);
 
     if (!haUrl()) return;
@@ -140,6 +142,7 @@ class HomeAssistant {
   }
 
   async signOut(): Promise<void> {
+    if (this.demo) return;
     console.info('[CalmTV] Signed out of Home Assistant from Settings');
     const auth = this.auth;
     this.teardown();

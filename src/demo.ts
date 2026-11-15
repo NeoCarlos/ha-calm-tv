@@ -8,6 +8,7 @@ import { demoCameras } from './camera-stream';
 import type { CalendarEvent, CalendarResponse, ForecastEntry, ForecastMessage } from './ha-data';
 import { videos } from './videos';
 import { wallpapers } from './wallpapers';
+import { showRemote } from './demo-remote';
 
 /**
  * Demo mode (index.html?demo): the whole app against a made-up home, with no Home Assistant.
@@ -18,6 +19,7 @@ import { wallpapers } from './wallpapers';
  *  - Cameras show a placeholder doorbell view (src/demo-media/) as their live view.
  *  - Only the backgrounds shipped in the repo are offered.
  *  - ?demo&at=2026-11-14T18:30 sets the clock (it keeps running from there), so recordings match.
+ *  - On a touch screen, an on-screen remote (demo-remote.ts).
  *  - In the browser console: ctDemo.ring() rings the doorbell; ctDemo.caption('Title', 'detail')
  *    shows a label at the top (ctDemo.caption('') hides it), for recordings.
  */
@@ -424,6 +426,8 @@ export function startDemo(): void {
   const home = new DemoHome();
 
   ha.useDemo(home.link, (fn) => home.subscribe(fn));
+
+  showRemote();
 
   window.ctDemo = {
     caption,

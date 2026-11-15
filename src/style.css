@@ -416,3 +416,46 @@ html.instant .section { transition: none !important; }
 .demo-caption b { display: block; font-size: 30px; font-weight: 700; letter-spacing: -0.3px; color: var(--ink); }
 .demo-caption span { display: block; margin-top: 4px; font-size: 21px; font-weight: 500; color: var(--ink-dim); }
 .demo-caption span:empty { display: none; }
+
+/* Demo mode on touch screens: an on-screen remote (demo-remote.ts). Sized in screen pixels, outside the stage. */
+.remote {
+  position: fixed; z-index: 200; display: flex; align-items: center; gap: 22px;
+  left: 50%; bottom: max(28px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+  touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.remote button {
+  border: 0; padding: 0; color: var(--ink); background: rgba(255, 255, 255, 0.1); font: 700 17px/1 'Manrope', system-ui, sans-serif;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.remote button.pressed { background: rgba(255, 255, 255, 0.32); }
+.remote svg { width: 26px; height: 26px; }
+.remote-pad {
+  position: relative; width: 196px; height: 196px; border-radius: 50%;
+  background: rgba(14, 20, 24, 0.72); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  box-shadow: var(--plate-edge), 0 14px 36px -16px rgba(0, 0, 0, 0.8);
+}
+.remote-pad button { position: absolute; width: 60px; height: 60px; border-radius: 50%; background: transparent; }
+.remote-pad button.pressed { background: rgba(255, 255, 255, 0.2); }
+.remote-pad .r-up { left: 68px; top: 6px; }
+.remote-pad .r-down { left: 68px; bottom: 6px; }
+.remote-pad .r-left { top: 68px; left: 6px; }
+.remote-pad .r-right { top: 68px; right: 6px; }
+.remote-pad .r-ok { left: 58px; top: 58px; width: 80px; height: 80px; background: rgba(255, 255, 255, 0.14); box-shadow: var(--plate-edge); }
+.remote-back {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: rgba(14, 20, 24, 0.72) !important; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  box-shadow: var(--plate-edge), 0 14px 36px -16px rgba(0, 0, 0, 0.8);
+}
+.remote-back.pressed { background: rgba(255, 255, 255, 0.32) !important; }
+/* Portrait: the TV picture moves up, the remote sits under it. */
+@media (orientation: portrait) {
+  html.with-remote #stage { top: 34%; }
+}
+/* Phones held sideways: the remote in a column at the right edge (app.ts fit() leaves room for it). */
+@media (orientation: landscape) and (max-height: 600px) {
+  .remote {
+    left: auto; bottom: auto; top: 50%; right: max(8px, env(safe-area-inset-right));
+    flex-direction: column; gap: 14px; transform: translateY(-50%) scale(0.8); transform-origin: right center;
+  }
+}

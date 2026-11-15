@@ -403,3 +403,16 @@ html.instant .section { transition: none !important; }
 /* Settings → Performance → Show frame rate. */
 .fps { position: absolute; top: 28px; right: 36px; z-index: 90; padding: 8px 14px; border-radius: 12px; background: rgba(0, 0, 0, 0.55); color: #9fe7a8; font: 600 22px/1 'Manrope', system-ui, sans-serif; font-variant-numeric: tabular-nums; pointer-events: none; }
 .fps.slow { color: #ffb36b; }
+
+/* Demo mode only (ctDemo.caption): a label at the top, for recordings. */
+.demo-caption {
+  position: absolute; top: 30px; left: 50%; z-index: 95; padding: 14px 32px 16px; border-radius: 22px;
+  background: rgba(10, 16, 20, 0.5); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  box-shadow: var(--plate-edge), 0 12px 32px -14px rgba(0, 0, 0, 0.7);
+  text-align: center; white-space: nowrap; pointer-events: none;
+  opacity: 0; transform: translate(-50%, -10px); transition: opacity 0.45s ease, transform 0.45s ease;
+}
+.demo-caption.show { opacity: 1; transform: translate(-50%, 0); }
+.demo-caption b { display: block; font-size: 30px; font-weight: 700; letter-spacing: -0.3px; color: var(--ink); }
+.demo-caption span { display: block; margin-top: 4px; font-size: 21px; font-weight: 500; color: var(--ink-dim); }
+.demo-caption span:empty { display: none; }

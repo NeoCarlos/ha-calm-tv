@@ -1,7 +1,7 @@
 import './style.css';
 import { CalmTv } from './app';
 import { startDoorbellOnly } from './doorbell';
-import { loadConfig, settings, haPath } from './config';
+import { loadConfig, settings, haPath, demoMode } from './config';
 import { loadHome } from './home-data';
 import { loadApps } from './apps';
 import { wallpapers } from './wallpapers';
@@ -11,7 +11,7 @@ import { ha } from './ha';
 
 async function main(): Promise<void> {
   // Everything specific to a home comes from calm-tv.json (see config.ts), or the made-up home in demo mode.
-  if (new URLSearchParams(location.search).has('demo')) (await import('./demo')).startDemo();
+  if (demoMode) (await import('./demo')).startDemo();
   else await loadConfig();
 
   loadHome();

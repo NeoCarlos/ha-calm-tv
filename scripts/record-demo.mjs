@@ -195,7 +195,7 @@ async function record(name, scene, check) {
     const url = `${BASE}/?demo&at=${CLOCK}`;
     await call('Page.navigate', { url });
     await sleep(1500);
-    await call('Runtime.evaluate', { expression: `localStorage.setItem('calmtv', JSON.stringify({ vidName: ${JSON.stringify(scene.background)}, wpName: ${JSON.stringify(scene.background)} })); localStorage.setItem('calmtv.look', JSON.stringify({ videos: ${!!scene.video} })); location.reload();` });
+    await call('Runtime.evaluate', { expression: `localStorage.setItem('calmtv.demo', JSON.stringify({ vidName: ${JSON.stringify(scene.background)}, wpName: ${JSON.stringify(scene.background)} })); localStorage.setItem('calmtv.demo.look', JSON.stringify({ videos: ${!!scene.video} })); location.reload();` });
     await sleep(8000); // the clip is loaded and the keyboard hint has faded
     await play(call, scene.setup);
 

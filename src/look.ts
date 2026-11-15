@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { settings } from './config';
+import { demoMode, settings } from './config';
 
 /**
  * The look-and-performance choices: video backgrounds, frosted glass and screen transitions.
@@ -9,7 +9,8 @@ import { settings } from './config';
  * So calm-tv.json sets a default for every TV, and each TV can still be tuned on the spot.
  */
 
-const KEY = 'calmtv.look';
+// Demo mode keeps its own copy, so trying it never changes this TV's real choices.
+const KEY = demoMode ? 'calmtv.demo.look' : 'calmtv.look';
 
 export type Glass = 'blur' | 'tint';
 

@@ -18,7 +18,8 @@ import { wallpapers } from './wallpapers';
  *  - Cameras show a placeholder doorbell view (src/demo-media/) as their live view.
  *  - Only the backgrounds shipped in the repo are offered.
  *  - ?demo&at=2026-11-14T18:30 sets the clock (it keeps running from there), so recordings match.
- *  - In the browser console: ctDemo.ring() rings the doorbell.
+ *  - In the browser console: ctDemo.ring() rings the doorbell; ctDemo.caption('Title', 'detail')
+ *    shows a label at the top (ctDemo.caption('') hides it), for recordings.
  */
 
 /** The backgrounds made for the project (the only ones in the repo). */
@@ -369,6 +370,35 @@ function toHass(id: string, e: DemoEntity): HassEntity {
   };
 }
 
+let captionEl: HTMLElement | null = null;
+let captionTimer = 0;
+
+/** Shows a label at the top of the screen (an empty title hides it), fading between labels. */
+function caption(title: string, detail = ''): void {
+  if (!captionEl) {
+    captionEl = document.createElement('div');
+    captionEl.className = 'demo-caption';
+    captionEl.innerHTML = '<b></b><span></span>';
+    (document.querySelector('#stage') ?? document.body).appendChild(captionEl);
+  }
+
+  const el = captionEl;
+  const wasShown = el.classList.contains('show');
+  el.classList.remove('show');
+  clearTimeout(captionTimer);
+
+  if (!title) return;
+  // Swap the words while it's faded out, then fade back in.
+  captionTimer = window.setTimeout(() => {
+    const [b, span] = [el.querySelector('b'), el.querySelector('span')];
+
+    if (b) b.textContent = title;
+
+    if (span) span.textContent = detail;
+    el.classList.add('show');
+  }, wasShown ? 450 : 0);
+}
+
 /** Switches the app to the made-up home. Call before the screens are built. */
 export function startDemo(): void {
   const clock = new URLSearchParams(location.search).get('at');
@@ -396,6 +426,7 @@ export function startDemo(): void {
   ha.useDemo(home.link, (fn) => home.subscribe(fn));
 
   window.ctDemo = {
+    caption,
     ring: () => {
       home.set('input_boolean.doorbell_ringing', 'on');
       window.setTimeout(() => home.set('input_boolean.doorbell_ringing', 'off'), 20000);
@@ -405,7 +436,7 @@ export function startDemo(): void {
 
 declare global {
   interface Window {
-    /** Demo mode only: ctDemo.ring() rings the doorbell. */
-    ctDemo?: { ring(): void };
+    /** Demo mode only: ring the doorbell, or show a label at the top (see demo.ts). */
+    ctDemo?: { ring(): void; caption(title: string, detail?: string): void };
   }
 }

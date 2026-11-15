@@ -1,5 +1,13 @@
 # Release notes
 
+## Unreleased
+
+- **Demo mode on a TV:** `adb shell am start -n io.github.neocarlos.hacalmtv/.MainActivity --es demo ""`
+  opens it (`--es demo off` goes back). Demo mode now keeps its own saved choices, so trying it never
+  changes the TV's real background or settings.
+- **Tour video:** demo mode can show captions (`ctDemo.caption`), and `scripts/record-tour.mjs`
+  records a captioned tour as an MP4, optionally with music.
+
 ## 0.2.0
 
 - **Demo mode:** open the app with `?demo` to try every screen against a made-up home (the example

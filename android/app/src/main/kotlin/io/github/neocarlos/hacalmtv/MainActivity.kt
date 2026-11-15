@@ -70,7 +70,7 @@ class MainActivity : Activity() {
         setContentView(web)
         web.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-        web.loadUrl(startUrl.toString())
+        web.loadUrl(demoUrl(intent) ?: startUrl.toString())
         web.requestFocus()
     }
 
@@ -79,6 +79,10 @@ class MainActivity : Activity() {
         super.onNewIntent(intent)
         if (rememberDevUrl(intent) or rememberHaUrl(intent)) {
             recreate()
+            return
+        }
+        if (intent.hasExtra(KEY_DEMO)) {
+            web.loadUrl(demoUrl(intent) ?: startUrl.toString())
             return
         }
         // Home while on Home Assistant's sign-in page: give up on signing in, back to Calm TV.
@@ -151,6 +155,23 @@ class MainActivity : Activity() {
         return url != null
     }
 
+    /**
+     * Demo mode (a made-up home; see src/demo.ts) until the app restarts, e.g. for recording:
+     *   adb shell am start -n io.github.neocarlos.hacalmtv/.MainActivity --es demo ""
+     *   adb shell am start -n io.github.neocarlos.hacalmtv/.MainActivity --es demo "at=2026-11-14T18:30"
+     *   adb shell am start -n io.github.neocarlos.hacalmtv/.MainActivity --es demo off
+     * The value is added to the page's address after ?demo; "off" goes back to your home.
+     * Returns the page to load, or null for the usual one.
+     */
+    private fun demoUrl(intent: Intent?): String? {
+        if (intent?.hasExtra(KEY_DEMO) != true) return null
+        val extra = intent.getStringExtra(KEY_DEMO)?.trim().orEmpty()
+        intent.removeExtra(KEY_DEMO)
+        if (extra == "off") return null
+        Log.i(TAG, "Demo mode")
+        return startUrl.buildUpon().clearQuery().encodedQuery(if (extra.isEmpty()) "demo" else "demo&$extra").build().toString()
+    }
+
     /** Your Home Assistant (as set up on this TV), for its sign-in page. */
     private fun isHomeAssistant(url: Uri): Boolean {
         val ha = Prefs.haUrl(this).takeIf { it.isNotEmpty() } ?: return false
@@ -165,6 +186,7 @@ class MainActivity : Activity() {
         private const val PREFS = "calmtv"
         private const val KEY_DEV_URL = "devUrl"
         private const val KEY_HA_URL = "haUrl"
+        private const val KEY_DEMO = "demo"
         const val BUNDLED_URL = "http://appassets.androidplatform.net/assets/web/index.html"
 
         /** The page Calm TV loaded (the dev server in debug builds, if set). */

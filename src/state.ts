@@ -1,6 +1,8 @@
 import * as v from 'valibot';
+import { demoMode } from './config';
 
-const KEY = 'calmtv';
+// Demo mode keeps its own copy, so trying it never changes this TV's real choices.
+const KEY = demoMode ? 'calmtv.demo' : 'calmtv';
 
 /**
  * What the app remembers between starts (in localStorage). Decoded with fallbacks, so a missing

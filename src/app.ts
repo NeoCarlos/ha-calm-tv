@@ -19,6 +19,7 @@ import { child, find, itemAt } from './dom';
 import { applyStates, WEATHER } from './home-data';
 import { conditionLabel } from './sections/weather-section';
 import { DoorbellWindow, doorbellEnabled, doorbellRinging } from './doorbell';
+import { screenOrder, type ScreenName } from './config';
 
 
 /** An element of the page's own markup (index.html). */
@@ -61,14 +62,27 @@ export class CalmTv {
     };
 
     this.settings = new SettingsPanel(qs('#stage'), bg);
-    const appsSection = new AppsSection(0, (a) => (a.kind === 'settings' ? this.settings.show() : this.openLaunch(a)));
+    // Only the screens calm-tv.json asks for are built (see "screens"), so a hidden one never loads
+    // anything. Smart Home is always made, unseen if hidden: the rooms' states, the "Outside" line and
+    // the room panels hang off it.
+    const order = screenOrder();
+    const at = (name: ScreenName) => order.indexOf(name);
+    const appsSection = new AppsSection(at('apps'), (a) => (a.kind === 'settings' ? this.settings.show() : this.openLaunch(a)));
     this.detail = new ZoneDetail(qs('#stage'), () => this.home.refresh());
     this.doorbell = new DoorbellWindow(qs('#stage'), 'Back to dismiss');
-    this.home = new SmartHomeSection(1, (z) => this.detail.openZone(z), () => ha.signIn());
-    // Cards come and go as the calendar loads: keep focus valid while it's on screen.
-    const calendar = new CalendarSection(2, () => { if (this.sections && this.secIndex === 2) this.render(); });
-    const weather = new WeatherSection(3);
-    this.sections = [appsSection, this.home, calendar, weather];
+    this.home = new SmartHomeSection(at('smarthome'), (z) => this.detail.openZone(z), () => ha.signIn());
+
+    // Cards come and go as the calendar loads: keep focus valid while it's on screen. (A `let`, as
+    // the calendar already calls back while it's being built.)
+    let calendar: CalendarSection | null = null;
+
+    if (order.includes('calendar')) {
+      calendar = new CalendarSection(at('calendar'), () => { if (calendar && this.sections[this.secIndex] === calendar) this.render(); });
+    }
+
+    const weather = order.includes('weather') ? new WeatherSection(at('weather')) : null;
+    const built = { apps: appsSection, smarthome: this.home, calendar, weather };
+    this.sections = order.flatMap((name) => built[name] ?? []);
     this.connectHomeAssistant(weather);
     this.cols = this.sections.map(() => 0);
 
@@ -84,7 +98,7 @@ export class CalmTv {
   }
 
   // ---------- Home Assistant ----------
-  private connectHomeAssistant(weather: WeatherSection): void {
+  private connectHomeAssistant(weather: WeatherSection | null): void {
     let ringing: boolean | undefined;
 
     const update = () => {
@@ -102,7 +116,7 @@ export class CalmTv {
       const w = ha.entities[WEATHER];
       const temperature = w ? attributes(w, WeatherAttributes).temperature : undefined;
       this.home.setOutside(temperature === undefined || !w ? {} : { temp: temperature, condition: conditionLabel(w.state) });
-      weather.setCurrent(temperature === undefined || !w ? null : { condition: w.state, temperature });
+      weather?.setCurrent(temperature === undefined || !w ? null : { condition: w.state, temperature });
       this.detail.refresh();
     };
 
@@ -112,13 +126,14 @@ export class CalmTv {
       this.settings.refresh();
 
       // The Smart Home bar swaps between rooms and the sign-in card: keep focus valid.
-      if (this.secIndex === 1) this.render();
+      if (this.sections[this.secIndex] === this.home) this.render();
     });
 
     // Forecasts aren't entity states; subscribe once per connection (the library resubscribes after a drop).
+    // Not at all without the Weather screen.
     const subscribed = new WeakSet<HaLink>();
     ha.onConnected((conn) => {
-      if (subscribed.has(conn)) return;
+      if (!weather || subscribed.has(conn)) return;
       subscribed.add(conn);
 
       const sub = (forecast_type: 'daily' | 'hourly', fn: (f: ForecastEntry[]) => void) =>

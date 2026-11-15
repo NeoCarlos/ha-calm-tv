@@ -76,6 +76,18 @@ default app dock.
 - Apps that aren't installed on the TV are hidden automatically.
 - Leave `apps` out entirely for a default lineup of common streaming apps.
 
+### `screens`: which screens, in which order
+
+```json
+"screens": ["apps", "smarthome", "weather"]
+```
+
+- The four screens are `apps`, `smarthome`, `calendar` and `weather`. ↓ moves through them in the
+  order listed. This example has no Calendar.
+- `apps` is always shown, and always first: it holds Settings. If you leave it out, it's added back.
+- A screen you leave out isn't loaded at all (no calendar or forecast requests).
+- Leave `screens` out for all four, in the order above.
+
 ### `weather`
 
 A Home Assistant weather entity. **Open-Meteo** is recommended: it gives about 7 days of hourly

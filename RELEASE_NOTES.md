@@ -13,6 +13,8 @@
   (from Simple Icons). And `icon` in calm-tv.json can now be your own SVG or PNG in Home
   Assistant's `www` folder, with no rebuild.
 - **Peacock icon:** the current P-and-dots mark.
+- **Choose your screens:** `"screens": ["apps", "smarthome", "weather"]` in calm-tv.json shows
+  only those, in that order (Apps always first). Leave it out for all four.
 - **Demo mode on a TV:** `adb shell am start -n io.github.neocarlos.hacalmtv/.MainActivity --es demo ""`
   opens it (`--es demo off` goes back). Demo mode now keeps its own saved choices, so trying it never
   changes the TV's real background or settings.

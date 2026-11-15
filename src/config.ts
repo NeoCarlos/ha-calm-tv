@@ -32,6 +32,11 @@ const DeviceSchema = v.object({
   keypad: v.optional(EntityId),
 });
 
+/** The screens, in their default order (↓ moves through them). */
+export const SCREENS = ['apps', 'smarthome', 'calendar', 'weather'] as const;
+
+export type ScreenName = (typeof SCREENS)[number];
+
 export const ROOM_ICONS = ['couch', 'cutlery', 'desk', 'bed', 'stairs', 'house'] as const;
 
 const RoomSchema = v.object({
@@ -63,6 +68,11 @@ const ConfigSchema = v.object({
   calendar: v.optional(v.object({ events: v.optional(EntityId), meals: v.optional(EntityId) })),
   /** Doorbell video window (off unless `window` is true): its camera, and an input_boolean that is on while it rings. */
   doorbell: v.optional(v.object({ window: v.optional(v.boolean()), camera: v.optional(EntityId), ringing: v.optional(EntityId) })),
+  /**
+   * The screens to show, in order, e.g. ["apps", "smarthome", "weather"] for no Calendar. Apps is
+   * always shown, and first (it holds Settings). Default: all four.
+   */
+  screens: v.optional(v.array(v.picklist(SCREENS, `should be one of ${SCREENS.join(', ')}`))),
   /** Rooms in the Smart Home bar, in order. */
   rooms: v.optional(v.array(RoomSchema)),
   /** Look options. */
@@ -259,6 +269,13 @@ export async function loadConfig(): Promise<void> {
   } catch {
     /* nothing usable */
   }
+}
+
+/** The screens to show, in order: calm-tv.json's "screens" (or all four), always starting with Apps. */
+export function screenOrder(): ScreenName[] {
+  const listed = settings.config.screens ?? SCREENS;
+
+  return ['apps', ...new Set(listed.filter((s) => s !== 'apps'))];
 }
 
 /** A path on Home Assistant ("/local/x.jpg") as a full address; full addresses are kept. */

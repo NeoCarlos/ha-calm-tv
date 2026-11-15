@@ -5,7 +5,7 @@ import { settings } from './config';
  * The look-and-performance choices: video backgrounds, frosted glass and screen transitions.
  *
  * Each comes from, in order: this TV's own choice (Settings → Performance, kept in localStorage),
- * else calm-tv.json's "display", else the built-in default (everything on, "Beautiful").
+ * else calm-tv.json's "display", else the built-in default (everything on).
  * So calm-tv.json sets a default for every TV, and each TV can still be tuned on the spot.
  */
 
@@ -15,7 +15,6 @@ export type Glass = 'blur' | 'tint';
 
 export type Transitions = 'fade' | 'instant';
 
-export type Preset = 'Beautiful' | 'Fast' | 'Custom';
 
 export type Source = 'set on this TV' | 'from calm-tv.json' | 'default';
 
@@ -108,23 +107,6 @@ export function setTransitions(value: Transitions): void {
 
 export function setShowFps(on: boolean): void {
   overrides.showFps = on;
-  changed();
-}
-
-/** "Beautiful" is everything on; "Fast" is everything off; anything in between is "Custom". */
-export function preset(): Preset {
-  if (videosOn() && glass() === 'blur' && transitions() === 'fade') return 'Beautiful';
-
-  if (!videosOn() && glass() === 'tint' && transitions() === 'instant') return 'Fast';
-
-  return 'Custom';
-}
-
-export function applyPreset(name: 'Beautiful' | 'Fast'): void {
-  const beautiful = name === 'Beautiful';
-  overrides.videos = beautiful;
-  overrides.glass = beautiful ? 'blur' : 'tint';
-  overrides.transitions = beautiful ? 'fade' : 'instant';
   changed();
 }
 

@@ -150,9 +150,8 @@ services → Entities.
 { "glass": "blur", "videos": true, "transitions": "fade" }
 ```
 
-These are **defaults for every TV**. Each TV can override them in **Settings → Performance**
-(preset *Beautiful* = all on, *Fast* = all off, or each switch on its own), and its rows say whether a
-value is the default, from calm-tv.json, or set on this TV. *Reset to calm-tv.json* there undoes a
+These are **defaults for every TV**. Each TV can override any of them in **Settings → Performance**,
+whose rows say whether a value is the default, from calm-tv.json, or set on this TV. *Reset to calm-tv.json* there undoes a
 TV's own changes.
 
 - `glass`: how the bars along the bottom look.

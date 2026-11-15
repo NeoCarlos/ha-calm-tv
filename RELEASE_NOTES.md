@@ -2,8 +2,8 @@
 
 ## Unreleased
 
-- **Settings → Performance:** a Beautiful / Fast preset, switches for video backgrounds, frosted glass
-  and screen transitions (new: Instant), and a frame-rate counter for comparing on the TV. Each TV
+- **Settings → Performance:** switches for video backgrounds, frosted glass and screen transitions
+  (new: Instant), and a frame-rate counter for comparing on the TV. Each TV
   keeps its own choices; `display` in calm-tv.json sets the default (now including `transitions`).
 - **Settings, reorganized:** Background, Performance, Home Assistant (connection, address, home setup),
   Google TV home and TV settings. Sub-menus open in place; Back returns.

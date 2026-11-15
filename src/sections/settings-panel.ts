@@ -5,7 +5,7 @@ import { zones } from '../home-data';
 import { showSetup } from '../setup';
 import { child } from '../dom';
 import {
-  applyPreset, glass, glassSource, hasOverrides, preset, resetToConfig, setGlass, setShowFps,
+  glass, glassSource, hasOverrides, resetToConfig, setGlass, setShowFps,
   setTransitions, setVideos, showFps, transitions, transitionsSource, videosOn, videosSource,
 } from '../look';
 
@@ -24,7 +24,6 @@ const ICONS = {
   link: line('<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>'),
   file: line('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>'),
   gauge: line('<path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/><circle cx="12" cy="16" r="1.2"/>'),
-  sparkle: line('<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>'),
   video: line('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/>'),
   glass: line('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 15l7-7M12 16l4-4"/>'),
   fade: line('<rect x="3" y="6" width="11" height="12" rx="2"/><path d="M17 8v8M20 10v4"/>'),
@@ -89,16 +88,6 @@ export class SettingsPanel {
     const performance: Menu = {
       title: 'Performance',
       rows: [
-        {
-          icon: ICONS.sparkle,
-          name: 'Preset',
-          status: () => {
-            const p = preset();
-
-            return `${p} · OK for ${p === 'Beautiful' ? 'Fast' : 'Beautiful'}`;
-          },
-          run: () => applyPreset(preset() === 'Beautiful' ? 'Fast' : 'Beautiful'),
-        },
         {
           icon: ICONS.video,
           name: 'Video backgrounds',
@@ -202,7 +191,13 @@ export class SettingsPanel {
             this.bg.openPicker();
           },
         },
-        { icon: ICONS.gauge, name: 'Performance', status: () => preset(), menu: performance },
+        {
+          icon: ICONS.gauge,
+          name: 'Performance',
+          status: () =>
+            `Video ${videosOn() ? 'on' : 'off'} · ${glass() === 'blur' ? 'frosted' : 'tinted'} glass · ${transitions() === 'fade' ? 'fade' : 'instant'}`,
+          menu: performance,
+        },
         { icon: ICONS.ha, name: 'Home Assistant', status: connection, menu: homeAssistant },
         {
           icon: ICONS.google,

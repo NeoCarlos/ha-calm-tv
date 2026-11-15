@@ -100,10 +100,12 @@ function applyDevice(d: Device, ents: HassEntities): void {
       const modes = a.supported_color_modes;
       d.dimmable = !!modes && !(modes.length === 1 && modes[0] === 'onoff');
 
-      if (!held) {
-        d.on = s.state === 'on';
+      if (!held) d.on = s.state === 'on';
 
-        if (a.brightness !== undefined) d.brightness = Math.max(1, Math.round((a.brightness / 255) * 100));
+      // While a change is held, keep the brightness just set, but take HA's if none is known yet
+      // (a light just switched on: off lights report no brightness).
+      if (a.brightness !== undefined && (!held || d.brightness === undefined)) {
+        d.brightness = Math.max(1, Math.round((a.brightness / 255) * 100));
       }
 
       d.status = d.on ? (d.dimmable && d.brightness ? `On · ${d.brightness}%` : 'On') : '';

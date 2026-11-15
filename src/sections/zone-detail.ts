@@ -515,7 +515,8 @@ export class ZoneDetail {
       }
       else if (k === 'ArrowLeft') {
         e.preventDefault();
-        d.brightness = Math.max(0, (d.brightness ?? 0) - 10);
+        // A light that's on but hasn't reported its brightness yet counts as 100%, as the control shows.
+        d.brightness = Math.max(0, (d.brightness ?? (d.on ? 100 : 0)) - 10);
         d.on = d.brightness > 0;
 
         if (!d.on) d.brightness = 10;

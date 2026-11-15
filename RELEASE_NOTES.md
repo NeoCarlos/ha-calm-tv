@@ -1,25 +1,28 @@
 # Release notes
 
-## Unreleased
+## 0.2.0
 
 - **Demo mode:** open the app with `?demo` to try every screen against a made-up home (the example
-  config), with sample calendar events, a week of weather and cameras that play a clip. No Home
+  config), with sample calendar events, a week of weather and a placeholder doorbell camera. No Home
   Assistant needed. `?demo&at=2026-11-14T18:30` sets the clock, for repeatable recordings.
-- **README:** a section per feature, each with an animation recorded from demo mode.
-  `npm run record:demo` re-records them (needs Chrome, ffmpeg and img2webp).
-- **Settings → Performance:** switches for video backgrounds, frosted glass and screen transitions
-  (new: Instant), and a frame-rate counter for comparing on the TV. Each TV
-  keeps its own choices; `display` in calm-tv.json sets the default (now including `transitions`).
-- **Settings, reorganized:** Background, Performance, Home Assistant (connection, address, home setup),
-  Google TV home and TV settings. Sub-menus open in place; Back returns.
-- **The background picker follows the video setting:** videos while they're on, photos while they're off.
-
 - **Backgrounds:** the repo now ships two backgrounds made for the project, "Mountain Lake Sunset"
   and "Stylized Forest Brook", each as a photo and a seamlessly looping video (crossfaded with
-  itself), in place of the eight Unsplash photos. Other photos you add stay in your own builds but out
-  of git.
-- **README:** opens with an animation of the video background and live blur.
-- The chosen photo is remembered by name, so adding or removing photos doesn't change it.
+  itself), in place of the eight Unsplash photos. Other photos and clips you add stay in your own
+  builds but out of git. The chosen photo is remembered by name, so adding or removing photos
+  doesn't change it.
+- **Settings → Performance:** switches for video backgrounds, frosted glass and screen transitions
+  (new: Instant), and a frame-rate counter for comparing on the TV. Each TV keeps its own choices;
+  `display` in calm-tv.json sets the default (now including `transitions`).
+- **Settings, reorganized:** Background, Performance, Home Assistant (connection, address, home
+  setup), Google TV home and TV settings. Sub-menus open in place; Back returns.
+- **The background picker follows the video setting:** videos while they're on, photos while they're off.
+- **Light control:** pressing ◀ right after switching a light on now dims it, instead of turning it
+  back off.
+- **README:** opens with the video background, then a section per feature, each with an animation
+  recorded from demo mode. `npm run record:demo` re-records them (needs Chrome, ffmpeg and img2webp).
+
+The APK on the release page is a debug build with the two project backgrounds. Build your own from
+source for anything long-term (see `docs/tv-setup.md`).
 
 ## 0.1.0
 

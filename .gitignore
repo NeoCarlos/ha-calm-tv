@@ -1,0 +1,19 @@
+node_modules
+dist
+*.local
+.DS_Store
+
+# Your home's configuration (pushed to the TV or put in Home Assistant; see docs/configuration.md)
+/calm-tv.json
+
+# Video clips stay out of git: they're large, and stock clips may not be republished.
+# They still build into your own app from this folder. To share a clip you have the rights to,
+# whitelist it and its thumbnail by name, e.g.:
+#   !src/videos/01-my-clip.mp4
+#   !src/videos/01-my-clip.jpg
+src/videos/*
+!src/videos/README.md
+
+# Local tools and design drafts
+.claude/
+mockups/

@@ -1,0 +1,42 @@
+// The Android side of Calm TV, when running inside the TV app (android/).
+// In a desktop browser there is no bridge, and launches stay faked.
+
+interface CalmTvNative {
+  /** JSON: [{ pkg, label }] of installed TV apps. */
+  apps(): string;
+  /** Opens an installed app; false if it isn't installed. */
+  launch(pkg: string): boolean;
+  /** Opens Android's own TV settings. */
+  openSettings(): void;
+  /** Switches to Google's home screen until Calm TV is opened again. */
+  openGoogleHome(): void;
+  /** True while Calm TV is the app on screen. */
+  isInFront?(): boolean;
+  /** Shows the doorbell video in a small window over the current app; false if it can't. */
+  showDoorbell?(): boolean;
+  /** Home Assistant's address saved on the TV, or "". */
+  getHaUrl?(): string;
+  /** Saves Home Assistant's address; returns the cleaned-up address, or "" if invalid. */
+  setHaUrl?(url: string): string;
+  /** JSON: { source, text } with calm-tv.json's contents, or { error }. */
+  loadConfig?(): string;
+}
+
+declare global {
+  interface Window {
+    CalmTvNative?: CalmTvNative;
+  }
+}
+
+export const native: CalmTvNative | undefined = window.CalmTvNative;
+
+/** Package names of installed TV apps, or null when not running on the TV. */
+export function installedPackages(): Set<string> | null {
+  if (!native) return null;
+  try {
+    const list = JSON.parse(native.apps()) as { pkg: string }[];
+    return new Set(list.map((a) => a.pkg));
+  } catch {
+    return null;
+  }
+}

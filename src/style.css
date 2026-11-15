@@ -1,0 +1,376 @@
+/* Calm TV — vertical sections over a shared photo. 1920x1080 stage, scaled to fit. */
+:root {
+  --ink: #f6f1e7;
+  --ink-dim: rgba(246, 241, 231, 0.72);
+  --ink-faint: rgba(246, 241, 231, 0.4);
+  --plate: linear-gradient(170deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.16) 58%, rgba(255, 255, 255, 0.22));
+  --plate-edge: inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  --ring: 0 0 0 2px rgba(255, 255, 255, 0.6);
+  --veil: rgba(8, 14, 18, 0.36);
+  --warm: #d6a55f;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: #05080a; }
+body {
+  color: var(--ink);
+  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#frame { position: fixed; inset: 0; background: #05080a; overflow: hidden; }
+#stage {
+  position: absolute; left: 50%; top: 50%;
+  width: 1920px; height: 1080px;
+  transform: translate(-50%, -50%) scale(1);
+  transform-origin: center center;
+}
+
+/* shared background */
+.layer { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+#photo { background-size: cover; background-position: center; transition: opacity 0.9s ease; }
+#photo2 { background-size: cover; background-position: center; opacity: 0; transition: opacity 0.9s ease; }
+/* Video background (Settings → Background). The photos and film grain step aside while it plays. */
+#video { object-fit: cover; opacity: 0; transition: opacity 0.9s ease; pointer-events: none; }
+html.bg-video #video.ready { opacity: 1; }
+html.bg-video #grain { display: none; }
+/* Over a video the bars can't use a blurred copy of a still photo, so they blur whatever moves behind
+   them live. Same darkness as the photo bars. */
+html.bg-video .gb-img { display: none; }
+html.bg-video .gb-veil { background: rgba(8, 14, 18, 0.5); }
+/* Background picker (Settings → Background): thumbnails along the bottom, screens faded away. */
+#sections { transition: opacity 0.3s ease; }
+html.picking #sections, html.picking #hint { opacity: 0; pointer-events: none; }
+.bgpick { position: absolute; inset: 0; z-index: 45; display: none; pointer-events: none; }
+.bgpick.open { display: block; }
+.bgpick-shade { position: absolute; left: 0; right: 0; bottom: 0; height: 520px; background: linear-gradient(to bottom, rgba(4, 8, 10, 0), rgba(4, 8, 10, 0.55) 45%, rgba(4, 8, 10, 0.78)); }
+.bgpick-head { position: absolute; left: 80px; right: 80px; top: 672px; display: flex; align-items: baseline; gap: 28px; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5); }
+.bgpick-title { font-size: 40px; font-weight: 600; letter-spacing: -0.6px; color: var(--ink); }
+.bgpick-hint { font-size: 22px; font-weight: 500; color: var(--ink-faint); }
+.bgpick-shelf { position: absolute; left: 80px; top: 740px; width: 1760px; height: 290px; overflow: hidden; pointer-events: auto; }
+.bgpick-track { position: absolute; left: 0; top: 0; height: 100%; transition: transform 190ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+.bgpick-group { position: absolute; top: 6px; font-size: 15px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-faint); }
+.bgpick-tile { position: absolute; top: 40px; width: 288px; cursor: pointer; }
+.bgpick-img { position: relative; width: 288px; height: 162px; border-radius: 18px; background-size: cover; background-position: center; box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.7); transition: transform 0.18s ease, box-shadow 0.18s ease; }
+.bgpick-tile.focus .bgpick-img { transform: scale(1.06); box-shadow: 0 0 0 3px #fff, 0 16px 40px -12px rgba(0, 0, 0, 0.8); }
+.bgpick-tile.chosen .bgpick-img::after { content: '✓'; position: absolute; right: 10px; top: 10px; width: 34px; height: 34px; border-radius: 50%; background: #fff; color: #1b1f22; font-size: 20px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.bgpick-name { margin-top: 16px; font-size: 21px; font-weight: 600; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5); }
+.bgpick-tile.focus .bgpick-name { color: var(--ink); }
+html.bg-video:not(.glass-tint) .gb-mat { -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+/* "display": { "glass": "tint" }: plain dark glass instead of frosted, over photos and videos alike. */
+html.glass-tint .gb-img { display: none; }
+html.glass-tint .gb-veil { background: rgba(8, 14, 18, 0.5); }
+#grain {
+  pointer-events: none; opacity: 0.06; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+#shade {
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(4, 10, 12, 0.4), rgba(4, 10, 12, 0.16) 180px, rgba(4, 10, 12, 0.1) 420px, rgba(4, 10, 12, 0.22));
+}
+#scrim {
+  top: 560px; height: 520px; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(4, 10, 12, 0), rgba(4, 10, 12, 0.38) 70%, rgba(4, 10, 12, 0.5));
+}
+
+/* vertical sections */
+#sections { position: absolute; inset: 0; overflow: hidden; }
+/* Sections sit on top of each other and fade: the old one fades out quickly, then the new one fades in.
+   (They used to slide, which showed the calendar's dark gradient moving and stuttered on the TV.) */
+#sectionsTrack { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+.section {
+  position: absolute; left: 0; top: 0; width: 1920px; height: 1080px;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity 170ms ease-in, visibility 0s linear 170ms;
+}
+/* A soft dark gradient over the top of the photo, behind the text, on the Smart Home, Calendar and
+   Weather sections. Part of the section, so it fades in and out with it. */
+#secHome::before, #secCalendar::before, #secWeather::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 820px; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(6, 10, 14, 0.5) 0%, rgba(6, 10, 14, 0.36) 45%, rgba(6, 10, 14, 0) 100%);
+}
+.section.is-active {
+  opacity: 1; visibility: visible; pointer-events: auto;
+  transition: opacity 260ms ease-out 110ms, visibility 0s;
+}
+
+/* ---------- Apps section: clock ---------- */
+.caption { position: absolute; left: 140px; top: 72px; }
+.clock {
+  margin: 0; font-size: 48px; line-height: 60px; font-weight: 600; letter-spacing: -1.5px;
+  white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--ink); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+.cdate {
+  margin: 4px 0 0; font-size: 24px; font-weight: 500; letter-spacing: -0.4px;
+  color: var(--ink-dim); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.26);
+}
+
+/* ---------- Frosted glass bar (shared by the app dock and the zone bar) ---------- */
+.gb { position: absolute; overflow: hidden; border-radius: 48px; }
+.gb-mat { position: absolute; inset: 0; overflow: hidden; }
+.gb-img {
+  position: absolute; width: 1920px; height: 1080px; background-size: 1920px 1080px; background-position: 0 0;
+  filter: blur(10px) saturate(1.05) brightness(0.72); transform: scale(1.04);
+}
+.gb-veil { position: absolute; inset: 0; background: var(--veil); }
+.gb-edge { position: absolute; inset: 0; border-radius: 48px; box-shadow: var(--plate-edge); pointer-events: none; }
+.gb-shelf { position: absolute; left: 16px; top: 0; bottom: 0; width: 1472px; overflow: hidden; }
+.gb-shelf.fade-r {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 132px), rgba(0, 0, 0, 0.15));
+  mask-image: linear-gradient(to right, #000 calc(100% - 132px), rgba(0, 0, 0, 0.15));
+}
+.gb-shelf.fade-lr {
+  -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 0.15), #000 132px, #000 calc(100% - 132px), rgba(0, 0, 0, 0.15));
+  mask-image: linear-gradient(to right, rgba(0, 0, 0, 0.15), #000 132px, #000 calc(100% - 132px), rgba(0, 0, 0, 0.15));
+}
+.gb-track { position: absolute; left: 0; top: 0; height: 100%; transition: transform 190ms cubic-bezier(0.2, 0.7, 0.2, 1); will-change: transform; }
+
+#dock { left: 208px; top: 864px; width: 1504px; height: 128px; }
+#dock .gb-img { left: -208px; top: -864px; }
+#zbar { left: 208px; top: 802px; width: 1504px; height: 190px; }
+#zbar .gb-img { left: -208px; top: -802px; }
+
+.tile { position: absolute; top: 16px; width: 150px; height: 200px; cursor: pointer; }
+.plate { position: absolute; inset: 0; border-radius: 30px; opacity: 0; transition: opacity 0.18s ease; }
+.tile.is-focus .plate { opacity: 1; background: var(--plate); box-shadow: var(--plate-edge); }
+.tc { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.mark { height: 76px; display: flex; align-items: center; justify-content: center; color: var(--ink); opacity: 0.86; transition: opacity 0.18s ease; }
+.mark svg { width: 76px; height: 76px; display: block; fill: currentColor; }
+.mark svg path { fill: currentColor; }
+.mark svg text { fill: currentColor; }
+.tile.is-focus .mark { opacity: 1; }
+
+/* ---------- Smart Home section ---------- */
+.therm { position: absolute; top: 178px; left: 50%; transform: translateX(-50%); text-align: center; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5); }
+.therm-temp { display: inline-flex; align-items: flex-start; justify-content: center; font-size: 300px; line-height: 0.82; font-weight: 200; letter-spacing: -12px; }
+.therm-temp .deg { width: 24px; height: 24px; border: 4px solid var(--warm); border-radius: 50%; margin: 28px 0 0 12px; flex: 0 0 auto; }
+.therm-sub { margin: 26px 0 0; font-size: 34px; font-weight: 500; color: var(--ink-dim); }
+.therm-out { margin: 8px 0 0; font-size: 30px; font-weight: 500; color: var(--ink-dim); }
+
+.zone { position: absolute; top: 33px; width: 340px; height: 124px; cursor: pointer; }
+.zplate { position: absolute; inset: 0; border-radius: 24px; opacity: 0; transition: opacity 0.18s ease; }
+.zone.is-focus .zplate { opacity: 1; background: var(--plate); box-shadow: var(--plate-edge); }
+.zbody { position: absolute; inset: 0; display: flex; align-items: center; gap: 18px; padding: 0 24px; }
+.zicon { width: 58px; height: 58px; border-radius: 16px; background: rgba(255, 255, 255, 0.1); color: var(--warm); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.zicon svg { width: 30px; height: 30px; }
+.zmeta { min-width: 0; }
+.zname { font-size: 26px; font-weight: 600; letter-spacing: -0.3px; color: var(--ink); white-space: nowrap; }
+.zstatus { font-size: 20px; margin-top: 3px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.z-warn .zstatus { color: #e0955a; }
+.z-active .zstatus { color: #e0b878; }
+
+/* ---------- placeholder sections ---------- */
+.placeholder .ph { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4); }
+.ph-title { font-size: 76px; font-weight: 200; letter-spacing: -2px; color: var(--ink); }
+.ph-sub { font-size: 28px; color: var(--ink-faint); letter-spacing: 0.5px; text-transform: uppercase; }
+
+/* ---------- hint ---------- */
+#hint {
+  position: absolute; left: 0; right: 0; bottom: 28px; text-align: center; color: var(--ink-faint);
+  font-size: 22px; letter-spacing: 0.3px; pointer-events: none; transition: opacity 1s ease; z-index: 5;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+#hint.gone { opacity: 0; }
+#hint kbd { border: 1px solid rgba(246, 241, 231, 0.3); border-radius: 8px; padding: 0.05em 0.4em; margin: 0 0.15em; font-family: inherit; }
+
+/* ---------- launch overlay ---------- */
+.overlay {
+  position: absolute; inset: 0; display: none; align-items: center; justify-content: center; z-index: 30;
+  background: rgba(4, 8, 10, 0.55); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.overlay.open { display: flex; }
+#launch .lcard { display: flex; flex-direction: column; align-items: center; gap: 40px; color: var(--ink); }
+#launch .lmark {
+  width: 180px; height: 180px; border-radius: 40px; display: flex; align-items: center; justify-content: center;
+  background: var(--plate); box-shadow: var(--plate-edge); color: var(--ink);
+}
+#launch .lmark svg { width: 96px; height: 96px; fill: currentColor; }
+#launch .lmark svg path { fill: currentColor; }
+#launch .lmark svg text { fill: currentColor; }
+#launch .ltxt { font-size: 34px; font-weight: 600; letter-spacing: -0.5px; }
+#launch .lbar { width: 360px; height: 4px; background: rgba(246, 241, 231, 0.2); border-radius: 4px; overflow: hidden; }
+#launch .lbar i { display: block; height: 100%; width: 0; background: var(--ink); animation: load 1.5s ease forwards; }
+@keyframes load { to { width: 100%; } }
+
+/* ---------- Settings panel (reuses the zone detail look, one narrow column) ---------- */
+.settings .detail-panel { width: 960px; }
+.settings .dstatus { white-space: normal; }
+
+/* ---------- Zone detail panel ---------- */
+.detail { position: absolute; inset: 0; display: none; z-index: 40; }
+.detail.open { display: block; }
+.detail-scrim { position: absolute; inset: 0; background: rgba(2, 5, 7, 0.62); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.detail-panel {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 1680px; background: rgba(14, 16, 19, 0.82); border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 44px; box-shadow: var(--plate-edge), 0 50px 140px -40px rgba(0, 0, 0, 0.7);
+  -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px);
+  padding: 56px 60px 44px; display: flex; flex-direction: column;
+}
+.detail-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 44px; }
+.detail-title { font-size: 52px; font-weight: 700; letter-spacing: -1.2px; color: var(--ink); }
+.detail-close { width: 64px; height: 64px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.06); color: var(--ink); cursor: pointer; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; transition: background 0.18s ease, box-shadow 0.18s ease; }
+.detail-close svg { width: 28px; height: 28px; }
+.detail-close.focus { background: var(--plate); box-shadow: var(--ring), var(--plate-edge); }
+.detail-cols { display: flex; gap: 44px; align-items: flex-start; }
+.dcol { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+.dcol-title { font-size: 22px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 20px; padding-left: 4px; }
+.dcol-list { display: flex; flex-direction: column; gap: 16px; }
+.drow {
+  position: relative; display: flex; align-items: center; gap: 20px; width: 100%; padding: 20px 22px;
+  border-radius: 22px; cursor: pointer; text-align: left; color: var(--ink); font-family: inherit;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+.drow.focus { background: rgba(255, 255, 255, 0.12); box-shadow: var(--ring), var(--plate-edge); }
+.dicon { width: 56px; height: 56px; border-radius: 15px; background: rgba(255, 255, 255, 0.06); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; color: var(--ink); }
+.dicon svg { width: 30px; height: 30px; }
+.dmeta { min-width: 0; flex: 1 1 auto; }
+.dname { font-size: 27px; font-weight: 600; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dstatus { font-size: 19px; margin-top: 2px; color: var(--ink-dim); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+.dchev { color: var(--ink-faint); flex: 0 0 auto; }
+.dchev svg { width: 22px; height: 22px; }
+.d-off .dicon { color: rgba(246, 241, 231, 0.42); }
+.d-off .dname { color: rgba(246, 241, 231, 0.78); }
+.d-on .dicon { color: #f4e9c8; background: rgba(230, 184, 74, 0.16); }
+.d-stream .dicon, .d-stream .dstatus { color: #e8c24a; }
+.d-stream .dicon { background: rgba(232, 194, 74, 0.16); }
+.d-climate .dicon { color: var(--warm); background: rgba(214, 165, 95, 0.14); }
+.d-unlock .dicon, .d-unlock .dstatus { color: #e0955a; }
+.detail-foot { margin-top: 36px; font-size: 21px; color: var(--ink-faint); letter-spacing: 0.2px; }
+
+/* richer control overlay */
+.detail-control { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; z-index: 2; }
+.detail-control.open { display: flex; }
+.ctl-card { background: rgba(16, 18, 22, 0.92); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 36px; box-shadow: var(--plate-edge), 0 40px 120px -30px rgba(0, 0, 0, 0.7); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); padding: 52px 64px; text-align: center; min-width: 520px; }
+.ctl-name { font-size: 30px; font-weight: 600; color: var(--ink); margin-bottom: 18px; }
+.ctl-temp { display: inline-flex; align-items: flex-start; font-size: 220px; line-height: 0.85; font-weight: 200; letter-spacing: -8px; color: var(--ink); }
+.ctl-temp .deg { width: 20px; height: 20px; border: 4px solid var(--warm); border-radius: 50%; margin: 20px 0 0 8px; }
+.ctl-sub { margin-top: 20px; font-size: 24px; color: var(--ink-dim); }
+.ctl-hint { margin-top: 10px; font-size: 18px; color: var(--ink-faint); }
+.ctl-state { font-size: 44px; font-weight: 300; color: var(--ink); margin-bottom: 26px; }
+.ctl-bar { width: 420px; height: 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.12); overflow: hidden; margin: 0 auto; }
+.ctl-fill { height: 100%; width: 0; background: var(--warm); border-radius: 10px; transition: width 0.12s ease; }
+.ctl-light.is-on .ctl-state { color: #f4e9c8; }
+.d-scene .dicon { color: var(--ink); }
+.ctl-scene { min-width: 560px; padding: 44px 48px 40px; }
+.scene-list { max-height: 560px; overflow-y: auto; scrollbar-width: none; margin: 4px 0 18px; padding: 4px; }
+.scene-list::-webkit-scrollbar { display: none; }
+.scene-opt { font-size: 30px; font-weight: 400; color: var(--ink-dim); padding: 16px 28px; border-radius: 18px; transition: background 0.12s ease, color 0.12s ease; }
+.scene-opt.picked { color: #f4e9c8; }
+.scene-opt.picked::after { content: ' ✓'; color: var(--warm); }
+.scene-opt.focus { background: rgba(255, 255, 255, 0.14); color: var(--ink); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35); }
+.cam-feed { width: 760px; height: 428px; border-radius: 22px; overflow: hidden; position: relative; background: linear-gradient(120deg, #11161b, #1c2730, #10151a); background-size: 200% 200%; animation: campan 12s ease-in-out infinite; }
+.cam-grain { position: absolute; inset: 0; opacity: 0.08; mix-blend-mode: overlay; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.cam-live { position: absolute; top: 20px; left: 22px; display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 700; letter-spacing: 1px; color: #fff; }
+.cam-live .dot { width: 11px; height: 11px; border-radius: 50%; background: #e5484d; animation: blink 1.4s ease-in-out infinite; }
+.cam-name { position: absolute; bottom: 18px; left: 22px; font-size: 22px; font-weight: 600; color: #fff; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5); }
+.cam-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: transparent; } /* the feed's dark shimmer shows until video arrives */
+.cam-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 40px; text-align: center; font-size: 24px; color: var(--ink-dim); }
+.wx-none { margin-top: 120px; text-align: center; font-size: 26px; color: var(--ink-faint); }
+@keyframes campan { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+/* Doorbell: live video in the corner when someone rings. --u is 1% of the window's width. */
+.dbell { --u: 6.4px; position: absolute; right: 56px; top: 56px; width: 640px; aspect-ratio: 16 / 9; z-index: 60; border-radius: calc(var(--u) * 4); overflow: hidden; background: #000; border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: 0 30px 90px -20px rgba(0, 0, 0, 0.8); opacity: 0; transform: translateY(-24px) scale(0.97); pointer-events: none; transition: opacity 0.35s ease, transform 0.35s ease; }
+.dbell.open { opacity: 1; transform: none; pointer-events: auto; }
+.dbell video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.dbell-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 calc(var(--u) * 8); font-size: calc(var(--u) * 3.6); color: var(--ink-dim, #c9ced6); }
+.dbell-msg[hidden] { display: none; }
+.dbell-tag { position: absolute; left: calc(var(--u) * 3.4); top: calc(var(--u) * 3); display: flex; align-items: center; gap: calc(var(--u) * 1.4); padding: calc(var(--u) * 1) calc(var(--u) * 2.2); border-radius: 999px; background: rgba(0, 0, 0, 0.55); font-size: calc(var(--u) * 3.3); font-weight: 600; color: #fff; }
+.dbell-tag .dot { width: calc(var(--u) * 1.7); height: calc(var(--u) * 1.7); border-radius: 50%; background: #e5484d; animation: blink 1.4s ease-in-out infinite; }
+.dbell-hint { position: absolute; right: calc(var(--u) * 3.4); bottom: calc(var(--u) * 2.6); font-size: calc(var(--u) * 2.6); color: rgba(255, 255, 255, 0.8); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
+/* Overlay mode: the page is just the window, over another app. */
+html.dbell-only, html.dbell-only body { background: transparent; }
+html.dbell-only .dbell { --u: 1vw; position: fixed; inset: 0; width: auto; right: 0; bottom: 0; aspect-ratio: auto; border-radius: calc(var(--u) * 4); transition: opacity 0.35s ease; transform: none; }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ---------- Weather section ---------- */
+/* Anchored at the bottom: the hours chart stays put and the heading sits just above its tallest bar. */
+.wx-hero { position: absolute; bottom: 498px; left: 50%; transform: translateX(-50%); width: 1160px; text-align: center; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5); }
+.wx-head { font-size: 28px; font-weight: 500; color: var(--ink-dim); margin-bottom: 34px; }
+.wx-title { font-size: 64px; line-height: 1; font-weight: 300; letter-spacing: -1.5px; color: var(--ink); }
+.wx-sub { margin-top: 12px; font-size: 26px; font-weight: 500; color: var(--ink-dim); }
+.wx-sep { margin: 0 14px; color: var(--ink-faint); }
+.wx-chart { display: flex; justify-content: center; align-items: flex-end; gap: 24px; }
+.wx-col { display: flex; flex-direction: column; align-items: center; width: 64px; }
+.wx-col-top { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 12px; }
+.wx-col-ico { color: var(--ink); opacity: 0.82; height: 36px; display: flex; align-items: center; }
+.wx-col-ico svg { width: 36px; height: 36px; }
+.wx-col.now .wx-col-ico { opacity: 1; }
+.wx-col-bar { position: relative; width: 64px; border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; align-items: center; background: linear-gradient(to bottom, rgba(214, 165, 95, 0.46), rgba(214, 165, 95, 0.16)); }
+.wx-col.now .wx-col-bar { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.65); }
+.wx-col-rain { width: 100%; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 700; color: #fff; background: linear-gradient(to bottom, rgba(96, 156, 214, 0.78), rgba(96, 156, 214, 0.5)); }
+.wx-col-temp { font-size: 20px; font-weight: 700; color: #fff; margin-top: 9px; }
+.wx-col-label { margin-top: 14px; font-size: 19px; font-weight: 600; color: var(--ink-dim); }
+.wx-col.now .wx-col-label { color: var(--warm); }
+#wxbar { left: 208px; top: 802px; width: 1504px; height: 190px; }
+#wxbar .gb-img { left: -208px; top: -802px; }
+.wday { position: absolute; top: 23px; width: 180px; height: 144px; cursor: pointer; }
+.wplate { position: absolute; inset: 0; border-radius: 24px; opacity: 0; transition: opacity 0.18s ease; }
+.wday.is-focus .wplate { opacity: 1; background: var(--plate); box-shadow: var(--plate-edge); }
+.wbody { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.wd-name { font-size: 22px; font-weight: 600; color: var(--ink-dim); }
+.wday.is-focus .wd-name { color: var(--ink); }
+.wd-ico { color: var(--ink); opacity: 0.9; height: 40px; display: flex; align-items: center; }
+.wd-ico svg { width: 40px; height: 40px; }
+.wd-temps { display: flex; align-items: baseline; gap: 10px; }
+.wd-hi { font-size: 28px; font-weight: 600; color: var(--ink); }
+.wd-lo { font-size: 22px; font-weight: 500; color: var(--ink-faint); }
+
+/* ---------- Calendar section ---------- */
+/* Top: today on the left, a small month calendar on the right. */
+/* Fills the space above the bar (which starts at 802px) and centers the date and month in it. */
+.cal-top { position: absolute; top: 0; bottom: 278px; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 88px; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45); }
+.cal-today { text-align: right; min-width: 600px; }
+.cal-dow { margin: 0 0 14px; font-size: 38px; font-weight: 500; color: var(--ink-dim); }
+.cal-date { margin: 0; font-size: 132px; line-height: 0.86; font-weight: 200; letter-spacing: -4px; color: var(--ink); white-space: nowrap; }
+.cal-line { margin: 12px 0 0; font-size: 27px; font-weight: 500; color: var(--ink-dim); white-space: nowrap; }
+.cal-line:empty { display: none; }
+.cal-divider { width: 1px; height: 340px; align-self: center; background: rgba(255, 255, 255, 0.28); }
+.cal-month { width: 476px; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55); }
+.cal-mname { margin: 0 0 14px 6px; font-size: 24px; font-weight: 700; letter-spacing: 0.4px; color: var(--ink); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 68px); row-gap: 6px; }
+.cal-wk { padding-bottom: 6px; text-align: center; font-size: 16px; font-weight: 700; letter-spacing: 1px; color: var(--ink-faint); }
+.cal-d { position: relative; height: 54px; display: flex; align-items: center; justify-content: center; font-size: 23px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); }
+.cal-n { position: relative; z-index: 1; width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: box-shadow 0.15s ease; }
+.cal-d.past { color: var(--ink-faint); }
+.cal-d.has::after { content: ''; position: absolute; bottom: 1px; width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, 0.75); }
+.cal-d.is-today .cal-n { background: #fff; color: #1b1f22; text-shadow: none; }
+.cal-d.hit .cal-n { box-shadow: 0 0 0 2.5px #fff; }
+.cal-d.span::before { content: ''; position: absolute; top: 4px; bottom: 4px; left: 0; right: 0; background: rgba(255, 255, 255, 0.2); }
+.cal-d.span.s0::before { left: 11px; border-radius: 23px 0 0 23px; }
+.cal-d.span.s1::before { right: 11px; border-radius: 0 23px 23px 0; }
+.cal-d.span.s0.s1::before { border-radius: 23px; }
+
+/* Bar: one column per day, two events per column. */
+.cal-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 500; color: var(--ink-faint); }
+.cal-empty:empty { display: none; }
+#calbar { left: 208px; top: 802px; width: 1504px; height: 190px; }
+#calbar .gb-img { left: -208px; top: -802px; }
+.cal-head { position: absolute; top: 20px; height: 30px; padding: 0 16px; display: flex; align-items: center; font-size: 15px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-faint); white-space: nowrap; }
+.cal-head.is-today { color: var(--ink); }
+.cal-sep { position: absolute; top: 28px; bottom: 28px; width: 1px; background: rgba(255, 255, 255, 0.16); }
+.cal-ev { position: absolute; width: 300px; height: 56px; cursor: pointer; }
+.cal-plate { position: absolute; inset: 0; border-radius: 16px; opacity: 0; transition: opacity 0.18s ease; }
+.cal-ev.is-focus .cal-plate { opacity: 1; background: var(--plate); box-shadow: var(--plate-edge); }
+.cal-row { position: absolute; inset: 0; display: flex; align-items: center; gap: 12px; padding: 0 16px; white-space: nowrap; }
+.cal-tm { flex: 0 0 auto; font-size: 18px; font-weight: 600; color: var(--ink-dim); }
+.cal-tt { overflow: hidden; text-overflow: ellipsis; font-size: 21px; font-weight: 600; letter-spacing: -0.2px; color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation-duration: 0.001ms !important; }
+}
+:focus { outline: none; }
+
+/* An app without an icon file shows its name. */
+.mark-text { font-size: 26px; font-weight: 700; letter-spacing: -0.3px; white-space: nowrap; }
+
+/* First-run "Connect to Home Assistant" screen (src/setup.ts). */
+.setup { position: absolute; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(2, 5, 7, 0.72); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.setup-card { width: 1040px; padding: 64px 72px; border-radius: 40px; background: rgba(20, 26, 30, 0.82); box-shadow: var(--plate-edge), 0 40px 120px -30px rgba(0, 0, 0, 0.8); }
+.setup-title { font-size: 52px; font-weight: 700; letter-spacing: -1.2px; color: var(--ink); }
+.setup-text { margin-top: 16px; font-size: 26px; color: var(--ink-dim); }
+.setup-input { margin-top: 40px; width: 100%; box-sizing: border-box; padding: 22px 28px; border-radius: 20px; border: 2px solid rgba(255, 255, 255, 0.5); background: rgba(255, 255, 255, 0.08); color: var(--ink); font: 600 34px 'Manrope', system-ui, sans-serif; outline: none; }
+.setup-input:focus { border-color: #fff; }
+.setup-msg { min-height: 34px; margin-top: 18px; font-size: 24px; color: var(--warm); }
+.setup-hint { margin-top: 8px; font-size: 21px; color: var(--ink-faint); }

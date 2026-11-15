@@ -1,0 +1,186 @@
+# Configuration: `calm-tv.json`
+
+Everything specific to a home lives in one JSON file, so the same app works on any TV.
+A complete example is [`config/calm-tv.example.json`](../config/calm-tv.example.json).
+The TypeScript definition, which is the source of truth, is `CalmTvConfig` in [`src/config.ts`](../src/config.ts).
+
+## Where the TV finds it
+
+Each time Calm TV starts, it looks in this order:
+
+1. **Home Assistant's `www` folder**, served at `http://<ha>/local/calm-tv.json`.
+   *This is the recommended place.* Edit the file in Home Assistant, for example with the
+   **File editor** or **Studio Code Server** add-on, then reopen Calm TV or choose
+   Settings → Home setup → OK. No computer, no rebuild.
+   - Create the folder `/config/www/` if it doesn't exist. Home Assistant only serves `/local/` after
+     a **restart** that happens once `www` exists.
+   - Files in `www` can be read by anyone on your network without signing in. This file only
+     names entities, but don't put anything secret in it.
+2. **A file on the TV**, pushed from a computer:
+   ```bash
+   adb push calm-tv.json /sdcard/Android/data/io.github.neocarlos.hacalmtv/files/calm-tv.json
+   ```
+   Open Calm TV once first, so that folder exists. This is handy before you've set up a way to edit
+   Home Assistant's files.
+3. **The last copy that worked**, kept by the app. A typo in the newest file, or Home Assistant
+   being down at start-up, won't blank the screen.
+
+Settings → **Home setup** shows which source was used, how many rooms it has, and any error, such as
+`room "Kitchen" needs "groups": [ … ]`.
+
+In the **desktop browser preview** (`npm run dev`), the file is read from the project folder
+(`./calm-tv.json`). That makes it the easiest place to edit and preview before copying the file to HA.
+
+The **Home Assistant address** isn't in this file, because the TV needs it to find the file. It's set
+on the TV, on the first-run screen or with adb, and in `.env.local` for the browser preview. See
+[tv-setup.md](tv-setup.md).
+
+## The format
+
+All keys are optional. A file with just `{}` gives a working screen with no rooms and the
+default app dock.
+
+```jsonc
+{
+  "apps": [ … ],          // the dock
+  "weather": "weather.home",
+  "calendar": { "events": "calendar.family", "meals": "calendar.meal_plan" },
+  "doorbell": { "window": false, "camera": "camera.front_door", "ringing": "input_boolean.doorbell_ringing" },
+  "rooms": [ … ],         // the Smart Home bar
+  "display": { "glass": "blur", "videos": true },
+  "backgrounds": { "photos": [ … ], "videos": [ … ] }
+}
+```
+
+### `apps`: the dock, in order
+
+```json
+{ "name": "Netflix", "icon": "netflix", "package": "com.netflix.ninja" }
+```
+
+- `package`: the Android TV app's package name. Find it with
+  `adb shell pm list packages`, or on the app's Play Store page URL (`id=…`).
+- `icon`: optional; a file name from `src/icons/` without `.svg`. Built in: `youtube`, `netflix`,
+  `primevideo`, `disneyplus`, `hulu`, `appletv`, `peacock`, `googletv`, `hbomax`, `plex`, `stremio`.
+  Without an icon, the tile shows the app's name. New icons need a rebuild: add an SVG to `src/icons/`.
+  Simple Icons (CC0) is a good source.
+- Apps that aren't installed on the TV are hidden automatically.
+- Leave `apps` out entirely for a default lineup of common streaming apps.
+
+### `weather`
+
+A Home Assistant weather entity. **Open-Meteo** is recommended: it gives about 7 days of hourly
+forecast. Met.no, Home Assistant's default, only gives 48 hours, so the hour chart is empty from
+the third day on. Defaults to `weather.home`.
+
+### `calendar`
+
+- `events`: the calendar shown in the Calendar screen's bar, covering the next 14 days and up to 24 events.
+- `meals`: optional. Today's all-day event from this calendar becomes "Dinner · …" under the date.
+  A leading "Dinner:" in the event title is dropped.
+
+Any Home Assistant calendar works: Google Calendar, CalDAV, Local Calendar, or Remote Calendar
+(an ICS link). Leave `calendar` out and Calm TV guesses: a calendar with "meal" in its id is meals,
+and one with "event" in its id is events.
+
+### `doorbell`
+
+```json
+{ "window": true, "camera": "camera.front_door", "ringing": "input_boolean.doorbell_ringing" }
+```
+
+When `window` is true, a small live video of `camera` appears in the corner while `ringing` is
+on, **even over other apps**. You need an automation that turns the input_boolean on when the doorbell
+rings; see [home-assistant.md](home-assistant.md). Google TV already shows its own alert for Nest
+doorbells, so this is off by default.
+
+### `rooms`: the Smart Home bar, in order
+
+```jsonc
+{
+  "name": "Living room",
+  "icon": "couch",                 // couch, cutlery, desk, bed, stairs, house
+  "whenIdle": "All off · curtains closed",  // the summary when nothing is on (default "All off")
+  "locks": ["lock.front_door"],    // room turns amber if one is left unlocked 10+ minutes
+  "maintenance": "sensor.living_room_maintenance", // optional: a short "needs attention" text sensor
+  "alert": { "entity": "binary_sensor.garage_door", "text": "Garage open" }, // urgent while on
+  "vacuum": { "label": "Vacuum", "vacuum": "kitchen_vacuum", "dock": "kitchen_vacuum_dock" },
+  "groups": [
+    { "title": "Lights", "devices": [ { "type": "light", "entity": "light.floor_lamp", "name": "Floor lamp" } ] }
+  ]
+}
+```
+
+What the room card says, in priority order:
+1. **Urgent** (amber): the `alert` is on, a lock has been left unlocked, or the vacuum has a problem.
+2. **Maintenance** (amber): the `maintenance` sensor's text, if it isn't empty or unknown.
+3. **What's on**: "2 lights on · 1 window open".
+4. Otherwise, `whenIdle`.
+
+#### Devices
+
+Each device is `{ "type", "entity", "name" }` plus a few optional extras:
+
+| `type` | Entity | On the TV |
+| --- | --- | --- |
+| `light` | `light.*` | On/off. Dimmable lights get a brightness slider |
+| `switch` | `switch.*` (plugs) | On/off |
+| `cover` | `cover.*` | Open/close curtains or blinds. Optional `"batteries": ["sensor.…"]` shows the lowest |
+| `climate` | `climate.*` | Thermostat with set point. The first one in any room is also shown large on the Smart Home screen |
+| `scene` | `select.*` whose options are scenes (e.g. from the Hue integration) | A scene picker |
+| `camera` | `camera.*` that supports WebRTC (Nest, go2rtc, most modern integrations) | Live video |
+| `lock` | `lock.*` | **Status only**, like "Locked (Keypad) · 93% battery". Optional `batteries`, `operator` (a sensor saying how it was locked), `keypad` (a keypad battery sensor) |
+| `sensor` | `sensor.*` or `binary_sensor.*` | Status only: a value with its unit, Open/Closed, or "Someone there"/"Clear" for occupancy sensors |
+
+`name` defaults to the entity id. Entity ids are listed in Home Assistant under Settings → Devices &
+services → Entities.
+
+#### Robot vacuums
+
+`vacuum` uses the **Roborock** integration's entity naming. `"vacuum": "kitchen_vacuum"` reads
+`sensor.kitchen_vacuum_status`, `sensor.kitchen_vacuum_battery`,
+`binary_sensor.kitchen_vacuum_water_shortage` and `sensor.kitchen_vacuum_vacuum_error`.
+`"dock"` reads the dock's `binary_sensor.<dock>_clean_water_box`, `_dirty_water_box` and
+`_cleaning_fluid`, and `sensor.<dock>_dock_error`. Missing sensors are skipped. Other brands would need small changes in
+`vacuumProblems()` in `src/home-data.ts`.
+
+### `display`: look options
+
+```json
+{ "glass": "blur", "videos": true }
+```
+
+- `glass`: how the bars along the bottom look.
+  - `"blur"` (the default): frosted glass that blurs the background behind it. Over a photo this is
+    free, because the blur is pre-computed. Over a video it's a live blur, which costs a few frames per
+    second while switching screens on a TV.
+  - `"tint"`: plain dark glass with no blur. The lightest option, and the same darkness as the frosted bars.
+- `videos`: `false` hides video backgrounds. Settings → Background then offers only photos, and a TV set to a
+  video shows a photo instead. Its video choice is remembered for when videos are turned back on.
+  Default `true`.
+
+### `backgrounds`: extra photos and videos
+
+```json
+{
+  "photos": [{ "name": "Our beach", "url": "/local/calm-tv/beach.jpg" }],
+  "videos": [{ "name": "Fireplace", "url": "/local/calm-tv/fireplace.mp4", "thumb": "/local/calm-tv/fireplace.jpg" }]
+}
+```
+
+Paths starting with `/` are on Home Assistant (its `www` folder is `/local/`). Full `http(s)://`
+addresses also work. They're added after the built-in backgrounds in Settings → Background.
+
+- **Photos:** about 2560 px wide and landscape.
+- **Videos:** 1080p H.264 MP4, no audio, ideally under 20 MB, made with the `ffmpeg` command in
+  [`src/videos/README.md`](../src/videos/README.md). Videos from Home Assistant stream from it
+  each time they loop. Built-in ones are loaded into memory once.
+
+## After editing
+
+- **File in Home Assistant:** reopen Calm TV, or Settings → Home setup → OK.
+- **File on the TV:** push it again, then reopen Calm TV.
+- **Browser preview:** just reload the page.
+
+If something doesn't show, check Settings → Home setup for an error, and make sure each entity id
+exists in Home Assistant. A device whose entity doesn't exist shows "Unavailable".

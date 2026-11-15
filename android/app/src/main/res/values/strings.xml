@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Calm TV</string>
+    <string name="service_name">Calm TV: Home button</string>
+    <string name="service_description">Opens Calm TV when you press the remote\'s Home button.</string>
+</resources>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TV app banner (320x180): a calm slate card with a TV outline and a soft horizon at dusk. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <!-- Card -->
+    <path android:fillColor="#1C2630" android:pathData="M0,0h320v180h-320z" />
+    <!-- TV screen outline -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeAlpha="0.85"
+        android:strokeWidth="5"
+        android:strokeLineJoin="round"
+        android:pathData="M104,46h112a8,8 0 0 1 8,8v66a8,8 0 0 1 -8,8h-112a8,8 0 0 1 -8,-8v-66a8,8 0 0 1 8,-8z" />
+    <!-- Stand -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeAlpha="0.85"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M138,142h44" />
+    <!-- Low sun -->
+    <path android:fillColor="#E8A33D" android:pathData="M148,104a12,12 0 1 1 24,0z" />
+    <!-- Horizon -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#E8A33D"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M116,104h88" />
+    <!-- Calm water lines -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeAlpha="0.45"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M136,114h48M148,121h24" />
+</vector>

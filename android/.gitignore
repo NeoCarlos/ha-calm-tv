@@ -1,0 +1,5 @@
+.gradle/
+build/
+local.properties
+# Built copy of the web app (npm run build:android)
+app/src/main/assets/web/

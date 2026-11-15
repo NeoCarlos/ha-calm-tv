@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Calm TV</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+    />
+  </head>
+  <body>
+    <div id="frame">
+      <div id="stage">
+        <!-- shared photo background, behind all sections -->
+        <div class="layer" id="photo"></div>
+        <div class="layer" id="photo2"></div>
+        <!-- looping video background (Settings → Background) -->
+        <video class="layer" id="video" muted loop playsinline disablepictureinpicture></video>
+        <div class="layer" id="grain"></div>
+        <div class="layer" id="shade"></div>
+        <div class="layer" id="scrim"></div>
+
+        <!-- vertical stack of sections; filled in by app.ts -->
+        <div id="sections"><div id="sectionsTrack"></div></div>
+
+        <p id="hint"><kbd>↑</kbd><kbd>↓</kbd> sections &middot; <kbd>←</kbd><kbd>→</kbd> move &middot; <kbd>Enter</kbd> select</p>
+
+        <div class="overlay" id="launch">
+          <div class="lcard">
+            <div class="lmark" id="launchMark"></div>
+            <div class="ltxt" id="launchTxt">Opening</div>
+            <div class="lbar"><i></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

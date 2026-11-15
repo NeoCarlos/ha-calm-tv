@@ -1,0 +1,310 @@
+{
+  "apps": [
+    {
+      "name": "YouTube",
+      "icon": "youtube",
+      "package": "com.google.android.youtube.tv"
+    },
+    {
+      "name": "Netflix",
+      "icon": "netflix",
+      "package": "com.netflix.ninja"
+    },
+    {
+      "name": "Prime Video",
+      "icon": "primevideo",
+      "package": "com.amazon.amazonvideo.livingroom"
+    },
+    {
+      "name": "Disney+",
+      "icon": "disneyplus",
+      "package": "com.disney.disneyplus"
+    },
+    {
+      "name": "Plex",
+      "icon": "plex",
+      "package": "com.plexapp.android"
+    },
+    {
+      "name": "Spotify",
+      "package": "com.spotify.tv.android"
+    }
+  ],
+  "weather": "weather.home",
+  "calendar": {
+    "events": "calendar.family",
+    "meals": "calendar.meal_plan"
+  },
+  "doorbell": {
+    "window": false,
+    "camera": "camera.front_door",
+    "ringing": "input_boolean.doorbell_ringing"
+  },
+  "rooms": [
+    {
+      "name": "Living room",
+      "icon": "couch",
+      "whenIdle": "All off · curtains closed",
+      "locks": [
+        "lock.front_door"
+      ],
+      "maintenance": "sensor.living_room_maintenance",
+      "groups": [
+        {
+          "title": "Lights",
+          "devices": [
+            {
+              "type": "light",
+              "entity": "light.living_room_floor_lamp",
+              "name": "Floor lamp"
+            },
+            {
+              "type": "light",
+              "entity": "light.living_room_ceiling",
+              "name": "Ceiling"
+            },
+            {
+              "type": "switch",
+              "entity": "switch.living_room_string_lights",
+              "name": "String lights"
+            }
+          ]
+        },
+        {
+          "title": "Curtains",
+          "devices": [
+            {
+              "type": "cover",
+              "entity": "cover.living_room_curtains",
+              "name": "Curtains",
+              "batteries": [
+                "sensor.living_room_curtains_battery"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Front door",
+          "devices": [
+            {
+              "type": "lock",
+              "entity": "lock.front_door",
+              "name": "Front door",
+              "batteries": [
+                "sensor.front_door_battery"
+              ],
+              "operator": "sensor.front_door_operator"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Kitchen",
+      "icon": "cutlery",
+      "locks": [
+        "lock.back_door"
+      ],
+      "vacuum": {
+        "label": "Vacuum",
+        "vacuum": "kitchen_vacuum",
+        "dock": "kitchen_vacuum_dock"
+      },
+      "groups": [
+        {
+          "title": "Kitchen",
+          "devices": [
+            {
+              "type": "climate",
+              "entity": "climate.thermostat",
+              "name": "Thermostat"
+            },
+            {
+              "type": "light",
+              "entity": "light.kitchen_main",
+              "name": "Main lights"
+            },
+            {
+              "type": "light",
+              "entity": "light.kitchen_under_cabinet",
+              "name": "Under cabinet"
+            }
+          ]
+        },
+        {
+          "title": "Back door",
+          "devices": [
+            {
+              "type": "lock",
+              "entity": "lock.back_door",
+              "name": "Back door"
+            },
+            {
+              "type": "camera",
+              "entity": "camera.back_door",
+              "name": "Back door camera"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Office",
+      "icon": "desk",
+      "groups": [
+        {
+          "title": "Office",
+          "devices": [
+            {
+              "type": "scene",
+              "entity": "select.office_scene",
+              "name": "Scene"
+            },
+            {
+              "type": "light",
+              "entity": "light.office_desk",
+              "name": "Desk lamp"
+            },
+            {
+              "type": "light",
+              "entity": "light.office_ceiling",
+              "name": "Ceiling"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bedroom",
+      "icon": "bed",
+      "groups": [
+        {
+          "title": "Lights",
+          "devices": [
+            {
+              "type": "scene",
+              "entity": "select.bedroom_scene",
+              "name": "Scene"
+            },
+            {
+              "type": "light",
+              "entity": "light.bedroom_ceiling",
+              "name": "Ceiling"
+            },
+            {
+              "type": "light",
+              "entity": "light.bedroom_left_lamp",
+              "name": "Left lamp"
+            },
+            {
+              "type": "light",
+              "entity": "light.bedroom_right_lamp",
+              "name": "Right lamp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Hallways",
+      "icon": "stairs",
+      "groups": [
+        {
+          "title": "Upstairs",
+          "devices": [
+            {
+              "type": "light",
+              "entity": "light.upstairs_hallway",
+              "name": "Hallway"
+            },
+            {
+              "type": "light",
+              "entity": "light.stairs",
+              "name": "Stairs"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Outside",
+      "icon": "house",
+      "whenIdle": "Garage closed",
+      "alert": {
+        "entity": "binary_sensor.garage_door",
+        "text": "Garage open"
+      },
+      "groups": [
+        {
+          "title": "Lights",
+          "devices": [
+            {
+              "type": "light",
+              "entity": "light.porch",
+              "name": "Porch"
+            },
+            {
+              "type": "light",
+              "entity": "light.driveway",
+              "name": "Driveway"
+            }
+          ]
+        },
+        {
+          "title": "Garage",
+          "devices": [
+            {
+              "type": "sensor",
+              "entity": "binary_sensor.garage_door",
+              "name": "Garage door"
+            },
+            {
+              "type": "sensor",
+              "entity": "sensor.garage_temperature",
+              "name": "Temperature"
+            },
+            {
+              "type": "sensor",
+              "entity": "binary_sensor.garage_occupancy",
+              "name": "Presence"
+            }
+          ]
+        },
+        {
+          "title": "Cameras",
+          "devices": [
+            {
+              "type": "camera",
+              "entity": "camera.front_door",
+              "name": "Doorbell"
+            },
+            {
+              "type": "camera",
+              "entity": "camera.driveway",
+              "name": "Driveway"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "display": {
+    "glass": "blur",
+    "videos": true
+  },
+  "backgrounds": {
+    "photos": [
+      {
+        "name": "Our beach",
+        "url": "/local/calm-tv/beach.jpg"
+      }
+    ],
+    "videos": [
+      {
+        "name": "Fireplace",
+        "url": "/local/calm-tv/fireplace.mp4",
+        "thumb": "/local/calm-tv/fireplace.jpg"
+      }
+    ]
+  }
+}

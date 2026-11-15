@@ -58,6 +58,7 @@ export class SmartHomeSection implements Section {
     this.subEl = s.querySelector('.therm-sub') as HTMLElement;
     this.outEl = s.querySelector('.therm-out') as HTMLElement;
     this.buildCards();
+
     return s;
   }
 
@@ -71,6 +72,7 @@ export class SmartHomeSection implements Section {
     this.track.appendChild(c);
     this.cards.push(c);
     this.statusEls.push(c.querySelector('.zstatus') as HTMLElement);
+
     return c;
   }
 
@@ -79,6 +81,7 @@ export class SmartHomeSection implements Section {
     this.cards = [];
     this.statusEls = [];
     this.signedOut = ha.status === 'signed-out';
+
     if (this.signedOut) this.card(0, KEY_ICON, 'Home Assistant');
     else if (!zones.length) this.card(0, KEY_ICON, 'No rooms set up');
     else zones.forEach((z, i) => this.card(i, z.icon, z.name));
@@ -95,6 +98,7 @@ export class SmartHomeSection implements Section {
     if ((ha.status === 'signed-out') !== this.signedOut) {
       const focused = this.cards.some((c) => c.classList.contains('is-focus'));
       this.buildCards();
+
       if (focused) this.focus(0);
     }
 
@@ -114,12 +118,16 @@ export class SmartHomeSection implements Section {
     if (this.signedOut) {
       this.cards[0].className = 'zone z-active' + (this.cards[0].classList.contains('is-focus') ? ' is-focus' : '');
       this.statusEls[0].textContent = 'Press OK to sign in';
+
       return;
     }
+
     if (!zones.length) {
       this.statusEls[0].textContent = 'Add rooms to calm-tv.json · see Settings';
+
       return;
     }
+
     zones.forEach((z, i) => {
       const card = this.cards[i];
       const { state, status } = ha.status === 'connected' ? summarize(z) : { state: 'idle' as const, status: '…' };
@@ -138,6 +146,7 @@ export class SmartHomeSection implements Section {
     const n = this.cards.length;
     const visible = Math.floor((ZSHELF + GAP) / ZPITCH);
     let tx: number;
+
     if (n <= visible) {
       const content = n * ZPITCH - GAP;
       tx = (ZSHELF - content) / 2;
@@ -145,15 +154,18 @@ export class SmartHomeSection implements Section {
       this.shelf.classList.remove('fade-r', 'fade-lr');
     } else {
       if (i < this.first) this.first = i;
+
       if (i > this.first + visible - 1) this.first = i - visible + 1;
       this.first = Math.max(0, Math.min(this.first, n - visible));
       tx = -this.first * ZPITCH;
       const canLeft = this.first > 0;
       const canRight = this.first + visible < n;
       this.shelf.classList.remove('fade-r', 'fade-lr');
+
       if (canLeft && canRight) this.shelf.classList.add('fade-lr');
       else if (canRight) this.shelf.classList.add('fade-r');
     }
+
     this.track.style.transform = `translateX(${tx}px)`;
     this.cards[i]?.classList.add('is-focus');
   }
@@ -163,8 +175,14 @@ export class SmartHomeSection implements Section {
   }
 
   activate(i: number): void {
-    if (this.signedOut) { this.onSignIn(); return; }
+    if (this.signedOut) {
+      this.onSignIn();
+
+      return;
+    }
+
     const z = zones[i];
+
     if (z) this.onOpenZone(z);
   }
 }

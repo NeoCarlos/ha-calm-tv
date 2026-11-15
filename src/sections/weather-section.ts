@@ -13,6 +13,7 @@ const wi = {
   rain: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15h10a4 4 0 0 0 .4-7.98A5.5 5.5 0 0 0 6.6 6.5 3.5 3.5 0 0 0 7 15z"/><path d="M8 18l-1 2.5M12 18l-1 2.5M16 18l-1 2.5"/></svg>`,
   snow: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15h10a4 4 0 0 0 .4-7.98A5.5 5.5 0 0 0 6.6 6.5 3.5 3.5 0 0 0 7 15z"/><path d="M8 19h.01M12 18h.01M16 19h.01M10 21.5h.01M14 21.5h.01"/></svg>`,
 };
+
 const moon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>`;
 
 type Icon = keyof typeof wi;
@@ -35,6 +36,7 @@ const CONDITIONS: Record<string, [Icon, string]> = {
   snowy: ['snow', 'Snow'],
   'snowy-rainy': ['snow', 'Sleet'],
 };
+
 const iconOf = (c?: string): Icon => CONDITIONS[c ?? '']?.[0] ?? 'cloud';
 export const conditionLabel = (c?: string): string => CONDITIONS[c ?? '']?.[1] ?? (c ? c[0].toUpperCase() + c.slice(1) : '');
 
@@ -43,22 +45,29 @@ const SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const hourLabel = (hour: number) => `${hour % 12 || 12}${hour < 12 ? 'AM' : 'PM'}`;
 const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
 /** A daily entry's calendar day. Open-Meteo stamps days at midnight UTC (4 PM the day before here), so read the date as written. */
 const dayOf = (f: ForecastEntry): Date => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(f.datetime);
+
   return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(f.datetime);
 };
+
 const localIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const HOURS_AHEAD = 8;
 
 /** Rain inside a bar: the chance if the forecast has one, otherwise the amount (inches). */
 function rainText(f: ForecastEntry): string {
   if (typeof f.precipitation_probability === 'number') return f.precipitation_probability >= 10 ? `${Math.round(f.precipitation_probability)}%` : '';
+
   if (typeof f.precipitation === 'number' && f.precipitation >= 0.01) return `${f.precipitation.toFixed(2).replace(/^0/, '')}″`;
+
   return '';
 }
+
 function rainShare(f: ForecastEntry): number {
   if (typeof f.precipitation_probability === 'number') return f.precipitation_probability / 100;
+
   return Math.min(1, (f.precipitation ?? 0) / 0.15); // 0.15″ in an hour is heavy rain
 }
 
@@ -87,7 +96,10 @@ export class WeatherSection implements Section {
     // Slide the hours window along as time passes; start a fresh Today after midnight.
     let day = new Date().getDate();
     window.setInterval(() => {
-      if (new Date().getDate() !== day) { day = new Date().getDate(); this.buildCards(); }
+      if (new Date().getDate() !== day) {
+        day = new Date().getDate();
+        this.buildCards();
+      }
       else this.renderHero();
     }, 60000);
   }
@@ -107,6 +119,7 @@ export class WeatherSection implements Section {
     this.shelf = s.querySelector('.gb-shelf') as HTMLElement;
     this.track = s.querySelector('.gb-track') as HTMLElement;
     this.renderHero();
+
     return s;
   }
 
@@ -123,6 +136,7 @@ export class WeatherSection implements Section {
   /** The weather entity's current condition and temperature (null when unknown). */
   setCurrent(c: { condition?: string; temperature?: number } | null): void {
     const next = c && typeof c.temperature === 'number' ? { datetime: new Date().toISOString(), condition: c.condition, temperature: c.temperature } : null;
+
     if (next?.condition === this.current?.condition && next?.temperature === this.current?.temperature) return;
     this.current = next;
     this.buildCards();
@@ -133,10 +147,12 @@ export class WeatherSection implements Section {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const days = this.rawDaily.filter((d) => dayOf(d) >= today).slice(0, 7);
+
     if ((!days[0] || !sameDay(dayOf(days[0]), today)) && this.current) {
       const temps = [this.current.temperature ?? 0, ...this.hourly.filter((h) => sameDay(new Date(h.datetime), now) && new Date(h.datetime) > now).map((h) => h.temperature ?? 0)];
       days.unshift({ datetime: localIso(today), condition: this.current.condition, temperature: Math.max(...temps), templow: Math.min(...temps) });
     }
+
     return days.slice(0, 7);
   }
 
@@ -159,12 +175,14 @@ export class WeatherSection implements Section {
       this.cards.push(c);
     });
     this.focused = Math.min(this.focused, Math.max(0, this.cards.length - 1));
+
     if (this.hasFocus) this.focus(this.focused);
     else { this.layout(this.focused); this.renderHero(); }
   }
 
   private renderHero(): void {
     const html = this.heroHtml();
+
     if (html === this.lastHero) return;
     this.lastHero = html;
     this.heroEl.innerHTML = html;
@@ -172,6 +190,7 @@ export class WeatherSection implements Section {
 
   private heroHtml(): string {
     const d = this.daily[this.focused];
+
     if (!d) return `<div class="wx-head">The forecast appears once Home Assistant is connected.</div>`;
     const date = dayOf(d);
     const now = new Date();
@@ -187,6 +206,7 @@ export class WeatherSection implements Section {
     // Today: now, then each of the next 8 hours (past midnight if need be).
     // Another day: 6 AM to 10 PM, every 2 hours.
     let hours: { f: ForecastEntry; now?: boolean }[];
+
     if (isToday) {
       const ahead = this.hourly.filter((h) => new Date(h.datetime).getTime() > now.getTime());
       const first = this.current ?? this.hourly.find((h) => new Date(h.datetime).getTime() > now.getTime() - 3600000);
@@ -198,10 +218,12 @@ export class WeatherSection implements Section {
       hours = this.hourly
         .filter((h) => {
           const t = new Date(h.datetime);
+
           return sameDay(t, date) && t.getHours() >= 6 && t.getHours() <= 22 && t.getHours() % 2 === 0;
         })
         .map((f) => ({ f }));
     }
+
     if (hours.length < 3) return head + `<div class="wx-none">No hourly forecast for this day yet</div>`;
 
     const cols = hours
@@ -215,9 +237,11 @@ export class WeatherSection implements Section {
         const rain = isNow ? '' : rainText(h);
         const rainH = rain ? Math.round(Math.max(26, Math.min(barH * 0.5, rainShare(h) * barH))) : 0;
         const label = isNow ? 'NOW' : hourLabel(hour);
+
         return `<div class="wx-col${isNow ? ' now' : ''}"><div class="wx-col-top"><div class="wx-col-ico">${icon}</div><div class="wx-col-bar" style="height:${barH}px">${rainH ? `<div class="wx-col-rain" style="height:${rainH}px">${rain}</div>` : ''}<div class="wx-col-temp">${temp}°</div></div></div><div class="wx-col-label">${label}</div></div>`;
       })
       .join('');
+
     return head + `<div class="wx-chart">${cols}</div>`;
   }
 
@@ -230,19 +254,23 @@ export class WeatherSection implements Section {
     const visible = Math.floor((WSHELF + WGAP) / WPITCH);
     let tx: number;
     this.shelf.classList.remove('fade-r', 'fade-lr');
+
     if (n <= visible) {
       tx = (WSHELF - (n * WPITCH - WGAP)) / 2;
       this.first = 0;
     } else {
       if (i < this.first) this.first = i;
+
       if (i > this.first + visible - 1) this.first = i - visible + 1;
       this.first = Math.max(0, Math.min(this.first, n - visible));
       tx = -this.first * WPITCH;
       const canLeft = this.first > 0;
       const canRight = this.first + visible < n;
+
       if (canLeft && canRight) this.shelf.classList.add('fade-lr');
       else if (canRight) this.shelf.classList.add('fade-r');
     }
+
     this.track.style.transform = `translateX(${tx}px)`;
   }
 

@@ -10,11 +10,13 @@ const modules = import.meta.glob('./wallpapers/*.{jpg,jpeg,png,webp,avif,svg}', 
 
 function prettyName(path: string): string {
   const file = path.split('/').pop() ?? path;
+
   const base = file
     .replace(/\.[^.]+$/, '') // extension
     .replace(/^\d+[-_\s]*/, '') // leading sort digits e.g. "01-"
     .replace(/[-_]+/g, ' ')
     .trim();
+
   return base ? base.replace(/\b\w/g, (c) => c.toUpperCase()) : file;
 }
 

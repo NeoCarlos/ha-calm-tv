@@ -14,11 +14,14 @@ function devToken(): Plugin {
       if (process.env.CT_DEV_TOKEN !== '1') return;
       server.middlewares.use('/__dev-token', (req, res) => {
         const ip = req.socket.remoteAddress ?? '';
+
         if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(ip)) {
           res.statusCode = 403;
           res.end();
+
           return;
         }
+
         res.setHeader('Cache-Control', 'no-store');
         res.end(readFileSync(join(homedir(), '.config/homeassistant/token'), 'utf8').trim());
       });

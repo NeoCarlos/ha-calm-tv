@@ -31,25 +31,33 @@ export function showSetup(opts: { canCancel: boolean }): void {
     document.removeEventListener('keydown', onKey, true);
     el.remove();
   };
+
   // Capture phase: the screens behind never see these keys while this is open.
   const onKey = (e: KeyboardEvent) => {
     e.stopPropagation();
+
     if (e.key === 'Enter') {
       e.preventDefault();
       const url = saveHaUrl(input.value);
+
       if (!url) {
         msg.textContent = 'That doesn’t look like an address. Example: http://192.168.1.20:8123';
+
         return;
       }
+
       msg.textContent = `Saved ${url} · opening Home Assistant’s sign-in…`;
+
       // Straight on to signing in after the reload, so setup is one step.
       try { sessionStorage.setItem(SIGN_IN_NEXT, '1'); } catch { /* storage off: sign in from Settings */ }
+
       location.reload();
     } else if ((e.key === 'Escape' || (e.key === 'Backspace' && !input.value)) && opts.canCancel) {
       e.preventDefault();
       close();
     }
   };
+
   document.addEventListener('keydown', onKey, true);
   input.focus();
   input.setSelectionRange(input.value.length, input.value.length);

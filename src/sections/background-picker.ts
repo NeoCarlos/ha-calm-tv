@@ -46,12 +46,14 @@ export class BackgroundPicker {
 
     let x = 0;
     let lastKind = '';
+
     for (const opt of this.options) {
       if (opt.kind !== lastKind) {
         if (lastKind) x += GROUP_GAP - TILE_GAP;
         this.track.insertAdjacentHTML('beforeend', `<div class="bgpick-group" style="left:${x}px">${opt.kind === 'video' ? 'Videos' : 'Photos'}</div>`);
         lastKind = opt.kind;
       }
+
       const el = document.createElement('div');
       el.className = 'bgpick-tile';
       el.style.left = `${x}px`;
@@ -86,15 +88,37 @@ export class BackgroundPicker {
 
   handleKey(e: KeyboardEvent): void {
     const k = e.key;
-    if (k === 'Escape' || k === 'Backspace') { e.preventDefault(); this.close(); return; }
-    if (k === 'Enter' || k === ' ') { e.preventDefault(); this.pick(); return; }
-    if (k === 'ArrowLeft') { e.preventDefault(); this.focus = Math.max(0, this.focus - 1); this.render(); }
-    else if (k === 'ArrowRight') { e.preventDefault(); this.focus = Math.min(this.tiles.length - 1, this.focus + 1); this.render(); }
+
+    if (k === 'Escape' || k === 'Backspace') {
+      e.preventDefault();
+      this.close();
+
+      return;
+    }
+
+    if (k === 'Enter' || k === ' ') {
+      e.preventDefault();
+      this.pick();
+
+      return;
+    }
+
+    if (k === 'ArrowLeft') {
+      e.preventDefault();
+      this.focus = Math.max(0, this.focus - 1);
+      this.render();
+    }
+    else if (k === 'ArrowRight') {
+      e.preventDefault();
+      this.focus = Math.min(this.tiles.length - 1, this.focus + 1);
+      this.render();
+    }
     else if (k.startsWith('Arrow')) e.preventDefault();
   }
 
   private pick(): void {
     const t = this.tiles[this.focus];
+
     if (!t) return;
     this.choose({ kind: t.opt.kind, index: t.opt.index });
     this.render();
@@ -108,13 +132,17 @@ export class BackgroundPicker {
     });
     const t = this.tiles[this.focus];
     const total = this.tiles.length ? this.tiles[this.tiles.length - 1].x + TILE_W : 0;
+
     if (total <= SHELF_W) this.offset = -(SHELF_W - total) / 2;
     else if (t) {
       if (this.offset < 0) this.offset = 0;
+
       if (t.x - this.offset < EDGE) this.offset = t.x - EDGE;
+
       if (t.x + TILE_W - this.offset > SHELF_W - EDGE) this.offset = t.x + TILE_W - SHELF_W + EDGE;
       this.offset = Math.max(0, Math.min(this.offset, total - SHELF_W));
     }
+
     this.track.style.transform = `translateX(${-this.offset}px)`;
   }
 }

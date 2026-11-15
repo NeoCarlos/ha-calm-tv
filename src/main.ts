@@ -20,19 +20,27 @@ async function main(): Promise<void> {
 
   if (new URLSearchParams(location.search).has('doorbell')) {
     startDoorbellOnly();
+
     return;
   }
+
   new CalmTv().start();
+
   if (!settings.haUrl) {
     showSetup({ canCancel: false });
+
     return;
   }
+
   // Just set up (or changed) the address: go straight to Home Assistant's sign-in, unless the
   // saved sign-in already works for it.
   let next = false;
+
   try { next = !!sessionStorage.getItem(SIGN_IN_NEXT); sessionStorage.removeItem(SIGN_IN_NEXT); } catch { /* ignore */ }
+
   if (next) {
     const go = () => { if (ha.status === 'signed-out') { next = false; void ha.signIn(); } };
+
     ha.onStatus(() => { if (next) go(); });
     go();
   }

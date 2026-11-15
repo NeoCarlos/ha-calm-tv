@@ -23,7 +23,9 @@ const videosAllowed = () => settings.config.display?.videos !== false;
 
 function qs<T extends Element = HTMLElement>(sel: string): T {
   const el = document.querySelector(sel);
+
   if (!el) throw new Error(`Missing element: ${sel}`);
+
   return el as unknown as T;
 }
 
@@ -54,11 +56,13 @@ export class CalmTv {
       () => ({ kind: this.bgMode, index: this.bgMode === 'video' ? this.vid : this.wp }),
       (c) => this.chooseBackground(c),
     );
+
     const bg: BackgroundControls = {
       mode: () => this.bgMode,
       name: () => (this.bgMode === 'video' ? videos[this.vid]?.name ?? '' : wallpapers[this.wp].name),
       openPicker: () => this.picker.show(),
     };
+
     this.settings = new SettingsPanel(qs('#stage'), bg);
     const appsSection = new AppsSection(0, (a) => (a.kind === 'settings' ? this.settings.show() : this.openLaunch(a)));
     this.detail = new ZoneDetail(qs('#stage'), () => this.home.refresh());
@@ -85,13 +89,17 @@ export class CalmTv {
   // ---------- Home Assistant ----------
   private connectHomeAssistant(weather: WeatherSection): void {
     let ringing: boolean | undefined;
+
     const update = () => {
       // Doorbell: act when "Doorbell ringing" turns on (not if it was already on when we connected).
       // Calm TV's own doorbell window is off unless calm-tv.json turns it on: Google TV
       // already shows its own alert for Nest doorbells.
       const r = ha.entities[doorbellRinging()]?.state === 'on';
+
       if (doorbellEnabled() && ringing === false && r) this.ring();
+
       if (ringing && !r) this.doorbell.hide();
+
       if (ha.status === 'connected' && ha.entities[doorbellRinging()]) ringing = r;
       applyStates(ha.entities);
       const w = ha.entities[WEATHER];
@@ -103,10 +111,12 @@ export class CalmTv {
       weather.setCurrent(w ? { condition: w.state, temperature: w.attributes.temperature as number | undefined } : null);
       this.detail.refresh();
     };
+
     ha.onEntities(update);
     ha.onStatus(() => {
       this.home.refresh();
       this.settings.refresh();
+
       // The Smart Home bar swaps between rooms and the sign-in card: keep focus valid.
       if (this.secIndex === 1) this.render();
     });
@@ -116,6 +126,7 @@ export class CalmTv {
     ha.onConnected((conn) => {
       if (subscribed.has(conn)) return;
       subscribed.add(conn);
+
       const sub = (forecast_type: 'daily' | 'hourly', fn: (f: ForecastEntry[]) => void) =>
         conn
           .subscribeMessage<{ forecast: ForecastEntry[] | null }>((m) => fn(m.forecast ?? []), {
@@ -124,6 +135,7 @@ export class CalmTv {
             forecast_type,
           })
           .catch((e) => console.warn('Forecast subscribe failed', forecast_type, e));
+
       sub('daily', (f) => weather.setDaily(f));
       sub('hourly', (f) => weather.setHourly(f));
     });
@@ -144,10 +156,12 @@ export class CalmTv {
     // Sections cross-fade (see .section.is-active in style.css).
     this.sections.forEach((s, i) => {
       s.el.classList.toggle('is-active', i === this.secIndex);
+
       if (i !== this.secIndex) s.blur();
     });
     const s = this.sections[this.secIndex];
     const n = s.count();
+
     if (n > 0) {
       this.cols[this.secIndex] = Math.max(0, Math.min(this.cols[this.secIndex], n - 1));
       s.focus(this.cols[this.secIndex]);
@@ -156,6 +170,7 @@ export class CalmTv {
 
   private moveV(d: number): void {
     const ni = Math.max(0, Math.min(this.secIndex + d, this.sections.length - 1));
+
     if (ni === this.secIndex) return;
     this.secIndex = ni;
     this.render();
@@ -166,6 +181,7 @@ export class CalmTv {
   private moveH(d: number): void {
     const s = this.sections[this.secIndex];
     const n = s.count();
+
     if (n <= 0) return;
     this.cols[this.secIndex] = Math.max(0, Math.min(this.cols[this.secIndex] + d, n - 1));
     s.focus(this.cols[this.secIndex]);
@@ -174,6 +190,7 @@ export class CalmTv {
 
   private activate(): void {
     const s = this.sections[this.secIndex];
+
     if (s.count() > 0) s.activate(this.cols[this.secIndex]);
     this.hideHint();
   }
@@ -215,8 +232,10 @@ export class CalmTv {
   private videoUrl = '';
   private get vid(): number {
     const byName = videos.findIndex((v) => v.name === this.persist.vidName);
+
     if (byName >= 0) return byName;
     const n = this.persist.vid;
+
     return n >= 0 && n < videos.length ? n : 0;
   }
   /** Photo or video behind everything. The photo stays underneath, so it shows while a clip loads. */
@@ -224,6 +243,7 @@ export class CalmTv {
   private bgMode: 'photo' | 'video' = 'photo';
   private setBackground(mode: 'photo' | 'video'): void {
     if (mode === 'video' && !videos.length) mode = 'photo';
+
     // Videos turned off in calm-tv.json: show a photo, but keep the saved choice for when they're back.
     if (mode === 'video' && !videosAllowed()) {
       mode = 'photo';
@@ -231,15 +251,18 @@ export class CalmTv {
       this.persist.bg = mode;
       save(this.persist);
     }
+
     this.bgMode = mode;
     document.documentElement.classList.toggle('bg-video', mode === 'video');
     const v = qs<HTMLVideoElement>('#video');
+
     if (mode === 'video') void this.playVideo(this.vid);
     else {
       v.pause();
       v.classList.remove('ready');
       v.removeAttribute('src');
       v.load();
+
       if (this.videoUrl) URL.revokeObjectURL(this.videoUrl);
       this.videoUrl = '';
     }
@@ -251,21 +274,27 @@ export class CalmTv {
   private async playVideo(i: number): Promise<void> {
     const clip = videos[i];
     const v = qs<HTMLVideoElement>('#video');
+
     if (!clip) return;
+
     try {
       // Clips on another server (Home Assistant's www folder) can't be read into memory (CORS),
       // so those play straight from their address.
       let src = clip.url;
+
       if (new URL(clip.url, location.href).origin === location.origin) {
         const blob = await (await fetch(clip.url)).blob();
+
         if (this.bgMode !== 'video' || this.vid !== i) return; // changed while loading
         src = URL.createObjectURL(blob);
       }
+
       if (this.videoUrl) URL.revokeObjectURL(this.videoUrl);
       this.videoUrl = src.startsWith('blob:') ? src : '';
       v.classList.remove('ready');
       v.src = src;
       v.addEventListener('playing', () => v.classList.add('ready'), { once: true });
+
       if (!document.hidden) await v.play();
     } catch (e) {
       console.warn('Video background failed', clip.name, e);
@@ -274,7 +303,9 @@ export class CalmTv {
   /** Only play while Calm TV is on screen. */
   private pauseVideo(paused: boolean): void {
     const v = qs<HTMLVideoElement>('#video');
+
     if (this.bgMode !== 'video' || !v.src) return;
+
     if (paused) v.pause();
     else void v.play().catch(() => {});
   }
@@ -283,6 +314,7 @@ export class CalmTv {
   }
   private get wp(): number {
     const n = this.persist.wp;
+
     return n >= 0 && n < wallpapers.length ? n : 0;
   }
   /** From the background picker: a clip or a photo. */
@@ -291,9 +323,11 @@ export class CalmTv {
       const changed = this.bgMode !== 'video' || this.vid !== c.index;
       this.persist.vid = c.index;
       this.persist.vidName = videos[c.index]?.name ?? '';
+
       if (changed) this.setBackground('video');
     } else {
       if (c.index !== this.wp) this.showPhoto(c.index);
+
       if (this.bgMode !== 'photo') this.setBackground('photo');
     }
   }
@@ -313,6 +347,7 @@ export class CalmTv {
     outgoing.style.opacity = '0';
     this.setBarImages(css);
     this.frontA = !this.frontA;
+
     return wallpapers[n].name;
   }
 
@@ -320,23 +355,48 @@ export class CalmTv {
   private wireInput(): void {
     document.addEventListener('keydown', (e) => {
       const k = e.key;
+
       // A held-down OK repeats; only the first press counts, everywhere.
-      if (e.repeat && (k === 'Enter' || k === ' ')) { e.preventDefault(); return; }
+      if (e.repeat && (k === 'Enter' || k === ' ')) {
+        e.preventDefault();
+
+        return;
+      }
+
       if (this.doorbell.isOpen() && (k === 'Escape' || k === 'Backspace')) {
         e.preventDefault();
         this.doorbell.hide();
+
         return;
       }
-      if (this.picker.isOpen()) { this.picker.handleKey(e); return; }
-      if (this.settings.isOpen()) { this.settings.handleKey(e); return; }
-      if (this.detail.isOpen()) { this.detail.handleKey(e); return; }
+
+      if (this.picker.isOpen()) {
+        this.picker.handleKey(e);
+
+        return;
+      }
+
+      if (this.settings.isOpen()) {
+        this.settings.handleKey(e);
+
+        return;
+      }
+
+      if (this.detail.isOpen()) {
+        this.detail.handleKey(e);
+
+        return;
+      }
+
       if (this.overlay === 'launch') {
         if (k === 'Escape' || k === 'Backspace') {
           e.preventDefault();
           this.closeLaunch();
         } else if (k.startsWith('Arrow')) e.preventDefault();
+
         return;
       }
+
       switch (k) {
         case 'ArrowUp': e.preventDefault(); this.moveV(-1); break;
         case 'ArrowDown': e.preventDefault(); this.moveV(1); break;
@@ -353,18 +413,22 @@ export class CalmTv {
     const sections = qs('#sections');
     sections.addEventListener('mouseover', (e) => {
       const el = (e.target as HTMLElement).closest('[data-item]') as HTMLElement | null;
+
       if (!el) return;
       const sec = Number(el.dataset.sec);
       const it = Number(el.dataset.item);
+
       if (sec !== this.secIndex) return;
       this.cols[sec] = it;
       this.sections[sec].focus(it);
     });
     sections.addEventListener('click', (e) => {
       const el = (e.target as HTMLElement).closest('[data-item]') as HTMLElement | null;
+
       if (!el) return;
       const sec = Number(el.dataset.sec);
       const it = Number(el.dataset.item);
+
       if (sec !== this.secIndex) return;
       this.cols[sec] = it;
       this.sections[sec].focus(it);
@@ -377,10 +441,12 @@ export class CalmTv {
 
     // From the TV app: Home pressed (back to the app dock), and returning from another app.
     window.addEventListener('ct-home', () => this.goHome());
+
     // Dev only: try the doorbell window without anyone ringing.
     if (import.meta.env.DEV) {
       Object.assign(window, { ctRing: () => this.ring(), ctRingEnd: () => this.doorbell.hide() });
     }
+
     window.addEventListener('ct-resume', () => { this.closeLaunch(); this.pauseVideo(false); });
     window.addEventListener('ct-pause', () => this.pauseVideo(true));
     document.addEventListener('visibilitychange', () => {
@@ -392,9 +458,12 @@ export class CalmTv {
   /** Home button: close anything open and return to the app dock. */
   private goHome(): void {
     if (this.picker.isOpen()) this.picker.close();
+
     if (this.settings.isOpen()) this.settings.close();
+
     if (this.detail.isOpen()) this.detail.close();
     this.closeLaunch();
+
     if (this.secIndex !== 0) {
       this.secIndex = 0;
       this.render();

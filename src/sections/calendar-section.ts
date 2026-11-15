@@ -49,7 +49,9 @@ interface Item {
 /** "2026-11-14" as local midnight; full timestamps as they are. */
 function parseWhen(s: string): { d: Date; allDay: boolean } {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+
   if (m) return { d: new Date(+m[1], +m[2] - 1, +m[3]), allDay: true };
+
   return { d: new Date(s), allDay: false };
 }
 
@@ -68,6 +70,7 @@ function daysFrom(from: Date, d: Date): number {
 /** 1st, 2nd, 3rd, 4th … 11th, 12th, 13th … 21st. */
 function ordinal(n: number): string {
   const s = n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
+
   return `${n}${s}`;
 }
 
@@ -75,28 +78,36 @@ function ordinal(n: number): string {
 function shortTime(d: Date): string {
   const h = d.getHours();
   const m = d.getMinutes();
+
   return `${h % 12 || 12}${m ? ':' + String(m).padStart(2, '0') : ''}${h < 12 ? 'a' : 'p'}`;
 }
 
 /** The last day an event covers (all-day ends are exclusive). */
 function lastDay(e: Ev): Date {
   if (e.allDay) return addDays(e.end, -1);
+
   if (e.startOnly || e.end <= e.start) return midnight(e.start);
+
   return midnight(new Date(e.end.getTime() - 1));
 }
 
 /** The small time beside an event in its day column: "5:30p", "All day", "to Wed", "now". */
 function rowTime(e: Ev, day: Date, now: Date): string {
   const last = lastDay(e);
+
   if (daysFrom(day, last) > 0) return `to ${daysFrom(now, last) < 7 ? DOW[last.getDay()] : `${MON[last.getMonth()].slice(0, 3)} ${last.getDate()}`}`;
+
   if (e.allDay) return 'All day';
+
   if (!e.startOnly && e.start <= now && e.end > now) return 'now';
+
   return shortTime(e.start);
 }
 
 function toEv(h: HaEvent): Ev {
   const s = parseWhen(h.start);
   const e = parseWhen(h.end);
+
   return {
     start: s.d,
     end: e.d,
@@ -147,6 +158,7 @@ export class CalendarSection implements Section {
     window.setInterval(() => void this.load(), REFRESH_MS);
     // Keep the date and the "Today/Tomorrow" wording right as time passes.
     window.setInterval(() => this.paint(), 60000);
+
     // Dev on the Mac only: show sample events without the HA calendars, e.g. ctCalendar([...], 'Tacos').
     if (import.meta.env.DEV) {
       (window as unknown as Record<string, unknown>).ctCalendar = (evs: HaEvent[], dinner = '') => {
@@ -191,6 +203,7 @@ export class CalendarSection implements Section {
     this.monthName = s.querySelector('.cal-mname') as HTMLElement;
     this.gridEl = s.querySelector('.cal-grid') as HTMLElement;
     this.paint();
+
     return s;
   }
 
@@ -198,30 +211,40 @@ export class CalendarSection implements Section {
   private calendars(): { events?: string; meals?: string } {
     const ids = Object.keys(ha.entities).filter((id) => id.startsWith('calendar.'));
     const set = settings.config.calendar;
+
     if (set) return { events: set.events, meals: set.meals };
     const events = ids.find((id) => id.includes('event') && !id.includes('meal'));
     const meals = ids.find((id) => id.includes('meal'));
+
     return { events, meals };
   }
 
   private async load(): Promise<void> {
     const conn = ha.connection;
+
     if (!conn || this.loading) return;
+
     if (!Object.keys(ha.entities).length) return; // states not in yet; onEntities tries again
     const { events, meals } = this.calendars();
+
     if (!events && !meals) {
       this.loaded = true;
       this.paint();
+
       return;
     }
+
     this.loading = true;
+
     try {
       const now = new Date();
       const today = midnight(now);
+
       const [ev, ml] = await Promise.all([
         events ? this.fetch(conn, events, today, addDays(today, DAYS_AHEAD)) : Promise.resolve([]),
         meals ? this.fetch(conn, meals, today, addDays(today, 1)) : Promise.resolve([]),
       ]);
+
       this.events = ev
         .map(toEv)
         .filter((e) => (e.startOnly ? midnight(e.start) >= today : e.end > now))
@@ -235,6 +258,7 @@ export class CalendarSection implements Section {
     } finally {
       this.loading = false;
     }
+
     this.paint();
   }
 
@@ -247,6 +271,7 @@ export class CalendarSection implements Section {
       target: { entity_id: entity },
       return_response: true,
     });
+
     return r.response?.[entity]?.events ?? [];
   }
 
@@ -268,18 +293,22 @@ export class CalendarSection implements Section {
     this.track.textContent = '';
     this.items = [];
     const byDay = new Map<number, Ev[]>();
+
     for (const e of shown) {
       const d = midnight(e.start) < today ? today : midnight(e.start);
       const list = byDay.get(d.getTime()) ?? [];
       list.push(e);
       byDay.set(d.getTime(), list);
     }
+
     let x = 0;
     let firstGroup = true;
+
     for (const [t, evs] of byDay) {
       const day = new Date(t);
       const cols = Math.ceil(evs.length / PER_COL);
       const w = cols * COL_W + (cols - 1) * COL_GAP;
+
       if (!firstGroup) this.track.insertAdjacentHTML('beforeend', `<div class="cal-sep" style="left:${x - COL_GAP / 2}px"></div>`);
       firstGroup = false;
       const n = daysFrom(today, day);
@@ -299,6 +328,7 @@ export class CalendarSection implements Section {
       });
       x += w + COL_GAP;
     }
+
     this.trackW = Math.max(0, x - COL_GAP);
     this.emptyEl.textContent = connected && this.loaded && !shown.length ? 'Nothing in the next two weeks' : '';
 
@@ -314,14 +344,17 @@ export class CalendarSection implements Section {
     // Show the focused event's month (it may be next month), otherwise this one.
     const ref = it ? it.day : today;
     const key = `${ref.getFullYear()}-${ref.getMonth()}`;
+
     if (key !== this.gridMonth) {
       this.gridMonth = key;
       this.monthName.textContent = MON[ref.getMonth()];
       this.gridEl.innerHTML = 'SMTWTFS'.split('').map((c) => `<div class="cal-wk">${c}</div>`).join('');
       this.cells.clear();
       const first = new Date(ref.getFullYear(), ref.getMonth(), 1);
+
       for (let i = 0; i < first.getDay(); i++) this.gridEl.insertAdjacentHTML('beforeend', '<div class="cal-d"></div>');
       const len = new Date(ref.getFullYear(), ref.getMonth() + 1, 0).getDate();
+
       for (let d = 1; d <= len; d++) {
         const c = document.createElement('div');
         c.className = 'cal-d';
@@ -330,29 +363,42 @@ export class CalendarSection implements Section {
         this.cells.set(new Date(ref.getFullYear(), ref.getMonth(), d).getTime(), c);
       }
     }
+
     const busy = new Set<number>();
+
     for (const e of shown) {
       for (let d = midnight(e.start) < today ? today : midnight(e.start); d <= lastDay(e); d = addDays(d, 1)) busy.add(d.getTime());
     }
+
     const span = new Set<number>();
     let single = -1;
+
     if (it) {
       const from = midnight(it.ev.start);
       const to = lastDay(it.ev);
+
       if (to > from) for (let d = from; d <= to; d = addDays(d, 1)) span.add(d.getTime());
       else single = from.getTime();
     }
+
     for (const [t, c] of this.cells) {
       const d = new Date(t);
       const inSpan = span.has(t);
       c.className = 'cal-d';
+
       if (t < today.getTime()) c.classList.add('past');
+
       if (t === today.getTime()) c.classList.add('is-today');
+
       if (busy.has(t)) c.classList.add('has');
+
       if (t === single) c.classList.add('hit');
+
       if (inSpan) {
         c.classList.add('span');
+
         if (!span.has(addDays(d, -1).getTime()) || d.getDay() === 0) c.classList.add('s0');
+
         if (!span.has(addDays(d, 1).getTime()) || d.getDay() === 6) c.classList.add('s1');
       }
     }
@@ -366,21 +412,28 @@ export class CalendarSection implements Section {
   private layout(): void {
     this.items.forEach((it, i) => it.el.classList.toggle('is-focus', i === this.focused));
     const it = this.items[this.focused];
+
     if (this.trackW <= SHELF_W) {
       this.offset = -(SHELF_W - this.trackW) / 2; // centered when it all fits
     } else {
       if (this.offset < 0) this.offset = 0;
+
       if (it) {
         if (it.x - this.offset < 0) this.offset = it.x;
+
         if (it.x + COL_W - this.offset > SHELF_W - EDGE) this.offset = it.x + COL_W - SHELF_W + EDGE;
       }
+
       this.offset = Math.max(0, Math.min(this.offset, this.trackW - SHELF_W + EDGE));
     }
+
     this.track.style.transform = `translateX(${-this.offset}px)`;
     this.shelf.classList.remove('fade-r', 'fade-lr');
+
     if (this.trackW > SHELF_W) {
       const canLeft = this.offset > 0;
       const canRight = this.offset + SHELF_W < this.trackW;
+
       if (canLeft && canRight) this.shelf.classList.add('fade-lr');
       else if (canRight) this.shelf.classList.add('fade-r');
     }

@@ -8,6 +8,7 @@ import { settings } from './config';
 
 const doorbellCamera = () => settings.config.doorbell?.camera ?? '';
 export const doorbellRinging = () => settings.config.doorbell?.ringing ?? '';
+
 /** True when calm-tv.json turns the doorbell window on and names its camera and switch. */
 export const doorbellEnabled = () => !!(settings.config.doorbell?.window && doorbellCamera() && doorbellRinging());
 
@@ -46,7 +47,13 @@ export class DoorbellWindow {
     this.video.addEventListener('playing', () => { this.msg.hidden = true; }, { once: true });
     const fail = (m: string) => { if (this.shown) { this.msg.hidden = false; this.msg.textContent = m; } };
     const conn = ha.connection;
-    if (!conn) { fail('Someone rang · not connected to Home Assistant'); return; }
+
+    if (!conn) {
+      fail('Someone rang · not connected to Home Assistant');
+
+      return;
+    }
+
     playCamera(conn, doorbellCamera(), this.video, (m) => fail(`Camera error: ${m}`))
       .then((s) => { if (this.shown) this.stream = s; else s.stop(); })
       .catch(() => fail('Someone rang · camera didn’t start'));
@@ -72,14 +79,17 @@ export class DoorbellWindow {
 export function startDoorbellOnly(): void {
   document.documentElement.classList.add('dbell-only');
   const win = new DoorbellWindow(document.body);
+
   const close = () => {
     win.hide();
     window.CalmTvDoorbell?.close();
   };
+
   let sawRinging = false;
   ha.onConnected(() => win.show());
   ha.onEntities(() => {
     const on = ha.entities[doorbellRinging()]?.state === 'on';
+
     if (on) sawRinging = true;
     else if (sawRinging) close();
   });

@@ -7,6 +7,7 @@ interface ClientConfig {
   configuration: RTCConfiguration;
   dataChannel?: string;
 }
+
 type OfferEvent =
   | { type: 'session'; session_id: string }
   | { type: 'answer'; answer: string }
@@ -30,6 +31,7 @@ export async function playCamera(
   // Nest wants audio, video, then a data channel, in that order.
   pc.addTransceiver('audio', { direction: 'recvonly' });
   pc.addTransceiver('video', { direction: 'recvonly' });
+
   if (cfg.dataChannel) pc.createDataChannel(cfg.dataChannel);
 
   const stream = new MediaStream();
@@ -41,13 +43,16 @@ export async function playCamera(
 
   let sessionId: string | null = null;
   const early: RTCIceCandidateInit[] = [];
+
   const sendCandidate = (c: RTCIceCandidateInit) =>
     conn
       .sendMessagePromise({ type: 'camera/webrtc/candidate', entity_id: entityId, session_id: sessionId, candidate: c })
       .catch(() => {});
+
   pc.onicecandidate = (e) => {
     if (!e.candidate) return;
     const c = e.candidate.toJSON();
+
     if (sessionId) sendCandidate(c);
     else early.push(c);
   };
@@ -57,6 +62,7 @@ export async function playCamera(
   unsub = await conn.subscribeMessage<OfferEvent>(
     async (ev) => {
       if (stopped) return;
+
       if (ev.type === 'session') {
         sessionId = ev.session_id;
         early.splice(0).forEach(sendCandidate);

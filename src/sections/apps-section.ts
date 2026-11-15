@@ -56,6 +56,7 @@ export class AppsSection implements Section {
       this.track.appendChild(t);
       this.tiles.push(t);
     });
+
     return s;
   }
 
@@ -68,6 +69,7 @@ export class AppsSection implements Section {
     const n = this.tiles.length;
     const visible = Math.floor((SHELF_W + GAP) / PITCH);
     let tx: number;
+
     if (n <= visible) {
       // everything fits: center the row, no scrolling
       const content = n * PITCH - GAP;
@@ -76,15 +78,18 @@ export class AppsSection implements Section {
       this.shelf.classList.remove('fade-r', 'fade-lr');
     } else {
       if (i < this.first) this.first = i;
+
       if (i > this.first + visible - 1) this.first = i - visible + 1;
       this.first = Math.max(0, Math.min(this.first, n - visible));
       tx = -this.first * PITCH;
       const canLeft = this.first > 0;
       const canRight = this.first + visible < n;
       this.shelf.classList.remove('fade-r', 'fade-lr');
+
       if (canLeft && canRight) this.shelf.classList.add('fade-lr');
       else if (canRight) this.shelf.classList.add('fade-r');
     }
+
     this.track.style.transform = `translateX(${tx}px)`;
     this.tiles[i]?.classList.add('is-focus');
   }
@@ -95,6 +100,7 @@ export class AppsSection implements Section {
 
   activate(i: number): void {
     const a = apps[i];
+
     if (a) this.onLaunch(a);
   }
 
@@ -105,10 +111,12 @@ export class AppsSection implements Section {
     const mm = (m < 10 ? '0' : '') + m;
     this.clockEl.textContent = `${h % 12 || 12}:${mm}`;
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
     const mon = [
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December',
     ];
+
     this.dateEl.textContent = `${days[d.getDay()]}, ${mon[d.getMonth()]} ${d.getDate()}`;
   }
 }

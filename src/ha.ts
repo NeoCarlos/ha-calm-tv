@@ -35,12 +35,14 @@ function loadTokens(): AuthData | null {
   try {
     const raw = localStorage.getItem(TOKENS_KEY);
     const data = raw ? (JSON.parse(raw) as AuthData) : null;
+
     // Tokens belong to one Home Assistant: forget them if the address was changed.
     return data && data.hassUrl === settings.haUrl ? data : null;
   } catch {
     return null;
   }
 }
+
 function saveTokens(data: AuthData | null): void {
   try {
     if (data) localStorage.setItem(TOKENS_KEY, JSON.stringify(data));
@@ -72,6 +74,7 @@ class HomeAssistant {
   /** Runs each time a connection is (re)established, e.g. to (re)subscribe to forecasts. */
   onConnected(fn: (c: Connection) => void): void {
     this.connectedListeners.push(fn);
+
     if (this.conn && this.status === 'connected') fn(this.conn);
   }
 
@@ -80,23 +83,30 @@ class HomeAssistant {
     // Dev on the Mac only (see vite.config.ts): connect with the dev token when the server offers one.
     if (import.meta.env.DEV && new URLSearchParams(location.search).has('devtoken')) {
       const r = await fetch('/__dev-token').catch(() => null);
+
       if (r?.ok) {
         this.auth = createLongLivedTokenAuth(haUrl(), await r.text());
         await this.connect();
+
         return;
       }
     }
+
     const callback = new URLSearchParams(location.search).has('auth_callback');
+
     if (!haUrl() || (!callback && !loadTokens())) {
       this.setStatus('signed-out');
+
       return;
     }
+
     await this.connect();
   }
 
   /** Opens Home Assistant's sign-in page; it returns to Calm TV when done. */
   async signIn(): Promise<void> {
     saveTokens(null);
+
     if (!haUrl()) return;
     await getAuth({ hassUrl: haUrl(), limitHassInstance: true, saveTokens, loadTokens: async () => null });
   }
@@ -107,11 +117,13 @@ class HomeAssistant {
     this.teardown();
     saveTokens(null);
     this.setStatus('signed-out');
+
     try { await auth?.revoke(); } catch { /* offline: the tokens are forgotten here anyway */ }
   }
 
   async call(domain: string, service: string, data: Record<string, unknown>): Promise<void> {
     if (!this.conn) return;
+
     try {
       await callService(this.conn, domain, service, data);
     } catch (e) {
@@ -132,8 +144,10 @@ class HomeAssistant {
   private async connect(): Promise<void> {
     clearTimeout(this.retryTimer);
     this.setStatus('connecting');
+
     try {
       this.auth ??= await getAuth({ hassUrl: haUrl(), limitHassInstance: true, saveTokens, loadTokens: async () => loadTokens() });
+
       // Drop ?auth_callback=1&code=... from the address so a reload doesn't reuse the code.
       if (location.search.includes('auth_callback')) history.replaceState(null, '', location.pathname);
       const conn = await createConnection({ auth: this.auth });
@@ -155,7 +169,9 @@ class HomeAssistant {
         .catch(() => {});
     } catch (err) {
       const badCallback = location.search.includes('auth_callback');
+
       if (badCallback) history.replaceState(null, '', location.pathname);
+
       if (err === ERR_INVALID_AUTH || badCallback) {
         if (badCallback) console.warn('[CalmTV] Home Assistant sign-in callback failed', err);
         this.lostAuth();

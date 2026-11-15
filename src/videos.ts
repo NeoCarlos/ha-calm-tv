@@ -14,6 +14,7 @@ export interface Clip {
 function prettyName(path: string): string {
   const file = path.split('/').pop() ?? path;
   const base = file.replace(/\.[^.]+$/, '').replace(/^\d+[-_\s]*/, '').replace(/[-_]+/g, ' ').trim();
+
   return base ? base.replace(/\b\w/g, (c) => c.toUpperCase()) : file;
 }
 

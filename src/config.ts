@@ -85,6 +85,7 @@ export const settings = {
 /** Home Assistant's address: set on the TV (Settings or adb), or VITE_HA_URL / the saved one in a browser. */
 function readHaUrl(): string {
   if (native?.getHaUrl) return native.getHaUrl();
+
   try {
     return import.meta.env.VITE_HA_URL || localStorage.getItem(HA_URL_KEY) || '';
   } catch {
@@ -96,12 +97,17 @@ function readHaUrl(): string {
 export function saveHaUrl(raw: string): string {
   if (native?.setHaUrl) return native.setHaUrl(raw);
   let s = raw.trim();
+
   if (!s) return '';
+
   if (!s.includes('://')) s = `http://${s}`;
+
   try {
     const u = new URL(s);
+
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
     localStorage.setItem(HA_URL_KEY, u.origin);
+
     return u.origin;
   } catch {
     return '';
@@ -113,30 +119,37 @@ function validate(c: unknown): CalmTvConfig {
   if (!c || typeof c !== 'object' || Array.isArray(c)) throw new Error('it should be a JSON object { … }');
   const cfg = c as CalmTvConfig;
   const glass = cfg.display?.glass;
+
   if (glass !== undefined && glass !== 'blur' && glass !== 'tint') throw new Error(`"display": "glass" should be "blur" or "tint", not "${glass}"`);
   const vids = cfg.display?.videos;
+
   if (vids !== undefined && typeof vids !== 'boolean') throw new Error(`"display": "videos" should be true or false`);
   (cfg.rooms ?? []).forEach((r, i) => {
     if (!r?.name) throw new Error(`room ${i + 1} has no "name"`);
+
     if (!Array.isArray(r.groups)) throw new Error(`room "${r.name}" needs "groups": [ … ]`);
     r.groups.forEach((g) =>
       (g.devices ?? []).forEach((d) => {
         if (!d?.entity) throw new Error(`a device in "${r.name}" has no "entity"`);
+
         if (!DEVICE_TYPES.includes(d.type)) throw new Error(`"${d.entity}" has type "${d.type}"; use one of ${DEVICE_TYPES.join(', ')}`);
       }),
     );
   });
+
   return cfg;
 }
 
 async function fetchProjectFile(): Promise<string> {
   try {
     const r = await fetch('calm-tv.json', { cache: 'no-store' });
+
     // The dev server answers unknown paths with the page itself; only take real JSON.
     if (r.ok && (r.headers.get('content-type') ?? '').includes('json')) return await r.text();
   } catch {
     /* not there */
   }
+
   return '';
 }
 
@@ -145,6 +158,7 @@ export async function loadConfig(): Promise<void> {
   settings.haUrl = readHaUrl();
   let text = '';
   let source = '';
+
   if (native?.loadConfig) {
     try {
       const r = JSON.parse(native.loadConfig()) as { source?: string; text?: string; error?: string };
@@ -157,6 +171,7 @@ export async function loadConfig(): Promise<void> {
   } else {
     text = await fetchProjectFile();
     source = text ? 'this project folder' : '';
+
     if (!text) settings.error = 'no calm-tv.json in the project folder';
   }
 
@@ -165,15 +180,19 @@ export async function loadConfig(): Promise<void> {
       settings.config = validate(JSON.parse(text));
       settings.source = source;
       settings.error = '';
+
       try { localStorage.setItem(CACHE_KEY, text); } catch { /* storage full or off */ }
+
       return;
     } catch (e) {
       settings.error = `calm-tv.json from ${source}: ${(e as Error).message}`;
     }
   }
+
   // Fall back to the last copy that worked.
   try {
     const cached = localStorage.getItem(CACHE_KEY);
+
     if (cached) {
       settings.config = validate(JSON.parse(cached));
       settings.source = 'last saved copy';

@@ -31,6 +31,7 @@ function room(r: RoomConfig): Zone {
   const all = groups.flatMap((g) => g.devices);
   // A room's locks are the same rows as in its groups when listed there (so they share live state).
   const locks = (r.locks ?? []).map((id) => all.find((d) => d.entity === id) ?? device({ type: 'lock', entity: id }));
+
   return {
     name: r.name,
     icon: ICONS[r.icon ?? 'house'] ?? zi.house,
@@ -45,6 +46,7 @@ function room(r: RoomConfig): Zone {
 
 /** The rooms in the Smart Home bar (empty until calm-tv.json lists some). */
 export let zones: Zone[] = [];
+
 /** Weather entity (Open-Meteo recommended: ~7 days of hourly forecast). */
 export let WEATHER = 'weather.home';
 
@@ -63,16 +65,20 @@ const num = (s?: HassEntity) => (s && !isNaN(parseFloat(s.state)) ? Math.round(p
 
 function minBattery(ents: HassEntities, ids: string[] = []): number | undefined {
   const levels = ids.map((id) => num(ents[id])).filter((n): n is number => n !== undefined);
+
   return levels.length ? Math.min(...levels) : undefined;
 }
 
 function applyDevice(d: Device, ents: HassEntities): void {
   const s = ents[d.entity];
   d.unavailable = !s || s.state === 'unavailable';
+
   if (!s || d.unavailable) {
     d.status = 'Unavailable';
+
     return;
   }
+
   const a = s.attributes;
   const held = (d.holdUntil ?? 0) > Date.now();
   const battery = minBattery(ents, d.batteries);
@@ -82,13 +88,17 @@ function applyDevice(d: Device, ents: HassEntities): void {
     case 'light': {
       const modes = a.supported_color_modes as string[] | undefined;
       d.dimmable = !!modes && !(modes.length === 1 && modes[0] === 'onoff');
+
       if (!held) {
         d.on = s.state === 'on';
+
         if (typeof a.brightness === 'number') d.brightness = Math.max(1, Math.round((a.brightness / 255) * 100));
       }
+
       d.status = d.on ? (d.dimmable && d.brightness ? `On · ${d.brightness}%` : 'On') : '';
       break;
     }
+
     case 'switch':
       if (!held) d.on = s.state === 'on';
       d.status = '';
@@ -106,6 +116,7 @@ function applyDevice(d: Device, ents: HassEntities): void {
       d.status = cap(s.state) + how + batteryText + (keypad !== undefined ? ` · keypad ${keypad}%` : '');
       break;
     }
+
     case 'camera':
       d.on = s.state === 'streaming';
       d.picture = a.entity_picture as string | undefined;
@@ -115,18 +126,24 @@ function applyDevice(d: Device, ents: HassEntities): void {
       d.current = typeof a.current_temperature === 'number' ? Math.round(a.current_temperature) : undefined;
       d.minTemp = a.min_temp as number | undefined;
       d.maxTemp = a.max_temp as number | undefined;
+
       if (!held) {
         d.mode = s.state;
         d.setpoint = typeof a.temperature === 'number' ? Math.round(a.temperature) : undefined;
       }
+
       const lo = a.target_temp_low, hi = a.target_temp_high;
+
       const target =
         d.setpoint !== undefined ? `${d.setpoint}°` : typeof lo === 'number' && typeof hi === 'number' ? `${Math.round(lo)}–${Math.round(hi)}°` : '';
+
       d.status = [target, cap(d.mode === 'heat_cool' ? 'heat/cool' : d.mode)].filter(Boolean).join(' · ');
       break;
     }
+
     case 'scene':
       d.options = (a.options as string[] | undefined) ?? [];
+
       if (!EMPTY.includes(s.state.toLowerCase())) d.picked = s.state;
       d.status = d.picked ?? 'Choose a scene';
       break;
@@ -139,6 +156,7 @@ function applyDevice(d: Device, ents: HassEntities): void {
         const unit = (a.unit_of_measurement as string | undefined) ?? '';
         d.status = `${num(s) ?? s.state}${unit.startsWith('°') ? '°' : unit ? ` ${unit}` : ''}`;
       }
+
       break;
   }
 }
@@ -147,29 +165,40 @@ function applyDevice(d: Device, ents: HassEntities): void {
 function vacuumProblems(ents: HassEntities, v: NonNullable<Zone['vacuum']>): string[] {
   const on = (id: string) => ents[id]?.state === 'on';
   const out: string[] = [];
+
   if (on(`binary_sensor.${v.vac}_water_shortage`) || on(`binary_sensor.${v.dock}_clean_water_box`)) out.push('needs water');
+
   if (on(`binary_sensor.${v.dock}_dirty_water_box`)) out.push('empty dirty water');
+
   if (on(`binary_sensor.${v.dock}_cleaning_fluid`)) out.push('needs cleaning fluid');
   const vErr = ents[`sensor.${v.vac}_vacuum_error`]?.state;
+
   if (vErr && !EMPTY.includes(vErr)) out.push(vErr.replace(/_/g, ' '));
   const dErr = ents[`sensor.${v.dock}_dock_error`]?.state;
+
   if (dErr && !['ok', 'unknown', 'unavailable'].includes(dErr)) out.push(`dock: ${dErr.replace(/_/g, ' ')}`);
+
   return out;
 }
 
 /** Copy Home Assistant's latest states into every room and device. */
 export function applyStates(ents: HassEntities): void {
   const now = Date.now();
+
   for (const z of zones) {
     z.groups.forEach((g) => g.devices.forEach((d) => applyDevice(d, ents)));
 
     const urgent: string[] = [];
+
     for (const l of z.locks ?? []) {
       const s = ents[l.entity];
+
       if (s?.state === 'unlocked' && now - Date.parse(s.last_changed) > UNLOCKED_MINUTES * 60000) urgent.push(`${l.name} unlocked`);
     }
+
     if (z.openAlert && ents[z.openAlert.entity]?.state === 'on') urgent.unshift(z.openAlert.text);
     z.footer = undefined;
+
     if (z.vacuum) {
       const v = z.vacuum;
       const problems = vacuumProblems(ents, v);
@@ -180,6 +209,7 @@ export function applyStates(ents: HassEntities): void {
         .filter(Boolean)
         .join(' · ');
     }
+
     z.urgent = urgent.length ? urgent.join(' · ') : undefined;
     const mt = z.maint ? ents[z.maint]?.state : undefined;
     z.maintText = mt && !EMPTY.includes(mt) ? mt : undefined;
@@ -189,14 +219,19 @@ export function applyStates(ents: HassEntities): void {
 /** The bar's summary line and color: urgent first, then maintenance, then what's on. */
 export function summarize(zone: Zone): { state: ZoneState; status: string } {
   if (zone.urgent) return { state: 'warn', status: zone.urgent };
+
   if (zone.maintText) return { state: 'warn', status: zone.maintText };
   const devices = zone.groups.flatMap((g) => g.devices);
   const lights = devices.filter((d) => (d.type === 'light' || d.type === 'switch') && d.on).length;
   const windows = devices.filter((d) => d.type === 'cover' && d.on).length;
   const bits: string[] = [];
+
   if (lights) bits.push(`${lights} light${lights > 1 ? 's' : ''} on`);
+
   if (windows) bits.push(`${windows} window${windows > 1 ? 's' : ''} open`);
+
   if (bits.length) return { state: 'active', status: bits.join(' · ') };
+
   return { state: 'idle', status: zone.idle ?? 'All off' };
 }
 
@@ -205,8 +240,10 @@ export function primaryClimate(): Device | undefined {
   for (const z of zones) {
     for (const g of z.groups) {
       const c = g.devices.find((d) => d.type === 'climate');
+
       if (c) return c;
     }
   }
+
   return undefined;
 }

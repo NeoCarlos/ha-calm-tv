@@ -33,8 +33,10 @@ export const native: CalmTvNative | undefined = window.CalmTvNative;
 /** Package names of installed TV apps, or null when not running on the TV. */
 export function installedPackages(): Set<string> | null {
   if (!native) return null;
+
   try {
     const list = JSON.parse(native.apps()) as { pkg: string }[];
+
     return new Set(list.map((a) => a.pkg));
   } catch {
     return null;

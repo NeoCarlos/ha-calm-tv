@@ -5,6 +5,7 @@ import { playCamera, type CameraStream } from '../camera-stream';
 
 const wrap = (inner: string) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+
 const BULB = `<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.5.4.9 1 1 1.7l.1.5h5l.1-.5c.1-.7.5-1.3 1-1.7A6 6 0 0 0 12 3z"/>`;
 const POWER = `<path d="M12 3v8"/><path d="M7.5 7a7 7 0 1 0 9 0"/>`;
 const SLASH = `<path d="M4.5 4.5l15 15"/>`;
@@ -34,6 +35,7 @@ function deviceIcon(d: Device): string {
 
 function rowClass(d: Device): string {
   if (d.unavailable) return 'd-off';
+
   switch (d.type) {
     case 'light':
     case 'switch':
@@ -49,10 +51,12 @@ function rowClass(d: Device): string {
 
 function hasControl(d: Device): boolean {
   if (d.unavailable) return false;
+
   return (d.type === 'scene' && !!d.options?.length) || (d.type === 'climate' && d.setpoint !== undefined) || d.type === 'camera' || (d.type === 'light' && !!d.dimmable);
 }
 
 const domainOf = (d: Device) => d.entity.split('.')[0];
+
 /** Keep the value you just set on screen for this long, while HA catches up. */
 const HOLD_MS = 4000;
 
@@ -158,7 +162,9 @@ export class ZoneDetail {
     this.paintFooter();
     this.render();
     const d = this.controlDevice;
+
     if (d?.type === 'light') this.updateLightControl();
+
     if (d?.type === 'climate') this.updateClimateControl();
   }
 
@@ -182,6 +188,7 @@ export class ZoneDetail {
   private render(): void {
     this.closeEl.classList.toggle('focus', this.focus.onClose);
     this.colEls.forEach((col) => col.forEach((el) => el.classList.remove('focus')));
+
     if (!this.focus.onClose) {
       const col = this.colEls[this.focus.col] ?? [];
       this.focus.row = Math.max(0, Math.min(this.focus.row, col.length - 1));
@@ -193,33 +200,71 @@ export class ZoneDetail {
   handleKey(e: KeyboardEvent): void {
     if (this.controlDevice) {
       this.controlKey(e);
+
       return;
     }
+
     const k = e.key;
-    if (k === 'Escape' || k === 'Backspace') { e.preventDefault(); this.close(); return; }
-    if (k === 'Enter' || k === ' ') { e.preventDefault(); this.activate(); return; }
+
+    if (k === 'Escape' || k === 'Backspace') {
+      e.preventDefault();
+      this.close();
+
+      return;
+    }
+
+    if (k === 'Enter' || k === ' ') {
+      e.preventDefault();
+      this.activate();
+
+      return;
+    }
+
     if (!k.startsWith('Arrow')) return;
     e.preventDefault();
     const f = this.focus;
+
     if (f.onClose) {
-      if (k === 'ArrowDown') { f.onClose = false; f.row = 0; }
+      if (k === 'ArrowDown') {
+        f.onClose = false;
+        f.row = 0;
+      }
     } else if (k === 'ArrowUp') {
       if (f.row > 0) f.row--; else f.onClose = true;
     } else if (k === 'ArrowDown') {
       if (f.row < this.colEls[f.col].length - 1) f.row++;
     } else if (k === 'ArrowLeft') {
-      if (f.col > 0) { f.col--; f.row = Math.min(f.row, this.colEls[f.col].length - 1); }
+      if (f.col > 0) {
+        f.col--;
+        f.row = Math.min(f.row, this.colEls[f.col].length - 1);
+      }
     } else if (k === 'ArrowRight') {
-      if (f.col < this.colEls.length - 1) { f.col++; f.row = Math.min(f.row, this.colEls[f.col].length - 1); }
+      if (f.col < this.colEls.length - 1) {
+        f.col++;
+        f.row = Math.min(f.row, this.colEls[f.col].length - 1);
+      }
     }
+
     this.render();
   }
 
   private activate(): void {
-    if (this.focus.onClose) { this.close(); return; }
+    if (this.focus.onClose) {
+      this.close();
+
+      return;
+    }
+
     const d = this.columns[this.focus.col]?.[this.focus.row];
+
     if (!d || d.unavailable) return;
-    if (hasControl(d)) { this.openControl(d); return; }
+
+    if (hasControl(d)) {
+      this.openControl(d);
+
+      return;
+    }
+
     // Locks and sensors are status only.
     if (d.type === 'light' || d.type === 'switch') {
       d.on = !d.on;
@@ -232,6 +277,7 @@ export class ZoneDetail {
     } else {
       return;
     }
+
     if (d.type !== 'cover') d.status = d.on ? 'On' : '';
     this.paintRow(this.colEls[this.focus.col][this.focus.row], d);
     this.render();
@@ -256,13 +302,16 @@ export class ZoneDetail {
     this.controlEl.hidden = true;
     this.controlEl.innerHTML = '';
     const d2 = this.columns[this.focus.col]?.[this.focus.row];
+
     if (d2 === d) this.paintRow(this.colEls[this.focus.col][this.focus.row], d);
     this.render();
   }
 
   private renderControl(): void {
     const d = this.controlDevice;
+
     if (!d) return;
+
     if (d.type === 'climate') {
       this.controlEl.innerHTML = `
         <div class="ctl-card ctl-climate">
@@ -312,9 +361,16 @@ export class ZoneDetail {
     const video = this.controlEl.querySelector('.cam-img') as HTMLVideoElement;
     const msg = this.controlEl.querySelector('.cam-msg') as HTMLElement;
     const fail = (m: string) => { if (this.controlDevice === d) msg.textContent = m; };
+
     video.addEventListener('playing', () => msg.remove(), { once: true });
     const conn = ha.connection;
-    if (!conn) { fail('Not connected to Home Assistant'); return; }
+
+    if (!conn) {
+      fail('Not connected to Home Assistant');
+
+      return;
+    }
+
     playCamera(conn, d.entity, video, (m) => fail(`Camera error: ${m}`))
       .then((s) => {
         if (this.controlDevice === d) this.camera = s;
@@ -337,6 +393,7 @@ export class ZoneDetail {
   private pickScene(): void {
     const d = this.controlDevice;
     const option = d?.options?.[this.sceneIndex];
+
     if (!d || !option) return;
     d.picked = option;
     d.status = option;
@@ -346,27 +403,35 @@ export class ZoneDetail {
 
   private updateClimateControl(): void {
     const d = this.controlDevice;
+
     if (!d) return;
     const set = this.controlEl.querySelector('.ctl-set');
     const sub = this.controlEl.querySelector('.ctl-sub');
+
     if (set) set.textContent = String(d.setpoint ?? '--');
+
     if (sub) sub.textContent = [cap(d.mode), d.current !== undefined ? `${d.current}° inside now` : ''].filter(Boolean).join(' · ');
   }
 
   private updateLightControl(): void {
     const d = this.controlDevice;
+
     if (!d) return;
     const state = this.controlEl.querySelector('.ctl-state');
     const fill = this.controlEl.querySelector('.ctl-fill') as HTMLElement | null;
     const card = this.controlEl.querySelector('.ctl-card');
+
     if (state) state.textContent = d.on ? `On · ${d.brightness ?? 100}%` : 'Off';
+
     if (fill) fill.style.width = `${d.on ? d.brightness ?? 100 : 0}%`;
+
     if (card) card.classList.toggle('is-on', !!d.on);
   }
 
   /** Send the latest value once the arrows stop for a moment, instead of on every press. */
   private queueSend(delay: number): void {
     const d = this.controlDevice;
+
     if (!d) return;
     d.holdUntil = Date.now() + delay + HOLD_MS;
     clearTimeout(this.sendTimer);
@@ -382,14 +447,34 @@ export class ZoneDetail {
 
   private controlKey(e: KeyboardEvent): void {
     const d = this.controlDevice;
+
     if (!d) return;
     const k = e.key;
-    if (k === 'Escape' || k === 'Backspace') { e.preventDefault(); this.closeControl(); return; }
+
+    if (k === 'Escape' || k === 'Backspace') {
+      e.preventDefault();
+      this.closeControl();
+
+      return;
+    }
+
     if (d.type === 'climate') {
       const lo = d.minTemp ?? 50, hi = d.maxTemp ?? 90;
-      if (k === 'ArrowUp' || k === 'ArrowRight') { e.preventDefault(); d.setpoint = Math.min(hi, (d.setpoint ?? 68) + 1); }
-      else if (k === 'ArrowDown' || k === 'ArrowLeft') { e.preventDefault(); d.setpoint = Math.max(lo, (d.setpoint ?? 68) - 1); }
-      else if (k === 'Enter') { e.preventDefault(); this.closeControl(); return; }
+
+      if (k === 'ArrowUp' || k === 'ArrowRight') {
+        e.preventDefault();
+        d.setpoint = Math.min(hi, (d.setpoint ?? 68) + 1);
+      }
+      else if (k === 'ArrowDown' || k === 'ArrowLeft') {
+        e.preventDefault();
+        d.setpoint = Math.max(lo, (d.setpoint ?? 68) - 1);
+      }
+      else if (k === 'Enter') {
+        e.preventDefault();
+        this.closeControl();
+
+        return;
+      }
       else return;
       const temperature = d.setpoint;
       this.pending = () => ha.call('climate', 'set_temperature', { entity_id: d.entity, temperature });
@@ -398,19 +483,56 @@ export class ZoneDetail {
       this.updateClimateControl();
     } else if (d.type === 'scene') {
       const n = d.options?.length ?? 0;
-      if (k === 'ArrowUp' || k === 'ArrowLeft') { e.preventDefault(); this.sceneIndex = Math.max(0, this.sceneIndex - 1); this.updateSceneControl(); }
-      else if (k === 'ArrowDown' || k === 'ArrowRight') { e.preventDefault(); this.sceneIndex = Math.min(n - 1, this.sceneIndex + 1); this.updateSceneControl(); }
-      else if (k === 'Enter' || k === ' ') { e.preventDefault(); this.pickScene(); }
+
+      if (k === 'ArrowUp' || k === 'ArrowLeft') {
+        e.preventDefault();
+        this.sceneIndex = Math.max(0, this.sceneIndex - 1);
+        this.updateSceneControl();
+      }
+      else if (k === 'ArrowDown' || k === 'ArrowRight') {
+        e.preventDefault();
+        this.sceneIndex = Math.min(n - 1, this.sceneIndex + 1);
+        this.updateSceneControl();
+      }
+      else if (k === 'Enter' || k === ' ') {
+        e.preventDefault();
+        this.pickScene();
+      }
     } else if (d.type === 'camera') {
-      if (k === 'Enter') { e.preventDefault(); this.closeControl(); }
+      if (k === 'Enter') {
+        e.preventDefault();
+        this.closeControl();
+      }
     } else {
       // dimmable light
       let toggle = false;
-      if (k === 'ArrowRight') { e.preventDefault(); d.brightness = Math.min(100, (d.on ? d.brightness ?? 0 : 0) + 10); d.on = true; }
-      else if (k === 'ArrowLeft') { e.preventDefault(); d.brightness = Math.max(0, (d.brightness ?? 0) - 10); d.on = d.brightness > 0; if (!d.on) d.brightness = 10; }
-      else if (k === 'ArrowUp') { e.preventDefault(); d.on = true; d.brightness = Math.max(d.brightness ?? 0, 10); }
-      else if (k === 'ArrowDown') { e.preventDefault(); d.on = false; }
-      else if (k === 'Enter') { e.preventDefault(); d.on = !d.on; toggle = true; }
+
+      if (k === 'ArrowRight') {
+        e.preventDefault();
+        d.brightness = Math.min(100, (d.on ? d.brightness ?? 0 : 0) + 10);
+        d.on = true;
+      }
+      else if (k === 'ArrowLeft') {
+        e.preventDefault();
+        d.brightness = Math.max(0, (d.brightness ?? 0) - 10);
+        d.on = d.brightness > 0;
+
+        if (!d.on) d.brightness = 10;
+      }
+      else if (k === 'ArrowUp') {
+        e.preventDefault();
+        d.on = true;
+        d.brightness = Math.max(d.brightness ?? 0, 10);
+      }
+      else if (k === 'ArrowDown') {
+        e.preventDefault();
+        d.on = false;
+      }
+      else if (k === 'Enter') {
+        e.preventDefault();
+        d.on = !d.on;
+        toggle = true;
+      }
       else return;
       const on = d.on, pct = d.brightness ?? 100;
       this.pending = () =>

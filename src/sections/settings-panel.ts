@@ -7,6 +7,7 @@ import { showSetup } from '../setup';
 // Line icons, matching the room panels' style.
 const line = (d: string) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+
 const ICONS = {
   google: line('<path d="M4 11l8-6 8 6"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/>'),
   tv: line('<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>'),
@@ -72,7 +73,13 @@ export class SettingsPanel {
           : ha.status === 'offline' ? 'Can’t reach Home Assistant · trying again'
           : `Connected${ha.userName ? ` as ${ha.userName}` : ''}`,
         run: () => {
-          if (ha.status === 'signed-out') { this.close(); ha.signIn(); return; }
+          if (ha.status === 'signed-out') {
+            this.close();
+            ha.signIn();
+
+            return;
+          }
+
           // Signing out takes two presses, so a stray OK can't do it.
           if (!this.confirmSignOut) {
             this.confirmSignOut = true;
@@ -82,6 +89,7 @@ export class SettingsPanel {
             this.confirmSignOut = false;
             ha.signOut();
           }
+
           this.paint();
         },
       },
@@ -99,8 +107,10 @@ export class SettingsPanel {
         name: 'Home setup (calm-tv.json)',
         status: () => {
           const rooms = `${zones.length} room${zones.length === 1 ? '' : 's'}`;
+
           if (!settings.source) return `Not found${settings.error ? ` (${settings.error})` : ''} · OK to look again`;
           const from = settings.source === 'last saved copy' ? 'Using the last saved copy' : `From ${settings.source}`;
+
           return `${from} · ${rooms}${settings.error ? ` · newest copy has a problem: ${settings.error}` : ''} · OK to reload`;
         },
         run: () => location.reload(),
@@ -177,16 +187,39 @@ export class SettingsPanel {
 
   handleKey(e: KeyboardEvent): void {
     const k = e.key;
-    if (k === 'Escape' || k === 'Backspace') { e.preventDefault(); this.close(); return; }
-    if (k === 'Enter' || k === ' ') {
+
+    if (k === 'Escape' || k === 'Backspace') {
       e.preventDefault();
-      if (e.repeat || Date.now() - this.openedAt < 400) return;
-      if (this.focus < 0) this.close(); else this.rows[this.focus].run();
+      this.close();
+
       return;
     }
-    if (this.confirmSignOut && k.startsWith('Arrow')) { this.confirmSignOut = false; this.paint(); }
-    if (k === 'ArrowUp') { e.preventDefault(); this.focus = Math.max(-1, this.focus - 1); this.render(); }
-    else if (k === 'ArrowDown') { e.preventDefault(); this.focus = Math.min(this.rows.length - 1, this.focus + 1); this.render(); }
+
+    if (k === 'Enter' || k === ' ') {
+      e.preventDefault();
+
+      if (e.repeat || Date.now() - this.openedAt < 400) return;
+
+      if (this.focus < 0) this.close(); else this.rows[this.focus].run();
+
+      return;
+    }
+
+    if (this.confirmSignOut && k.startsWith('Arrow')) {
+      this.confirmSignOut = false;
+      this.paint();
+    }
+
+    if (k === 'ArrowUp') {
+      e.preventDefault();
+      this.focus = Math.max(-1, this.focus - 1);
+      this.render();
+    }
+    else if (k === 'ArrowDown') {
+      e.preventDefault();
+      this.focus = Math.min(this.rows.length - 1, this.focus + 1);
+      this.render();
+    }
     else if (k.startsWith('Arrow')) e.preventDefault();
   }
 

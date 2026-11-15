@@ -18,8 +18,10 @@ const defaults: Persist = { wp: 0, setpoint: 66, bg: 'photo', vid: 0, vidName: '
 export function load(): Persist {
   try {
     const raw = localStorage.getItem(KEY);
+
     if (raw) {
       const p = JSON.parse(raw) as Partial<Persist>;
+
       return {
         wp: typeof p.wp === 'number' ? p.wp : defaults.wp,
         setpoint: typeof p.setpoint === 'number' ? p.setpoint : defaults.setpoint,
@@ -31,6 +33,7 @@ export function load(): Persist {
   } catch {
     /* ignore */
   }
+
   return { ...defaults };
 }
 

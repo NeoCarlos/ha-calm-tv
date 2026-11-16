@@ -60,6 +60,16 @@ of rain.
 
 ![Stepping from today through the week, from sunny days into two rainy ones, with the hourly bars changing each time](docs/images/demo-weather.webp)
 
+### Music
+
+An optional Music tile in the dock opens what's playing, with play/pause, skip and volume, and your
+speakers. Browse your library by artist, album or playlist and play it on any speaker, or group
+speakers to play together. Made for [Music Assistant](https://music-assistant.io), through Home
+Assistant's own media players. Contributed by [autokey-git](https://github.com/autokey-git); see
+[doorbell-and-music.md](docs/doorbell-and-music.md) to set it up.
+
+![Opening Music from the dock, playing the Sunday Morning playlist on the living room speaker, then adding the kitchen speaker to play along](docs/images/demo-music.webp)
+
 ### Make it yours
 
 Photos or slow looping videos behind everything, with the bars frosted over them. Add your own, or
@@ -104,7 +114,7 @@ npm run dev
 
 Open [localhost:5173/?demo](http://localhost:5173/?demo) to try the whole app against a made-up
 home (the same as the [live demo](https://neocarlos.github.io/ha-calm-tv/)): no Home Assistant needed. Its lights, scenes, curtains and thermostat respond, the cameras play
-a clip, and the calendar and weather are filled with sample days. Use the arrow keys, Enter and
+a clip, the speakers play made-up albums, and the calendar and weather are filled with sample days. Use the arrow keys, Enter and
 Escape, or the mouse.
 
 To see your own home, copy `config/calm-tv.example.json` to `calm-tv.json`, fill in your entities,

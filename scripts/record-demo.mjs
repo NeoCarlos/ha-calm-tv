@@ -95,6 +95,28 @@ const SCENES = {
       ['ArrowRight', 1100], ['ArrowRight', 1100], ['ArrowRight', 1100], ['ArrowRight', 1100], ['ArrowRight', 1800],
     ],
   },
+  // The dock's Music tile (just left of Settings) → a playlist → Play all, then a second speaker
+  // joins the group.
+  music: {
+    background: 'Stylized Forest Brook',
+    setup: [['ArrowRight', 200], ['ArrowRight', 200], ['ArrowRight', 200], ['ArrowRight', 200], ['ArrowRight', 200], ['ArrowRight', 200], ['ArrowRight', 1500]],
+    steps: [
+      [null, 800],
+      ['Enter', 1800],
+      ['ArrowDown', 600], ['ArrowDown', 900],
+      ['ArrowRight', 500], ['ArrowRight', 500], ['ArrowRight', 900],
+      ['Enter', 1600],
+      ['Enter', 1600],
+      ['Enter', 2200],
+      ['Escape', 900], ['Escape', 1000],
+      ['ArrowUp', 600], ['ArrowLeft', 800],
+      ['ArrowRight', 400], ['ArrowRight', 400], ['ArrowRight', 400], ['ArrowRight', 900],
+      ['Enter', 1300],
+      ['Enter', 2200],
+      ['Escape', 1800],
+      ['Escape', 1500],
+    ],
+  },
   backgrounds: {
     background: 'Mountain Lake Sunset',
     video: true,

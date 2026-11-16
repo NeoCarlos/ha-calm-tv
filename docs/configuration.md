@@ -137,6 +137,29 @@ never connects, the quick picture stays.
 While the window is over another app, **Back** closes it (and doesn't reach the app underneath).
 It also closes by itself when `ringing` turns off.
 
+### `music`: the Music panel
+
+```json
+{
+  "players": [
+    { "name": "Living room", "entity": "media_player.living_room" },
+    { "name": "Kitchen", "entity": "media_player.kitchen" }
+  ]
+}
+```
+
+With `music` in the file, a **Music** tile appears at the end of the dock, next to Settings (or wherever an `apps` entry
+`{ "name": "Music", "open": "music" }` puts it). It opens a panel with what the chosen speaker is
+playing (art, title, progress), play/pause, previous/next, volume and grouping, the speakers, and
+a row of library buttons (Artists, Albums, Tracks, Playlists, Radio, Podcasts, Audiobooks). Each button opens a grid you can browse
+into (an artist's albums, an album's tracks, with "Play all") and play from, on the chosen speaker. Made for **Music Assistant**, but it only uses Home
+Assistant's media player services and media browser, so other players work too.
+
+- `players`: the speakers, in order. Leave it out to list every Music Assistant player.
+- `library`: which of the media browser's top folders get a button, by exact name, in this order.
+  Default `["Artists", "Albums", "Tracks", "Playlists", "Radio", "Podcasts", "Audiobooks"]` (Music
+  Assistant's), so Home Assistant's other media sources (cameras, text-to-speech…) stay out.
+
 ### `rooms`: the Smart Home bar, in order
 
 ```jsonc

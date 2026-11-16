@@ -9,6 +9,8 @@ import type { CalendarEvent, CalendarResponse, ForecastEntry, ForecastMessage } 
 import { videos } from './videos';
 import { wallpapers } from './wallpapers';
 import { showRemote } from './demo-remote';
+import artA from './wallpapers/00-mountain-lake-sunset.jpg?url';
+import artB from './wallpapers/01-stylized-forest-brook.jpg?url';
 
 /**
  * Demo mode (index.html?demo): the whole app against a made-up home, with no Home Assistant.
@@ -56,6 +58,17 @@ interface DemoAttributes {
   min_temp?: number;
   max_temp?: number;
   options?: string[];
+  // Media players (the Music panel)
+  media_title?: string;
+  media_artist?: string;
+  media_album_name?: string;
+  media_duration?: number;
+  media_position?: number;
+  media_position_updated_at?: string;
+  volume_level?: number;
+  entity_picture?: string;
+  mass_player_type?: string;
+  group_members?: string[];
 }
 
 interface DemoEntity {
@@ -127,7 +140,58 @@ function initialStates() {
     ['calendar.family', just('off')],
     ['calendar.meal_plan', just('off')],
     ['input_boolean.doorbell_ringing', just('off')],
+    // Speakers (the Music panel)
+    ['media_player.living_room', speaker('playing', 0, 0.35)],
+    ['media_player.kitchen', speaker('paused', 1, 0.2)],
+    ['media_player.office', speaker('idle', -1, 0.25)],
+    ['media_player.bedroom', speaker('idle', -1, 0.15)],
   ]);
+}
+
+/** Made-up music: a few albums, with the project's own photos as album art. */
+const DEMO_TRACKS = [
+  { title: 'Slow Tide', artist: 'Harbor Lights', album: 'Evening Water', duration: 247 },
+  { title: 'Paper Lanterns', artist: 'The Quiet Hours', album: 'Small Rooms', duration: 213 },
+  { title: 'Northern Window', artist: 'Ada Lune', album: 'Winterlight', duration: 198 },
+];
+// Full addresses, so they aren't taken as paths on Home Assistant.
+const demoArt = (i: number) => new URL(i % 2 ? artB : artA, location.href).href;
+
+function speaker(state: string, track: number, volume: number): [string, DemoAttributes] {
+  const t = DEMO_TRACKS[track];
+  const base: DemoAttributes = { volume_level: volume, mass_player_type: 'player' };
+
+  if (!t) return [state, base];
+
+  return [state, { ...base, media_title: t.title, media_artist: t.artist, media_album_name: t.album, media_duration: t.duration,
+    media_position: 64, media_position_updated_at: new Date().toISOString(), entity_picture: demoArt(track) }];
+}
+
+/** media_player/browse_media: a root with Playlists, and a few playlists in it. */
+const DEMO_PLAYLISTS = ['Sunday Morning', 'Dinner Jazz', 'Focus', 'Road Trip', 'Rainy Day', 'Kids Mix', 'Evening Piano'];
+
+const DEMO_ARTISTS = ['Harbor Lights', 'The Quiet Hours', 'Juniper Lane', 'Northbound', 'Ada Moss', 'Field Notes'];
+
+const demoNode = (title: string, id: string, type: string, art: number, play = true, expand = false) =>
+  ({ title, media_content_id: id, media_content_type: type, can_play: play, can_expand: expand, thumbnail: demoArt(art) });
+
+function browseReply(id: string | undefined): object {
+  if (!id) return { title: 'Music Assistant', children: ['Artists', 'Albums', 'Tracks', 'Playlists', 'Radio', 'Podcasts', 'Audiobooks', 'Genres']
+    .map((t) => ({ title: t, media_content_id: t.toLowerCase().split(' ')[0], media_content_type: t.toLowerCase(), can_expand: true })) };
+
+  const [kind, n] = id.split('/');
+
+  switch (kind) {
+    case 'playlists': return { title: 'Playlists', children: DEMO_PLAYLISTS.map((name, i) => demoNode(name, `playlist/${i}`, 'playlist', i + 1, true, true)) };
+    case 'artists': return { title: 'Artists', children: DEMO_ARTISTS.map((name, i) => demoNode(name, `artist/${i}`, 'artist', i, false, true)) };
+    case 'albums': return { title: 'Albums', children: DEMO_TRACKS.map((t, i) => demoNode(t.album, `album/${i}`, 'album', i, true, true)) };
+    case 'tracks':
+    case 'playlist':
+    case 'album':
+      return { title: kind, can_play: kind !== 'tracks', children: DEMO_TRACKS.map((t, i) => demoNode(t.title, `track/${i}`, 'track', i)) };
+    case 'artist': return { title: DEMO_ARTISTS[Number(n)] ?? '', children: DEMO_TRACKS.slice(0, 3).map((t, i) => demoNode(t.album, `album/${i}`, 'album', i, true, true)) };
+    default: return { title: kind, children: [] };
+  }
 }
 
 // ---------- weather ----------
@@ -237,6 +301,9 @@ const ServiceCallSchema = v.object({
       brightness_pct: v.optional(v.number()),
       option: v.optional(v.string()),
       temperature: v.optional(v.number()),
+      volume_level: v.optional(v.number()),
+      media_content_id: v.optional(v.string()),
+      group_members: v.optional(v.array(v.string())),
     }),
     {},
   ),
@@ -290,6 +357,13 @@ class DemoHome {
   /** Answers the screens' messages, as Home Assistant's websocket would. */
   readonly link: HaLink = {
     sendMessagePromise: <Result>(m: MessageBase) => {
+      if (m.type === 'media_player/browse_media') {
+        const id = typeof m.media_content_id === 'string' ? m.media_content_id : undefined;
+
+        // SAFETY: the Music panel reads this as a BrowseNode, the shape HA answers with.
+        return Promise.resolve(browseReply(id) as Result);
+      }
+
       const call = v.safeParse(ServiceCallSchema, m);
       const reply: DemoReply = call.success ? this.callService(call.output) : { done: true };
 
@@ -324,6 +398,39 @@ class DemoHome {
     if (!s) return { done: true };
 
     switch (`${call.domain}.${call.service}`) {
+      case 'media_player.media_play': this.set(id, 'playing', { media_position_updated_at: new Date().toISOString() }); return { done: true };
+      case 'media_player.media_pause': this.set(id, 'paused'); return { done: true };
+      case 'media_player.volume_set': this.set(id, s.state, { volume_level: data.volume_level ?? 0.3 }); return { done: true };
+      case 'media_player.media_next_track':
+      case 'media_player.media_previous_track': {
+        const now = DEMO_TRACKS.findIndex((t) => t.title === s.attributes.media_title);
+        const next = (now + (call.service === 'media_next_track' ? 1 : DEMO_TRACKS.length - 1)) % DEMO_TRACKS.length;
+        const [, attrs] = speaker('playing', next, s.attributes.volume_level ?? 0.3);
+        this.set(id, 'playing', { ...attrs, media_position: 0 });
+
+        return { done: true };
+      }
+      case 'media_player.join': {
+        // Like Music Assistant: the leader and every member list the whole group.
+        const group = [...new Set([id, ...(s.attributes.group_members ?? []), ...(data.group_members ?? [])])];
+        for (const m of group) { const e = this.states.get(m); if (e) this.set(m, e.state, { group_members: group }); }
+
+        return { done: true };
+      }
+      case 'media_player.unjoin': {
+        const rest = (s.attributes.group_members ?? []).filter((m) => m !== id);
+        for (const m of rest) { const e = this.states.get(m); if (e) this.set(m, e.state, { group_members: rest.length > 1 ? rest : [] }); }
+        this.set(id, s.state, { group_members: [] });
+
+        return { done: true };
+      }
+      case 'media_player.play_media': {
+        const [, attrs] = speaker('playing', 0, s.attributes.volume_level ?? 0.3);
+        const name = DEMO_PLAYLISTS[Number((data.media_content_id ?? '').split('/')[1]) || 0];
+        this.set(id, 'playing', { ...attrs, media_album_name: name, media_position: 0 });
+
+        return { done: true };
+      }
       case 'light.turn_on': {
         const pct = data.brightness_pct ?? this.lastBrightness.get(id) ?? 100;
         const dims = s.attributes.supported_color_modes?.includes('brightness');

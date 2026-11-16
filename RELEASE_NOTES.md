@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Music panel:** a Music tile in the dock (with `"music"` in calm-tv.json) opens now playing,
+  controls, speakers and library buttons (Artists, Albums, Playlists, Radio…) that open a browsable grid, through Home Assistant (made for Music Assistant). In demo mode too.
+  The group button picks speakers to play along with the chosen one (media_player.join / unjoin).
 - **Bigger doorbell window, and pause:** `"size"` (width in % of the screen), `"position": "center"`
   `"pause": true` and `"sound": true` under `doorbell` in calm-tv.json, and a picture within a second from HA's camera proxy before live video connects. Over another app, Back now closes the
   doorbell window. Reolink doorbell example in docs/home-assistant.md.

@@ -66,8 +66,23 @@ const ConfigSchema = v.object({
   weather: v.optional(EntityId),
   /** Calendar entities: `events` fill the Calendar bar; `meals` (optional) gives "Dinner · …" from today's all-day event. */
   calendar: v.optional(v.object({ events: v.optional(EntityId), meals: v.optional(EntityId) })),
-  /** Doorbell video window (off unless `window` is true): its camera, and an input_boolean that is on while it rings. */
-  doorbell: v.optional(v.object({ window: v.optional(v.boolean()), camera: v.optional(EntityId), ringing: v.optional(EntityId) })),
+  /**
+   * Doorbell video window (off unless `window` is true): its camera, and an input_boolean that is on while it rings.
+   * `size` is the window's width as a percentage of the screen (default 34), `position` is "corner" (top right,
+   * the default) or "center", `pause` pauses whatever is playing in another app when it rings, and `sound` plays the camera's
+   * audio once live video starts.
+   */
+  doorbell: v.optional(
+    v.object({
+      window: v.optional(v.boolean()),
+      camera: v.optional(EntityId),
+      ringing: v.optional(EntityId),
+      size: v.optional(v.pipe(v.number('should be a number, e.g. 75'), v.minValue(20), v.maxValue(100))),
+      position: v.optional(v.picklist(['corner', 'center'], 'should be "corner" or "center"')),
+      pause: v.optional(v.boolean()),
+      sound: v.optional(v.boolean()),
+    }),
+  ),
   /**
    * The screens to show, in order, e.g. ["apps", "smarthome", "weather"] for no Calendar. Apps is
    * always shown, and first (it holds Settings). Default: all four.
@@ -139,6 +154,8 @@ const devHaUrl = import.meta.env.DEV ? import.meta.env.VITE_HA_URL ?? '' : '';
 /** Home Assistant's address: set on the TV (Settings or adb), or VITE_HA_URL / the saved one in a browser. */
 function readHaUrl(): string {
   if (native?.getHaUrl) return native.getHaUrl();
+  // The doorbell window over other apps has its own, smaller bridge.
+  if (window.CalmTvDoorbell?.getHaUrl) return window.CalmTvDoorbell.getHaUrl();
 
   try {
     return devHaUrl || localStorage.getItem(HA_URL_KEY) || '';
@@ -215,11 +232,13 @@ export async function loadConfig(): Promise<void> {
   let text = '';
   let source = '';
 
-  if (native?.loadConfig) {
+  const nativeLoad = native?.loadConfig ? () => native!.loadConfig!() : window.CalmTvDoorbell?.loadConfig ? () => window.CalmTvDoorbell!.loadConfig!() : null;
+
+  if (nativeLoad) {
     let answer;
 
     try {
-      answer = JSON.parse(native.loadConfig());
+      answer = JSON.parse(nativeLoad());
     } catch {
       answer = null;
     }

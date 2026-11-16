@@ -1,5 +1,5 @@
 import { native } from '../native';
-import { ha } from '../ha';
+import { ha, lastSignedOut } from '../ha';
 import { settings } from '../config';
 import { zones } from '../home-data';
 import { showSetup } from '../setup';
@@ -69,7 +69,7 @@ const onOff = (on: boolean) => (on ? 'On' : 'Off');
 export class SettingsPanel {
   private readonly el: HTMLElement;
   private readonly listEl: HTMLElement;
-  private readonly closeEl: HTMLElement;
+  private readonly hintEl: HTMLElement;
   private readonly titleEl: HTMLElement;
   private readonly root: Menu;
   /** The open menus, top level first; each remembers its focused row. */
@@ -77,6 +77,8 @@ export class SettingsPanel {
   private rowEls: HTMLElement[] = [];
   private open = false;
   private confirmSignOut = false;
+  /** When the first sign-out press came: the second must come a moment later, not straight after. */
+  private confirmAt = 0;
   private confirmTimer = 0;
   /** OK presses right after opening belong to the press that opened the panel. */
   private openedAt = 0;
@@ -134,7 +136,7 @@ export class SettingsPanel {
           icon: ICONS.ha,
           name: 'Connection',
           status: () =>
-            ha.status === 'signed-out' ? 'Not signed in · OK to sign in'
+            ha.status === 'signed-out' ? `Not signed in${lastSignedOut() ? ` (${lastSignedOut()})` : ''} · OK to sign in`
             : this.confirmSignOut ? 'Press OK again to sign out'
             : connection(),
           run: () => {
@@ -146,8 +148,13 @@ export class SettingsPanel {
             }
 
             // Signing out takes two presses, so a stray OK can't do it.
+            // A remote that doubles presses (or a held OK) mustn't sign out: the second press only
+            // counts after a short pause.
+            if (this.confirmSignOut && Date.now() - this.confirmAt < 1000) return;
+
             if (!this.confirmSignOut) {
               this.confirmSignOut = true;
+              this.confirmAt = Date.now();
               clearTimeout(this.confirmTimer);
               this.confirmTimer = window.setTimeout(() => {
                 this.confirmSignOut = false;
@@ -276,15 +283,14 @@ export class SettingsPanel {
       <div class="detail-panel">
         <div class="detail-head">
           <div class="detail-title"></div>
-          <button class="detail-close" aria-label="Close">${ICONS.close}</button>
+          <div class="detail-hint">Back to close</div>
         </div>
         <div class="dcol-list"></div>
       </div>`;
     mount.appendChild(this.el);
     this.listEl = child(this.el, '.dcol-list');
-    this.closeEl = child(this.el, '.detail-close');
+    this.hintEl = child(this.el, '.detail-hint');
     this.titleEl = child(this.el, '.detail-title');
-    this.closeEl.addEventListener('click', () => this.close());
     child(this.el, '.detail-scrim').addEventListener('click', () => this.close());
   }
 
@@ -324,6 +330,8 @@ export class SettingsPanel {
     if (row.menu) {
       this.stack.push({ menu: row.menu, focus: 0 });
       this.confirmSignOut = false;
+      // The OK that opened this menu can arrive twice; the second mustn't press its first row.
+      this.openedAt = Date.now();
       this.build();
 
       return;
@@ -360,8 +368,7 @@ export class SettingsPanel {
 
       if (e.repeat || Date.now() - this.openedAt < 400) return;
 
-      if (this.level.focus < 0) this.back();
-      else this.activate(this.level.focus);
+      this.activate(this.level.focus);
 
       return;
     }
@@ -371,14 +378,14 @@ export class SettingsPanel {
       this.paint();
     }
 
-    if (k === 'ArrowUp') {
+    // Up from the first row goes to the last, and Down from the last to the first (like the dock),
+    // but not while the button is held, so holding it stops at the end.
+    const n = this.level.menu.rows.length;
+
+    if (k === 'ArrowUp' || k === 'ArrowDown') {
       e.preventDefault();
-      this.level.focus = Math.max(-1, this.level.focus - 1);
-      this.render();
-    }
-    else if (k === 'ArrowDown') {
-      e.preventDefault();
-      this.level.focus = Math.min(this.level.menu.rows.length - 1, this.level.focus + 1);
+      const next = this.level.focus + (k === 'ArrowUp' ? -1 : 1);
+      this.level.focus = e.repeat ? Math.max(0, Math.min(next, n - 1)) : (next + n) % n;
       this.render();
     }
     else if (k.startsWith('Arrow')) e.preventDefault();
@@ -388,9 +395,8 @@ export class SettingsPanel {
   private build(): void {
     const sub = this.stack.length > 1;
     this.titleEl.textContent = this.level.menu.title;
-    // In a sub-menu the round button goes back a level; at the top it closes.
-    this.closeEl.innerHTML = sub ? ICONS.back : ICONS.close;
-    this.closeEl.setAttribute('aria-label', sub ? 'Back' : 'Close');
+    // Back goes up a level in a sub-menu, and closes Settings at the top.
+    this.hintEl.textContent = sub ? 'Back to go back' : 'Back to close';
     this.listEl.textContent = '';
     this.rowEls = this.level.menu.rows.map((r, i) => {
       const row = document.createElement('button');
@@ -421,7 +427,6 @@ export class SettingsPanel {
   }
 
   private render(): void {
-    this.closeEl.classList.toggle('focus', this.level.focus < 0);
     this.rowEls.forEach((el, i) => el.classList.toggle('focus', i === this.level.focus));
   }
 }

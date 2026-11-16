@@ -9,6 +9,7 @@ import {
   type BrowseChild, type BrowseNode, type MusicQueue, type QueueEntry,
 } from '../ha-data';
 import { ma, maConfigured, type MaQueueItem } from '../music-assistant';
+import { native } from '../native';
 
 // The Music panel: Music Assistant (or any media players) through Home Assistant. Opened from the
 // dock's Music tile. Left: what the chosen speaker is playing, with its controls. Right: the
@@ -30,6 +31,7 @@ const ICON = {
   shuffle: wrap('<path d="M16.5 4.5 20 8l-3.5 3.5V9.2h-1.3c-1.2 0-2 .5-2.8 1.6l-4.3 6.1c-1.1 1.6-2.5 2.6-4.6 2.6H3v-2h.5c1.3 0 2.1-.5 2.9-1.7l4.3-6.1c1.1-1.5 2.5-2.5 4.5-2.5h1.3zM3 6.5h.5c2 0 3.4.9 4.4 2.3l.6.8-1.2 1.7-.9-1.3C5.6 8.9 4.8 8.5 3.5 8.5H3zm10.7 8.2 1.2-1.7c.7.9 1.4 1.3 2.3 1.4h.3v-2.3L21 15.5 17.5 19v-2.3h-.4c-1.5-.1-2.5-.8-3.4-2z"/>'),
   queue: wrap('<path d="M3 5.5h13v2H3zM3 10.5h13v2H3zM3 15.5h8v2H3zM14 14.6v5.8a.5.5 0 0 0 .76.43l4.6-2.9a.5.5 0 0 0 0-.86l-4.6-2.9a.5.5 0 0 0-.76.43z"/>'),
   everywhere: wrap('<path d="M2 9.5A1.5 1.5 0 0 1 3.5 8h3A1.5 1.5 0 0 1 8 9.5v9A1.5 1.5 0 0 1 6.5 20h-3A1.5 1.5 0 0 1 2 18.5zm3 1.3a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8zm0 3.2a1.8 1.8 0 1 0 0 3.6A1.8 1.8 0 0 0 5 14zM9 5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 18.5zm3 1.3a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8zm0 4.2a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4zM16 9.5A1.5 1.5 0 0 1 17.5 8h3A1.5 1.5 0 0 1 22 9.5v9a1.5 1.5 0 0 1-1.5 1.5h-3a1.5 1.5 0 0 1-1.5-1.5zm3 1.3a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8zm0 3.2a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6z"/>'),
+  link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></svg>',
   check: wrap('<path d="M9.5 16.2 5.3 12l-1.4 1.4 5.6 5.6L20.1 8.4 18.7 7z"/>'),
   playAll: wrap('<path d="M8 5.6v12.8a.6.6 0 0 0 .92.5l9.7-6.4a.6.6 0 0 0 0-1L8.92 5.1A.6.6 0 0 0 8 5.6z"/>'),
   note: wrap('<path d="M19 3.2v11.3a3.3 3.3 0 1 1-1.8-2.9V7.9L9.8 9.6v7.1a3.3 3.3 0 1 1-1.8-2.9V6.3a1 1 0 0 1 .78-.98l9-2.08A1 1 0 0 1 19 3.2z"/>'),
@@ -54,6 +56,101 @@ const FOLDER_ICONS: [RegExp, string][] = [
 ];
 const folderIcon = (title: string) =>
   FOLDER_ICONS.find(([re]) => re.test(title))?.[1] ?? lineIcon('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>');
+
+/**
+ * The album art's most prominent colour, as "r, g, b" (null when it can't be read): the
+ * background is tinted with it. The art is shrunk to 24×24; each pixel votes for its hue (one of
+ * 24), weighted by how colourful it is, and the winning hue's pixels are averaged. Greys barely
+ * vote, so a red cover on a white background still comes out red.
+ */
+/**
+ * The cover's colour made bright and colourful enough to show as a glow on a TV: the same hue,
+ * at a fixed lightness and at least moderate saturation, so a dark or muted cover still tints
+ * visibly (greys stay grey). Returns "r, g, b".
+ */
+function vivid(r: number, g: number, b: number): string {
+  const [R, G, B] = [r / 255, g / 255, b / 255];
+  const max = Math.max(R, G, B);
+  const min = Math.min(R, G, B);
+  const d = max - min;
+  let h = 0;
+
+  if (d) {
+    if (max === R) h = ((G - B) / d + 6) % 6;
+    else if (max === G) h = (B - R) / d + 2;
+    else h = (R - G) / d + 4;
+  }
+  const l0 = (max + min) / 2;
+  const s0 = d ? d / (1 - Math.abs(2 * l0 - 1)) : 0;
+  const s = s0 < 0.08 ? s0 : Math.max(s0, 0.7);
+  const l = 0.48;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs((h % 2) - 1));
+  const m = l - c / 2;
+  const [r1, g1, b1] = h < 1 ? [c, x, 0] : h < 2 ? [x, c, 0] : h < 3 ? [0, c, x] : h < 4 ? [0, x, c] : h < 5 ? [x, 0, c] : [c, 0, x];
+
+  return [r1, g1, b1].map((v) => Math.round((v + m) * 255)).join(', ');
+}
+
+function artTint(url: string): Promise<string | null> {
+  if (!url) return Promise.resolve(null);
+  // On the TV, Home Assistant's picture comes through the app, so its pixels can be read.
+  const readable = native && new URL(url, location.href).origin !== location.origin ? `/calmtv-art?u=${encodeURIComponent(url)}` : url;
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onerror = () => {
+      console.warn('Album art colour: the picture could not be read', url);
+      resolve(null);
+    };
+    img.onload = () => {
+      try {
+        const n = 24;
+        const cv = document.createElement('canvas');
+        cv.width = n;
+        cv.height = n;
+        const cx = cv.getContext('2d');
+
+        if (!cx) return resolve(null);
+        cx.drawImage(img, 0, 0, n, n);
+        const px = cx.getImageData(0, 0, n, n).data;
+        const votes = new Array<number>(24).fill(0);
+        const sums = Array.from({ length: 24 }, () => [0, 0, 0, 0]);
+
+        for (let i = 0; i < px.length; i += 4) {
+          const [r, g, b] = [px[i], px[i + 1], px[i + 2]];
+          const max = Math.max(r, g, b);
+          const min = Math.min(r, g, b);
+          const chroma = max - min;
+
+          if (max < 30) continue;
+          let h = 0;
+
+          if (chroma) {
+            if (max === r) h = ((g - b) / chroma + 6) % 6;
+            else if (max === g) h = (b - r) / chroma + 2;
+            else h = (r - g) / chroma + 4;
+          }
+          const bin = Math.floor(h * 4) % 24;
+          const w = (chroma / 255) ** 2 + 0.01;
+          votes[bin] += w;
+          sums[bin][0] += r * w;
+          sums[bin][1] += g * w;
+          sums[bin][2] += b * w;
+          sums[bin][3] += w;
+        }
+        const best = votes.indexOf(Math.max(...votes));
+        const [r, g, b, w] = sums[best];
+
+        resolve(w ? vivid(r / w, g / w, b / w) : null);
+      } catch {
+        resolve(null); // a picture from another address that doesn't allow reading its pixels
+      }
+    };
+    img.src = readable;
+  });
+}
 
 interface Player {
   name: string;
@@ -209,6 +306,7 @@ export class MusicPanel {
       <div class="music-hint">Back to close</div>`;
     mount.appendChild(this.el);
     // Every state change in the house arrives here; redraw only when one of the speakers changed.
+    ha.onStatus(() => this.render());
     ha.onEntities(() => {
       if (!this.open) return;
       const sig = this.playersSignature();
@@ -382,6 +480,35 @@ export class MusicPanel {
   }
 
   /** The speakers playing together with the chosen one (the chosen one included). */
+  /**
+   * The speaker this one plays along with, or none if it leads or plays alone. Home Assistant
+   * lists a group's members with the leader first; the chosen speaker's own changes show at once.
+   */
+  private leaderOf(entity: string): string | undefined {
+    const p = this.player;
+
+    if (p && entity !== p.entity && this.group().has(entity)) return p.entity;
+    const lead = speaker(entity)?.a.group_members?.[0];
+
+    return lead && lead !== entity && this.players.some((pl) => pl.entity === lead) ? lead : undefined;
+  }
+
+  /**
+   * A speaker's cover as a small square with moving bars, or, for a speaker playing along, its
+   * leader's cover with a link. A group whose leader isn't playing shows plain squares instead:
+   * the leader with the group icon, the others with the link. An idle speaker can still hold its
+   * last cover, so only a playing or paused leader's cover is shown.
+   */
+  private cover(entity: string, linked: boolean): string {
+    const e = speaker(entity);
+    const on = e?.state === 'playing' || e?.state === 'paused';
+    const pic = on && e.a.entity_picture ? haPath(e.a.entity_picture) : '';
+
+    const mark = linked ? ICON.link : on ? '<span class="mspk-bars"><i></i><i></i><i></i></span>' : ICON.group;
+
+    return `<span class="mspk-cover${e?.state === 'playing' ? ' moving' : ''}${on ? '' : ' still'}">${pic ? `<img src="${esc(pic)}" alt="">` : ''}<span class="mspk-over">${mark}</span></span>`;
+  }
+
   private group(): Set<string> {
     const p = this.player;
 
@@ -578,10 +705,14 @@ export class MusicPanel {
     if (pic !== this.artUrl) {
       this.artUrl = pic;
       child(this.el, '.music-art').innerHTML = pic ? `<img src="${esc(pic)}" alt="">` : `<div class="music-art-empty">${ICON.note}</div>`;
-      child(this.el, '.music-bg').style.backgroundImage = pic ? `url("${pic.replace(/"/g, '%22')}")` : 'none';
+      void artTint(pic).then((rgb) => {
+        if (this.artUrl === pic) this.el.style.setProperty('--art-tint', rgb ?? '40, 46, 52');
+      });
     }
 
-    child(this.el, '.music-title').textContent = a.media_title || (s ? (s.state === 'unavailable' ? 'Unavailable' : 'Nothing playing') : 'No speakers');
+    // Without Home Assistant there's nothing to show: say so, not "Unavailable" on every speaker.
+    const offline = ha.status === 'signed-out' ? 'Not connected to Home Assistant' : ha.status === 'connected' ? '' : 'Connecting to Home Assistant…';
+    child(this.el, '.music-title').textContent = offline || a.media_title || (s ? (s.state === 'unavailable' ? 'Unavailable' : 'Nothing playing') : 'No speakers');
     child(this.el, '.music-artist').textContent = [a.media_artist, a.media_album_name].filter(Boolean).join(' · ') || (p?.name ?? '');
 
     const group = this.group();
@@ -613,24 +744,39 @@ export class MusicPanel {
       ? `<div class="mspk top${at(-1)}"><span class="mspk-ico">${ICON.check}</span><div class="mspk-text"><div class="mspk-name"><span>Done grouping</span></div><div class="mspk-status"><span>${others.length ? `${others.length + 1} speakers together` : 'Just one speaker'}</span></div></div></div>`
         + `<div class="mspk top${at(EVERYWHERE)}"><span class="mspk-ico">${ICON.everywhere}</span><div class="mspk-text"><div class="mspk-name"><span>${this.allGrouped() ? 'Just this speaker' : 'Play everywhere'}</span></div><div class="mspk-status"><span>${this.allGrouped() ? 'Take the others out' : 'Every speaker plays along'}</span></div></div></div>`
       : `<div class="mspk wide${this.area === 'speakers' && this.spk === -1 ? ' focus' : ''}"><span class="mspk-ico">${ICON.group}</span><div class="mspk-text"><div class="mspk-name"><span>Group speakers</span></div><div class="mspk-status"><span>${others.length ? `${esc(p?.name ?? '')} with ${esc(others.join(', '))}` : `Play what ${esc(p?.name ?? 'this speaker')} is playing in more rooms`}</span></div></div></div>`;
+    const focusPl = this.area === 'speakers' && !this.grouping && !offline ? this.players[this.spk] : undefined;
+    const focusHost = focusPl ? this.leaderOf(focusPl.entity) ?? focusPl.entity : undefined;
     child(this.el, '.music-speakers').innerHTML = groupTile + this.players
       .map((pl, i) => {
         const e = speaker(pl.entity);
         const inGroup = i !== this.active && group.has(pl.entity);
 
-        const status = !e || e.state === 'unavailable' ? 'Unavailable'
+        const status = offline ? (ha.status === 'signed-out' ? 'Not connected' : 'Connecting…')
+          : !e || e.state === 'unavailable' ? 'Unavailable'
           : inGroup ? `With ${p?.name ?? ''}`
+          : this.leaderOf(pl.entity) ? `With ${this.players.find((x) => x.entity === this.leaderOf(pl.entity))?.name ?? ''}`
           : this.grouping && i === this.active ? 'Chosen speaker · OK when done'
           : e.state === 'playing' ? `Playing · ${e.a.media_title ?? ''}` : e.state === 'paused' ? 'Paused' : 'Idle';
 
-        const cls = ['mspk', i === this.active ? 'active' : '', inGroup ? 'grouped' : '', e?.state === 'playing' ? 'playing' : '', this.area === 'speakers' && this.spk === i ? 'focus' : ''].join(' ');
+        // Playing (or paused) speakers show their cover; ones playing along show their leader's.
+        const lead = offline || !e || e.state === 'unavailable' ? undefined : this.leaderOf(pl.entity);
+        const host = lead ?? pl.entity;
+        const playing = (x: string) => ['playing', 'paused'].includes(speaker(x)?.state ?? '');
+        // Speakers grouped around one that isn't playing get plain squares and stay grey.
+        const leads = !offline && !lead && !!e && e.state !== 'unavailable' && this.players.some((x) => x.entity !== pl.entity && this.leaderOf(x.entity) === pl.entity);
+        const live = !offline && !!e && playing(host);
+        const marked = live || !!lead || leads;
+        // The focused speaker's group lights up softly, so it's clear which speakers play together.
+        const mate = !!focusHost && i !== this.spk && host === focusHost && (marked || leads);
+        const cls = ['mspk', i === this.active ? 'active' : '', inGroup ? 'grouped' : '', live ? 'live' : '', mate ? 'mate' : '', this.area === 'speakers' && this.spk === i ? 'focus' : ''].join(' ');
         if (this.slider && this.area === 'speakers' && this.spk === i) {
           const v = this.volumeOf(pl.entity) ?? 0;
 
           return `<div class="${cls} sliding"><span class="mspk-ico">${ICON.volUp}</span><div class="mspk-text"><div class="mspk-name"><span>${esc(pl.name)}</span></div>`
             + `<div class="mspk-slider"><div class="mspk-bar"><i style="width:${Math.round(v * 100)}%"></i></div><span class="mspk-pct">${Math.round(v * 100)}%</span></div></div></div>`;
         }
-        const mark = this.grouping ? `<span class="mspk-check${i === this.active || inGroup ? ' on' : ''}">${i === this.active || inGroup ? ICON.check : ''}</span>` : '<span class="mspk-dot"></span>';
+        const mark = this.grouping ? `<span class="mspk-check${i === this.active || inGroup ? ' on' : ''}">${i === this.active || inGroup ? ICON.check : ''}</span>`
+          : marked ? this.cover(host, !!lead) : '<span class="mspk-dot"></span>';
 
         return `<div class="${cls}">${mark}<div class="mspk-text"><div class="mspk-name"><span>${esc(pl.name)}</span></div><div class="mspk-status"><span>${esc(status)}</span></div></div></div>`;
       })
@@ -714,7 +860,7 @@ export class MusicPanel {
     const box = child(this.el, '.music-cats');
 
     if (!this.cats.length) {
-      box.innerHTML = `<div class="music-lib-msg">${esc(this.catsMsg)}</div>`;
+      box.innerHTML = `<div class="music-lib-msg">${esc(this.catsMsg || 'The library shows up once a speaker is available')}</div>`;
 
       return;
     }
@@ -898,7 +1044,11 @@ export class MusicPanel {
 
       if (k === 'ArrowRight') {
         if (this.ctrl < row.length - 1) this.ctrl++;
-        else if (right()) this.area = right()!;
+        else if (right() === 'speakers' && this.cats.length && !this.grouping) {
+          // The library sits level with the controls: right goes straight across to the same row.
+          this.area = 'cats';
+          this.cat = Math.min(this.ctrlRow * CAT_COLS, Math.floor((this.cats.length - 1) / CAT_COLS) * CAT_COLS);
+        } else if (right()) this.area = right()!;
       }
       if (k === 'ArrowDown') {
         if (this.ctrlRow === 0) {

@@ -157,11 +157,13 @@ To put the Music tile somewhere else in the dock, add it to `"apps"` where you w
 
 - **Speakers:** OK on another speaker picks it, so the controls and library play there. OK on the
   chosen speaker (or one grouped with it) turns its card into a volume slider: ←/→ to change it,
-  OK or Back when done.
+  OK or Back when done. A playing speaker shows its album cover with moving bars; a speaker playing
+  along shows its leader's cover with a link. Idle speakers are grey. Moving onto a speaker lights
+  up the rest of its group.
 - **Group speakers** (the wide button above the speakers): OK on other speakers adds them to play
   along, or takes them out. **Play everywhere** adds them all. **Done grouping**, Back or ← when done.
 - **Controls:** shuffle, previous, play/pause, next and queue; below them the volume, which turns
-  every speaker in the group.
+  every speaker in the group. The background takes its colour from the album cover.
 - **Queue:** what's playing and what's next (the whole queue, with OK to jump to a song, once
   Music Assistant is connected; see below).
 - **Library:** OK on a button opens its grid. OK on an artist, album or playlist opens it (an album

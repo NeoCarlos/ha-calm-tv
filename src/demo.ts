@@ -5,7 +5,7 @@ import doorbellView from './demo-media/doorbell-camera.mp4?url';
 import { decodeConfig, settings } from './config';
 import { ha, type HaLink } from './ha';
 import { demoCameras } from './camera-stream';
-import type { CalendarEvent, CalendarResponse, ForecastEntry, ForecastMessage } from './ha-data';
+import type { BrowseNode, CalendarEvent, CalendarResponse, ForecastEntry, ForecastMessage } from './ha-data';
 import { videos } from './videos';
 import { wallpapers } from './wallpapers';
 import { showRemote } from './demo-remote';
@@ -154,6 +154,7 @@ const DEMO_TRACKS = [
   { title: 'Paper Lanterns', artist: 'The Quiet Hours', album: 'Small Rooms', duration: 213 },
   { title: 'Northern Window', artist: 'Ada Lune', album: 'Winterlight', duration: 198 },
 ];
+
 // Full addresses, so they aren't taken as paths on Home Assistant.
 const demoArt = (i: number) => new URL(i % 2 ? artB : artA, location.href).href;
 
@@ -175,7 +176,7 @@ const DEMO_ARTISTS = ['Harbor Lights', 'The Quiet Hours', 'Juniper Lane', 'North
 const demoNode = (title: string, id: string, type: string, art: number, play = true, expand = false) =>
   ({ title, media_content_id: id, media_content_type: type, can_play: play, can_expand: expand, thumbnail: demoArt(art) });
 
-function browseReply(id: string | undefined): object {
+function browseReply(id: string | undefined): BrowseNode {
   if (!id) return { title: 'Music Assistant', children: ['Artists', 'Albums', 'Tracks', 'Playlists', 'Radio', 'Podcasts', 'Audiobooks', 'Genres']
     .map((t) => ({ title: t, media_content_id: t.toLowerCase().split(' ')[0], media_content_type: t.toLowerCase(), can_expand: true })) };
 
@@ -312,6 +313,12 @@ const ServiceCallSchema = v.object({
 
 type ServiceCall = v.InferOutput<typeof ServiceCallSchema>;
 
+/** The Music panel's media browser request; no id means the top level. */
+const BrowseRequestSchema = v.object({
+  type: v.literal('media_player/browse_media'),
+  media_content_id: v.optional(v.string()),
+});
+
 const ForecastSubscriptionSchema = v.object({
   type: v.literal('weather/subscribe_forecast'),
   forecast_type: v.picklist(['daily', 'hourly']),
@@ -357,11 +364,11 @@ class DemoHome {
   /** Answers the screens' messages, as Home Assistant's websocket would. */
   readonly link: HaLink = {
     sendMessagePromise: <Result>(m: MessageBase) => {
-      if (m.type === 'media_player/browse_media') {
-        const id = typeof m.media_content_id === 'string' ? m.media_content_id : undefined;
+      const browse = v.safeParse(BrowseRequestSchema, m);
 
-        // SAFETY: the Music panel reads this as a BrowseNode, the shape HA answers with.
-        return Promise.resolve(browseReply(id) as Result);
+      if (browse.success) {
+        // SAFETY: the Music panel decodes this with BrowseNodeSchema, as it does HA's own answer.
+        return Promise.resolve(browseReply(browse.output.media_content_id) as Result);
       }
 
       const call = v.safeParse(ServiceCallSchema, m);
@@ -398,9 +405,18 @@ class DemoHome {
     if (!s) return { done: true };
 
     switch (`${call.domain}.${call.service}`) {
-      case 'media_player.media_play': this.set(id, 'playing', { media_position_updated_at: new Date().toISOString() }); return { done: true };
-      case 'media_player.media_pause': this.set(id, 'paused'); return { done: true };
-      case 'media_player.volume_set': this.set(id, s.state, { volume_level: data.volume_level ?? 0.3 }); return { done: true };
+      case 'media_player.media_play':
+        this.set(id, 'playing', { media_position_updated_at: new Date().toISOString() });
+
+        return { done: true };
+      case 'media_player.media_pause':
+        this.set(id, 'paused');
+
+        return { done: true };
+      case 'media_player.volume_set':
+        this.set(id, s.state, { volume_level: data.volume_level ?? 0.3 });
+
+        return { done: true };
       case 'media_player.media_next_track':
       case 'media_player.media_previous_track': {
         const now = DEMO_TRACKS.findIndex((t) => t.title === s.attributes.media_title);
@@ -410,20 +426,34 @@ class DemoHome {
 
         return { done: true };
       }
+
       case 'media_player.join': {
         // Like Music Assistant: the leader and every member list the whole group.
         const group = [...new Set([id, ...(s.attributes.group_members ?? []), ...(data.group_members ?? [])])];
-        for (const m of group) { const e = this.states.get(m); if (e) this.set(m, e.state, { group_members: group }); }
+
+        for (const m of group) {
+          const e = this.states.get(m);
+
+          if (e) this.set(m, e.state, { group_members: group });
+        }
 
         return { done: true };
       }
+
       case 'media_player.unjoin': {
         const rest = (s.attributes.group_members ?? []).filter((m) => m !== id);
-        for (const m of rest) { const e = this.states.get(m); if (e) this.set(m, e.state, { group_members: rest.length > 1 ? rest : [] }); }
+
+        for (const m of rest) {
+          const e = this.states.get(m);
+
+          if (e) this.set(m, e.state, { group_members: rest.length > 1 ? rest : [] });
+        }
+
         this.set(id, s.state, { group_members: [] });
 
         return { done: true };
       }
+
       case 'media_player.play_media': {
         const [, attrs] = speaker('playing', 0, s.attributes.volume_level ?? 0.3);
         const name = DEMO_PLAYLISTS[Number((data.media_content_id ?? '').split('/')[1]) || 0];
@@ -431,6 +461,7 @@ class DemoHome {
 
         return { done: true };
       }
+
       case 'light.turn_on': {
         const pct = data.brightness_pct ?? this.lastBrightness.get(id) ?? 100;
         const dims = s.attributes.supported_color_modes?.includes('brightness');

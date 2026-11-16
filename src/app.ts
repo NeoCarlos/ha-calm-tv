@@ -72,9 +72,11 @@ export class CalmTv {
     const order = screenOrder();
     const at = (name: ScreenName) => order.indexOf(name);
     this.music = new MusicPanel(qs('#stage'));
+
     const appsSection = this.appsSection = new AppsSection(at('apps'), (a) =>
       a.kind === 'settings' ? this.settings.show() : a.kind === 'music' ? this.music.show() : this.openLaunch(a),
     );
+
     this.detail = new ZoneDetail(qs('#stage'), () => this.home.refresh());
     this.doorbell = new DoorbellWindow(qs('#stage'), 'Back to dismiss');
     this.home = new SmartHomeSection(at('smarthome'), (z) => this.detail.openZone(z), () => ha.signIn());
@@ -170,6 +172,7 @@ export class CalmTv {
 
       if (shown) return;
     }
+
     this.doorbell.show();
   }
 
@@ -548,6 +551,7 @@ export class CalmTv {
       hint.classList.remove('gone');
     } else {
       hint.classList.add('gone');
+
       if (this.hintHtml !== undefined) hint.innerHTML = this.hintHtml;
     }
   }

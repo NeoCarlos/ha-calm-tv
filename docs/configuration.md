@@ -115,7 +115,7 @@ on, **even over other apps**. You need an automation that turns the input_boolea
 rings; see [home-assistant.md](home-assistant.md). Google TV already shows its own alert for Nest
 doorbells, so this is off by default.
 
-Three optional extras change how it appears:
+Four optional extras change how it appears:
 
 ```json
 { "window": true, "camera": "camera.front_door", "ringing": "input_boolean.doorbell_ringing",

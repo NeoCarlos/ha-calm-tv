@@ -1,6 +1,9 @@
+import * as v from 'valibot';
+import type { MessageBase } from 'home-assistant-js-websocket';
 import { ha } from '../ha';
 import { haPath, settings } from '../config';
 import { child } from '../dom';
+import { attributes, BrowseNodeSchema, MediaPlayerAttributes, type BrowseChild, type BrowseNode } from '../ha-data';
 
 // The Music panel: Music Assistant (or any media players) through Home Assistant. Opened from the
 // dock's Music tile. Left: what the chosen speaker is playing, with its controls. Right: the
@@ -10,6 +13,7 @@ import { child } from '../dom';
 
 const wrap = (inner: string) =>
   `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none">${inner}</svg>`;
+
 const ICON = {
   prev: wrap('<path d="M6 5h2v14H6zM20 5.5v13a.5.5 0 0 1-.78.42L9.5 12.4a.5.5 0 0 1 0-.8l9.72-6.52a.5.5 0 0 1 .78.42z"/>'),
   next: wrap('<path d="M16 5h2v14h-2zM4 5.5v13a.5.5 0 0 0 .78.42l9.72-6.52a.5.5 0 0 0 0-.8L4.78 5.08A.5.5 0 0 0 4 5.5z"/>'),
@@ -25,6 +29,7 @@ const ICON = {
 
 const lineIcon = (d: string) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+
 /** Icons for the media browser's folders, matched by name (as Music Assistant's sidebar has them). */
 const FOLDER_ICONS: [RegExp, string][] = [
   [/artist/i, lineIcon('<circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 13 0"/><path d="M19 4v8.5a2 2 0 1 1-1.5-1.94"/>')],
@@ -37,6 +42,7 @@ const FOLDER_ICONS: [RegExp, string][] = [
   [/genre/i, lineIcon('<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12.5l9 5 9-5M3 16.5l9 5 9-5"/>')],
   [/favou?rite/i, lineIcon('<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>')],
 ];
+
 const folderIcon = (title: string) =>
   FOLDER_ICONS.find(([re]) => re.test(title))?.[1] ?? lineIcon('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>');
 
@@ -66,21 +72,13 @@ interface Level {
   focus: number;
 }
 
-/** What media_player/browse_media answers (only the parts used here). */
-interface BrowseNode {
-  title?: string;
-  media_content_id?: string;
-  media_content_type?: string;
-  can_play?: boolean;
-  can_expand?: boolean;
-  thumbnail?: string | null;
-  children?: BrowseNode[];
-}
-
 type Area = 'controls' | 'speakers' | 'cats' | 'browse';
+
 const CONTROLS = ['prev', 'playpause', 'next', 'volDown', 'volUp', 'group'] as const;
+
 /** A folder's items drawn at most (Music Assistant can list thousands of tracks). */
 const MAX_ITEMS = 500;
+
 /** The library buttons, in order, when calm-tv.json's "library" doesn't name its own: Music Assistant's folders. */
 const DEFAULT_LIBRARY = ['Artists', 'Albums', 'Tracks', 'Playlists', 'Radio', 'Podcasts', 'Audiobooks'];
 const GRID_COLS = 5;
@@ -97,11 +95,18 @@ export function musicPlayers(): Player[] {
 
   return Object.values(ha.entities)
     .filter((e) => e.entity_id.startsWith('media_player.') && 'mass_player_type' in e.attributes)
-    .map((e) => ({ name: String(e.attributes.friendly_name ?? e.entity_id), entity: e.entity_id }));
+    .map((e) => ({ name: attributes(e, MediaPlayerAttributes).friendly_name ?? e.entity_id, entity: e.entity_id }));
 }
 
-/** True when the Music tile should be in the dock. */
-export const musicEnabled = () => !!settings.config.music;
+/** Nothing known about a speaker (it isn't in HA's states). */
+const NO_ATTRIBUTES = v.parse(MediaPlayerAttributes, {});
+
+/** A speaker's state and attributes, decoded; undefined when HA doesn't list it. */
+function speaker(entity: string): { state: string; a: MediaPlayerAttributes } | undefined {
+  const e = ha.entities[entity];
+
+  return e ? { state: e.state, a: attributes(e, MediaPlayerAttributes) } : undefined;
+}
 
 export class MusicPanel {
   private el: HTMLElement;
@@ -202,7 +207,11 @@ export class MusicPanel {
   }
 
   private playersSignature(): string {
-    return JSON.stringify(this.players.map((p) => { const e = ha.entities[p.entity]; return e ? [e.state, e.attributes] : null; }));
+    return JSON.stringify(this.players.map((p) => {
+      const e = ha.entities[p.entity];
+
+      return e ? [e.state, e.attributes] : null;
+    }));
   }
 
   private get player(): Player | undefined {
@@ -211,16 +220,19 @@ export class MusicPanel {
 
   // ---------- Home Assistant ----------
 
-  private browse(entity: string, id?: string, type?: string): Promise<BrowseNode> {
+  /** One folder of the speaker's media browser: the top level without `id`. */
+  private async browse(entity: string, id?: string, type?: string): Promise<BrowseNode> {
     const conn = ha.connection;
 
-    if (!conn) return Promise.reject(new Error('Not connected'));
+    if (!conn) throw new Error('Not connected');
+    const message: MessageBase = { type: 'media_player/browse_media', entity_id: entity };
 
-    return conn.sendMessagePromise<BrowseNode>({
-      type: 'media_player/browse_media',
-      entity_id: entity,
-      ...(id ? { media_content_id: id, media_content_type: type ?? '' } : {}),
-    });
+    if (id) {
+      message.media_content_id = id;
+      message.media_content_type = type ?? '';
+    }
+
+    return v.parse(BrowseNodeSchema, await conn.sendMessagePromise<unknown>(message));
   }
 
   /** The library's categories (Artists, Albums, Playlists…): the folders at the top of the chosen speaker's media browser. */
@@ -299,9 +311,8 @@ export class MusicPanel {
     if (!p) return undefined;
 
     if (this.heldVolume && this.heldVolume.entity === p.entity && this.heldVolume.until > Date.now()) return this.heldVolume.value;
-    const v = ha.entities[p.entity]?.attributes.volume_level;
 
-    return typeof v === 'number' ? v : undefined;
+    return speaker(p.entity)?.a.volume_level;
   }
 
   /** The speakers playing together with the chosen one (the chosen one included). */
@@ -309,8 +320,7 @@ export class MusicPanel {
     const p = this.player;
 
     if (!p) return new Set();
-    const members = ha.entities[p.entity]?.attributes.group_members;
-    const set = new Set<string>([p.entity, ...(Array.isArray(members) ? members.filter((m): m is string => typeof m === 'string') : [])]);
+    const set = new Set<string>([p.entity, ...(speaker(p.entity)?.a.group_members ?? [])]);
 
     for (const [entity, held] of this.heldGroup) {
       if (held.until < Date.now()) this.heldGroup.delete(entity);
@@ -359,6 +369,7 @@ export class MusicPanel {
         this.act('volume_set', { volume_level: value });
         break;
       }
+
       case 'group': this.startGrouping(); break;
     }
 
@@ -377,17 +388,18 @@ export class MusicPanel {
   private render(): void {
     if (!this.open) return;
     const p = this.player;
-    const s = p ? ha.entities[p.entity] : undefined;
-    const a = s?.attributes ?? {};
-    const pic = typeof a.entity_picture === 'string' ? haPath(a.entity_picture) : '';
+    const s = p ? speaker(p.entity) : undefined;
+    const a = s?.a ?? NO_ATTRIBUTES;
+    const pic = a.entity_picture ? haPath(a.entity_picture) : '';
+
     if (pic !== this.artUrl) {
       this.artUrl = pic;
       child(this.el, '.music-art').innerHTML = pic ? `<img src="${esc(pic)}" alt="">` : `<div class="music-art-empty">${ICON.note}</div>`;
       child(this.el, '.music-bg').style.backgroundImage = pic ? `url("${pic.replace(/"/g, '%22')}")` : 'none';
     }
-    const title = typeof a.media_title === 'string' ? a.media_title : '';
-    child(this.el, '.music-title').textContent = title || (s ? (s.state === 'unavailable' ? 'Unavailable' : 'Nothing playing') : 'No speakers');
-    child(this.el, '.music-artist').textContent = [a.media_artist, a.media_album_name].filter((x) => typeof x === 'string' && x).join(' · ') || (p?.name ?? '');
+
+    child(this.el, '.music-title').textContent = a.media_title || (s ? (s.state === 'unavailable' ? 'Unavailable' : 'Nothing playing') : 'No speakers');
+    child(this.el, '.music-artist').textContent = [a.media_artist, a.media_album_name].filter(Boolean).join(' · ') || (p?.name ?? '');
 
     const group = this.group();
     const others = this.players.filter((pl) => pl.entity !== p?.entity && group.has(pl.entity)).map((pl) => pl.name);
@@ -406,13 +418,14 @@ export class MusicPanel {
 
     child(this.el, '.music-speakers').innerHTML = this.players
       .map((pl, i) => {
-        const e = ha.entities[pl.entity];
-        const t = e?.attributes.media_title;
+        const e = speaker(pl.entity);
         const inGroup = i !== this.active && group.has(pl.entity);
+
         const status = !e || e.state === 'unavailable' ? 'Unavailable'
           : inGroup ? `With ${p?.name ?? ''}`
           : this.grouping && i === this.active ? 'Chosen speaker · OK when done'
-          : e.state === 'playing' ? `Playing · ${typeof t === 'string' ? t : ''}` : e.state === 'paused' ? 'Paused' : 'Idle';
+          : e.state === 'playing' ? `Playing · ${e.a.media_title ?? ''}` : e.state === 'paused' ? 'Paused' : 'Idle';
+
         const cls = ['mspk', i === this.active ? 'active' : '', inGroup ? 'grouped' : '', e?.state === 'playing' ? 'playing' : '', this.area === 'speakers' && this.spk === i ? 'focus' : ''].join(' ');
         const mark = this.grouping ? `<span class="mspk-check${i === this.active || inGroup ? ' on' : ''}">${i === this.active || inGroup ? ICON.check : ''}</span>` : '<span class="mspk-dot"></span>';
 
@@ -482,12 +495,12 @@ export class MusicPanel {
 
   /** The progress bar moves on its own between HA updates while playing. */
   private renderProgress(): void {
-    const s = this.player ? ha.entities[this.player.entity] : undefined;
-    const a = s?.attributes ?? {};
-    const dur = typeof a.media_duration === 'number' ? a.media_duration : 0;
-    let pos = typeof a.media_position === 'number' ? a.media_position : 0;
+    const s = this.player ? speaker(this.player.entity) : undefined;
+    const a = s?.a ?? NO_ATTRIBUTES;
+    const dur = a.media_duration ?? 0;
+    let pos = a.media_position ?? 0;
 
-    if (s?.state === 'playing' && typeof a.media_position_updated_at === 'string') {
+    if (s?.state === 'playing' && a.media_position_updated_at) {
       pos += (Date.now() - Date.parse(a.media_position_updated_at)) / 1000;
     }
 
@@ -549,6 +562,7 @@ export class MusicPanel {
 
         return;
       }
+
       this.render();
 
       return;
@@ -556,6 +570,7 @@ export class MusicPanel {
 
     if (this.area === 'controls') {
       if (k === 'ArrowLeft') this.ctrl = Math.max(0, this.ctrl - 1);
+
       if (k === 'ArrowRight') {
         if (this.ctrl < CONTROLS.length - 1) this.ctrl++;
         else this.area = this.levels.length ? 'browse' : 'speakers';
@@ -563,6 +578,7 @@ export class MusicPanel {
     } else if (this.area === 'speakers') {
       // Two columns of speakers.
       if (k === 'ArrowUp') this.spk = Math.max(this.spk % 2, this.spk - 2);
+
       if (k === 'ArrowDown') {
         if (this.spk + 2 < this.players.length) this.spk += 2;
         else if (this.cats.length && !this.grouping) {
@@ -570,7 +586,9 @@ export class MusicPanel {
           this.cat = this.spk % 2 === 0 ? 0 : Math.max(0, this.cats.length - 1);
         }
       }
+
       if (k === 'ArrowRight' && this.spk % 2 === 0 && this.spk + 1 < this.players.length) this.spk++;
+
       if (k === 'ArrowLeft') {
         if (this.spk % 2 === 1) this.spk--;
         else if (!this.grouping) this.area = 'controls';
@@ -578,10 +596,12 @@ export class MusicPanel {
     } else if (this.area === 'cats') {
       // One row of buttons.
       if (k === 'ArrowRight' && this.cat + 1 < this.cats.length) this.cat++;
+
       if (k === 'ArrowLeft') {
         if (this.cat > 0) this.cat--;
         else this.area = 'controls';
       }
+
       if (k === 'ArrowUp') {
         this.area = 'speakers';
         const lastRow = this.players.length - (this.players.length % 2 === 0 ? 2 : 1);
@@ -596,11 +616,14 @@ export class MusicPanel {
         const col = level.focus % GRID_COLS;
 
         if (k === 'ArrowRight' && col < GRID_COLS - 1 && level.focus + 1 < n) level.focus++;
+
         if (k === 'ArrowLeft') {
           if (col > 0) level.focus--;
           else this.area = 'controls';
         }
+
         if (k === 'ArrowDown') level.focus = Math.min(n - 1, level.focus + GRID_COLS);
+
         if (k === 'ArrowUp' && level.focus >= GRID_COLS) level.focus -= GRID_COLS;
       } else if (k === 'ArrowLeft') this.area = 'controls';
     }
@@ -609,7 +632,7 @@ export class MusicPanel {
   }
 }
 
-const toItem = (c: BrowseNode): LibraryItem => ({
+const toItem = (c: BrowseChild): LibraryItem => ({
   title: c.title ?? '',
   id: c.media_content_id ?? '',
   type: c.media_content_type ?? 'music',

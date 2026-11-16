@@ -43,8 +43,8 @@ The same speaker often shows up twice, for example `media_player.kitchen` (Sonos
 
 ## The doorbell window
 
-When the doorbell rings, the TV pauses what's playing and shows the doorbell camera live in a
-window, even over Netflix or any other app. Back closes it.
+When the doorbell rings, the TV shows the doorbell camera live in a window, even over Netflix or
+any other app. Back closes it. With `"pause": true` (below), it also pauses what's playing.
 
 ### 1. A "someone is at the door" switch in Home Assistant
 
@@ -112,15 +112,10 @@ The TV watches an `input_boolean` that is on while someone is at the door.
 }
 ```
 
-| Option | What it does |
-| --- | --- |
-| `window` | `true` turns the pop-up on. |
-| `camera` | Your doorbell camera, from the camera list above. |
-| `ringing` | The switch from step 1. |
-| `size` | Width of the window, in % of the screen. Default 34; 75 is three quarters. |
-| `position` | `"center"`, or `"corner"` (top right, the default). |
-| `pause` | `true` pauses what's playing when it rings. |
-| `sound` | `true` plays the camera's audio. Some cameras send audio the TV can't play live (AAC); then you get video only. |
+`camera` is your doorbell camera from the list above, and `ringing` is the switch from step 1. The
+last four are optional: `size` and `position` make the window bigger or centred, `pause` pauses
+what's playing, and `sound` plays the camera's audio. Leave them out for the small, silent window
+in the corner. [configuration.md](configuration.md#doorbell) has each one's details and default.
 
 ### 3. Test it
 

@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import type { App } from './types';
 import { icon } from './icons';
 import { installedPackages } from './native';
@@ -29,6 +30,7 @@ export function loadApps(): void {
   const fromConfig = settings.config.apps
     ?.filter((a) => a.package || a.open)
     .map((a): App => (a.open === 'music' ? { ...musicTile, name: a.name, mark: a.icon ? markFor(a.name, a.icon) : musicTile.mark } : { name: a.name, pkg: a.package, mark: markFor(a.name, a.icon) }));
+
   let list = fromConfig?.length ? fromConfig : lineup;
 
   // With "music" in calm-tv.json, the Music tile goes at the end, next to Settings, unless "apps" places it.
@@ -45,11 +47,14 @@ const ORDER_KEY = demoMode ? 'calmtv.demo.dockOrder' : 'calmtv.dockOrder';
 /** What identifies a tile in the saved order. */
 export const tileKey = (a: App) => a.pkg ?? a.kind ?? a.name;
 
+/** The saved order: tile keys, first to last. */
+const SavedOrder = v.array(v.string());
+
 function readOrder(): string[] {
   try {
-    const v: unknown = JSON.parse(localStorage.getItem(ORDER_KEY) ?? '[]');
+    const saved = v.safeParse(SavedOrder, JSON.parse(localStorage.getItem(ORDER_KEY) ?? '[]'));
 
-    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+    return saved.success ? saved.output : [];
   } catch {
     return [];
   }
@@ -60,7 +65,12 @@ function savedOrder(list: App[]): App[] {
   const order = readOrder();
 
   if (!order.length) return list;
-  const at = (a: App) => { const i = order.indexOf(tileKey(a)); return i < 0 ? order.length : i; };
+
+  const at = (a: App) => {
+    const i = order.indexOf(tileKey(a));
+
+    return i < 0 ? order.length : i;
+  };
 
   return list.map((a, i) => ({ a, i })).sort((x, y) => at(x.a) - at(y.a) || x.i - y.i).map((x) => x.a);
 }

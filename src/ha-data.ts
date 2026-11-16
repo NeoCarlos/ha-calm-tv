@@ -29,7 +29,51 @@ export const ClimateAttributes = v.object({
 export const CameraAttributes = v.object({
   /** Picture path on HA, including its access token. */
   entity_picture: maybeString,
+  /** The token for HA's camera proxy (the doorbell window's quick picture). */
+  access_token: maybeString,
 });
+
+/** A speaker (the Music panel): what it plays, its volume, and the speakers grouped with it. */
+export const MediaPlayerAttributes = v.object({
+  friendly_name: maybeString,
+  media_title: maybeString,
+  media_artist: maybeString,
+  media_album_name: maybeString,
+  /** Seconds. */
+  media_duration: maybeNumber,
+  /** Seconds, as of `media_position_updated_at`. */
+  media_position: maybeNumber,
+  media_position_updated_at: maybeString,
+  /** 0–1. */
+  volume_level: maybeNumber,
+  /** Album art: a path on HA, or a full address. */
+  entity_picture: maybeString,
+  /** Speakers playing together, this one included (Music Assistant lists the whole group). */
+  group_members: maybeStrings,
+});
+
+export type MediaPlayerAttributes = v.InferOutput<typeof MediaPlayerAttributes>;
+
+// ---------- the media browser (media_player/browse_media) ----------
+
+const BrowseChildSchema = v.object({
+  title: maybeString,
+  media_content_id: maybeString,
+  media_content_type: maybeString,
+  can_play: v.fallback(v.optional(v.boolean()), undefined),
+  can_expand: v.fallback(v.optional(v.boolean()), undefined),
+  thumbnail: maybeString,
+});
+
+/** One folder of the media browser, with the folders and items in it. */
+export const BrowseNodeSchema = v.object({
+  ...BrowseChildSchema.entries,
+  children: v.fallback(v.optional(v.array(BrowseChildSchema)), undefined),
+});
+
+export type BrowseChild = v.InferOutput<typeof BrowseChildSchema>;
+
+export type BrowseNode = v.InferOutput<typeof BrowseNodeSchema>;
 
 /** A `select` entity used as a scene picker. */
 export const SelectAttributes = v.object({

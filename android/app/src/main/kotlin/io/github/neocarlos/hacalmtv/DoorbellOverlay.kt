@@ -30,7 +30,7 @@ class DoorbellOverlay(private val service: AccessibilityService, private val onC
     private var web: WebView? = null
 
     @SuppressLint("SetJavaScriptEnabled")
-    fun show(pageUrl: String) {
+    fun show(pageUrl: String, look: DoorbellLook) {
         if (web != null) return
         val start = Uri.parse(pageUrl)
         val assets = WebViewAssetLoader.Builder()
@@ -56,19 +56,22 @@ class DoorbellOverlay(private val service: AccessibilityService, private val onC
             }
         }
 
-        // About a third of the screen wide, 16:9, in the top-right corner (clear of app docks and player controls).
+        // 16:9, look.size % of the screen wide (a third by default). In the top-right corner, clear of
+        // app docks and player controls, or centred.
         val screen = service.resources.displayMetrics
-        val width = (screen.widthPixels * 0.34).toInt()
-        val margin = (screen.widthPixels * 0.03).toInt()
+        val width = (screen.widthPixels * look.size / 100f).toInt()
+        val margin = if (look.center) 0 else (screen.widthPixels * 0.03).toInt()
         val params = WindowManager.LayoutParams(
             width,
             width * 9 / 16,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            // Hardware acceleration: without it a WebView in an added window can't draw video, so
+            // the camera "plays" but stays see-through.
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT,
         ).apply {
-            gravity = Gravity.TOP or Gravity.END
+            gravity = if (look.center) Gravity.CENTER else Gravity.TOP or Gravity.END
             x = margin
             y = margin
         }
@@ -101,12 +104,22 @@ class DoorbellOverlay(private val service: AccessibilityService, private val onC
         onClosed()
     }
 
-    /** Exposed to the doorbell page as `window.CalmTvDoorbell`. */
+    /**
+     * Exposed to the doorbell page as `window.CalmTvDoorbell`. It also hands over Home Assistant's
+     * address and calm-tv.json, which the page can't get any other way here (no CalmTvNative in
+     * this window, and the address lives in the app's own preferences, not the page's storage).
+     */
     inner class Bridge {
         @JavascriptInterface
         fun close() {
             handler.post { this@DoorbellOverlay.close() }
         }
+
+        @JavascriptInterface
+        fun getHaUrl(): String = Prefs.haUrl(service)
+
+        @JavascriptInterface
+        fun loadConfig(): String = ConfigFile.load(service, Prefs.haUrl(service)).toString()
     }
 
     companion object {

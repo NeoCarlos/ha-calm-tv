@@ -64,6 +64,9 @@ Calm TV itself re-reads the calendars every 5 minutes.
 
 ## 5. The doorbell window (optional)
 
+A step-by-step version, with how to find your own entity ids, is in
+[doorbell-and-music.md](doorbell-and-music.md).
+
 Calm TV watches an `input_boolean` that is on while someone is at the door:
 
 1. Create a helper: Settings → Devices & services → Helpers → Toggle, e.g. **Doorbell ringing**
@@ -88,6 +91,17 @@ Calm TV watches an `input_boolean` that is on while someone is at the door:
 3. In `calm-tv.json`: `"doorbell": { "window": true, "camera": "camera.front_door", "ringing": "input_boolean.doorbell_ringing" }`.
 
 Google TV already pops up its own alert for Nest doorbells; you may prefer to keep only one.
+
+**Reolink doorbells** have a **visitor** binary sensor that turns on when the button is pressed
+(for example `binary_sensor.front_door_visitor`). Use it as the trigger instead:
+
+```yaml
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door_visitor
+    from: "off"
+    to: "on"
+```
 
 ## 6. Maintenance notes (optional)
 

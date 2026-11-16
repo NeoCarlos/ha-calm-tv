@@ -115,6 +115,51 @@ on, **even over other apps**. You need an automation that turns the input_boolea
 rings; see [home-assistant.md](home-assistant.md). Google TV already shows its own alert for Nest
 doorbells, so this is off by default.
 
+Three optional extras change how it appears:
+
+```json
+{ "window": true, "camera": "camera.front_door", "ringing": "input_boolean.doorbell_ringing",
+  "size": 75, "position": "center", "pause": true, "sound": true }
+```
+
+- `size`: the window's width as a percentage of the screen, 20 to 100. Default `34`, about a third.
+- `position`: `"corner"` (top right, the default) or `"center"`.
+- `pause`: `true` pauses whatever another app is playing when the doorbell rings, like pressing the
+  remote's pause button. It doesn't restart it; press play when you're done. Default `false`.
+- `sound`: `true` plays the camera's audio once live video starts. Default `false` (silent).
+  Cameras whose audio isn't WebRTC-friendly (e.g. AAC) stay silent unless Home Assistant's go2rtc
+  converts it to Opus.
+
+The window shows a picture within a second or so from Home Assistant's camera proxy (MJPEG, or
+snapshots in a row), then switches to live WebRTC video once its first frame is drawn. If live video
+never connects, the quick picture stays.
+
+While the window is over another app, **Back** closes it (and doesn't reach the app underneath).
+It also closes by itself when `ringing` turns off.
+
+### `music`: the Music panel
+
+```json
+{
+  "players": [
+    { "name": "Living room", "entity": "media_player.living_room" },
+    { "name": "Kitchen", "entity": "media_player.kitchen" }
+  ]
+}
+```
+
+With `music` in the file, a **Music** tile appears at the end of the dock, next to Settings (or wherever an `apps` entry
+`{ "name": "Music", "open": "music" }` puts it). It opens a panel with what the chosen speaker is
+playing (art, title, progress), play/pause, previous/next, volume and grouping, the speakers, and
+a row of library buttons (Artists, Albums, Tracks, Playlists, Radio, Podcasts, Audiobooks). Each button opens a grid you can browse
+into (an artist's albums, an album's tracks, with "Play all") and play from, on the chosen speaker. Made for **Music Assistant**, but it only uses Home
+Assistant's media player services and media browser, so other players work too.
+
+- `players`: the speakers, in order. Leave it out to list every Music Assistant player.
+- `library`: which of the media browser's top folders get a button, by exact name, in this order.
+  Default `["Artists", "Albums", "Tracks", "Playlists", "Radio", "Podcasts", "Audiobooks"]` (Music
+  Assistant's), so Home Assistant's other media sources (cameras, text-to-speech…) stay out.
+
 ### `rooms`: the Smart Home bar, in order
 
 ```jsonc

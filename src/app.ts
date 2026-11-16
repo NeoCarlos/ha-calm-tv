@@ -18,7 +18,8 @@ import { attributes, forecastEntries, WeatherAttributes, type ForecastEntry, typ
 import { child, find, itemAt } from './dom';
 import { applyStates, WEATHER } from './home-data';
 import { conditionLabel } from './sections/weather-section';
-import { DoorbellWindow, doorbellEnabled, doorbellRinging } from './doorbell';
+import { MusicPanel } from './sections/music-panel';
+import { DoorbellWindow, doorbellEnabled, doorbellLook, doorbellRinging } from './doorbell';
 import { screenOrder, type ScreenName } from './config';
 
 
@@ -42,6 +43,9 @@ export class CalmTv {
   private settings!: SettingsPanel;
   private picker!: BackgroundPicker;
   private doorbell!: DoorbellWindow;
+  private music!: MusicPanel;
+  private appsSection!: AppsSection;
+  private hintHtml?: string;
 
   start(): void {
     // The picker offers videos while video backgrounds are on (Settings → Performance), photos otherwise.
@@ -61,13 +65,16 @@ export class CalmTv {
       openPicker: () => this.picker.show(),
     };
 
-    this.settings = new SettingsPanel(qs('#stage'), bg);
+    this.settings = new SettingsPanel(qs('#stage'), bg, () => this.arrangeDock());
     // Only the screens calm-tv.json asks for are built (see "screens"), so a hidden one never loads
     // anything. Smart Home is always made, unseen if hidden: the rooms' states, the "Outside" line and
     // the room panels hang off it.
     const order = screenOrder();
     const at = (name: ScreenName) => order.indexOf(name);
-    const appsSection = new AppsSection(at('apps'), (a) => (a.kind === 'settings' ? this.settings.show() : this.openLaunch(a)));
+    this.music = new MusicPanel(qs('#stage'));
+    const appsSection = this.appsSection = new AppsSection(at('apps'), (a) =>
+      a.kind === 'settings' ? this.settings.show() : a.kind === 'music' ? this.music.show() : this.openLaunch(a),
+    );
     this.detail = new ZoneDetail(qs('#stage'), () => this.home.refresh());
     this.doorbell = new DoorbellWindow(qs('#stage'), 'Back to dismiss');
     this.home = new SmartHomeSection(at('smarthome'), (z) => this.detail.openZone(z), () => ha.signIn());
@@ -156,7 +163,13 @@ export class CalmTv {
 
   /** Someone rang: video in Calm TV's corner, or over whatever app is on screen. */
   private ring(): void {
-    if (native?.isInFront && !native.isInFront() && native.showDoorbell?.()) return;
+    if (native?.isInFront && !native.isInFront()) {
+      const shown = native.showDoorbellWith
+        ? native.showDoorbellWith(JSON.stringify(doorbellLook()))
+        : native.showDoorbell?.();
+
+      if (shown) return;
+    }
     this.doorbell.show();
   }
 
@@ -405,6 +418,22 @@ export class CalmTv {
         return;
       }
 
+      if (this.music.isOpen()) {
+        this.music.handleKey(e);
+
+        return;
+      }
+
+      if (this.appsSection.arranging && ['Escape', 'Backspace', 'Enter', ' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(k)) {
+        e.preventDefault();
+        const sec = this.sections.indexOf(this.appsSection);
+        this.cols[sec] = this.appsSection.arrangeKey(k, this.cols[sec]);
+
+        if (!this.appsSection.arranging) this.showArrangeHint(false);
+
+        return;
+      }
+
       if (this.overlay === 'launch') {
         if (k === 'Escape' || k === 'Backspace') {
           e.preventDefault();
@@ -479,6 +508,14 @@ export class CalmTv {
     if (this.settings.isOpen()) this.settings.close();
 
     if (this.detail.isOpen()) this.detail.close();
+
+    if (this.music.isOpen()) this.music.close();
+
+    if (this.appsSection.arranging) {
+      this.appsSection.stopArrange();
+      this.showArrangeHint(false);
+    }
+
     this.closeLaunch();
 
     if (this.secIndex !== 0) {
@@ -489,6 +526,32 @@ export class CalmTv {
   }
 
   // ---------- misc ----------
+  /** Settings → Arrange dock: go to the dock and move tiles with the remote. */
+  arrangeDock(): void {
+    const sec = this.sections.indexOf(this.appsSection);
+
+    if (sec < 0) return;
+    this.secIndex = sec;
+    this.cols[sec] = 0;
+    this.render();
+    this.appsSection.startArrange();
+    this.showArrangeHint(true);
+  }
+
+  private showArrangeHint(on: boolean): void {
+    const hint = qs('#hint');
+
+    if (on) {
+      this.hintHtml ??= hint.innerHTML;
+      hint.innerHTML = '<kbd>OK</kbd> pick up or put down &middot; <kbd>←</kbd><kbd>→</kbd> move &middot; <kbd>Back</kbd> done';
+      clearTimeout(this.hintTimer);
+      hint.classList.remove('gone');
+    } else {
+      hint.classList.add('gone');
+      if (this.hintHtml !== undefined) hint.innerHTML = this.hintHtml;
+    }
+  }
+
   private hideHint(): void {
     qs('#hint').classList.add('gone');
     clearTimeout(this.hintTimer);

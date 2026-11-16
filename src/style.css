@@ -160,6 +160,12 @@ html.glass-tint .gb-veil { background: rgba(8, 14, 18, 0.5); }
 /* Your own icon files (calm-tv.json "icon": "/local/…"): any colours become a white silhouette. */
 .mark-img { width: 76px; height: 76px; object-fit: contain; display: block; filter: brightness(0) invert(1); }
 .tile.is-focus .mark { opacity: 1; }
+/* Settings → Arrange dock: tiles show their outlines; the one picked up lifts and glows. */
+#secApps.arranging .plate { opacity: 1; background: rgba(255, 255, 255, 0.05); border: 1px dashed rgba(255, 255, 255, 0.25); }
+#secApps.arranging .tile.is-focus .plate { background: var(--plate); border-style: solid; }
+.tile { transition: left 0.2s ease, transform 0.2s ease; }
+.tile.is-held { transform: translateY(-12px); }
+.tile.is-held .plate { box-shadow: 0 0 0 3px var(--warm), 0 14px 30px rgba(0, 0, 0, 0.45); }
 
 /* ---------- Smart Home section ---------- */
 .therm { position: absolute; top: 178px; left: 50%; transform: translateX(-50%); text-align: center; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5); }
@@ -293,7 +299,18 @@ html.glass-tint .gb-veil { background: rgba(8, 14, 18, 0.5); }
 /* Doorbell: live video in the corner when someone rings. --u is 1% of the window's width. */
 .dbell { --u: 6.4px; position: absolute; right: 56px; top: 56px; width: 640px; aspect-ratio: 16 / 9; z-index: 60; border-radius: calc(var(--u) * 4); overflow: hidden; background: #000; border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: 0 30px 90px -20px rgba(0, 0, 0, 0.8); opacity: 0; transform: translateY(-24px) scale(0.97); pointer-events: none; transition: opacity 0.35s ease, transform 0.35s ease; }
 .dbell.open { opacity: 1; transform: none; pointer-events: auto; }
+/* "position": "center" in calm-tv.json. `translate` is separate from the open/close `transform`. */
+.dbell.center { right: auto; left: 50%; top: 50%; translate: -50% -50%; z-index: 80; }
 .dbell video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* The quick picture under the live video; hidden once live video plays. */
+.dbell-still { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; }
+.dbell.has-still .dbell-still { opacity: 1; }
+.dbell.live .dbell-still { display: none; }
+.dbell-canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+/* Over other apps: the canvas shows the video; the <video> itself must not be drawn (see paintFrames),
+   but stays in the page, tiny and invisible, so it keeps decoding. */
+html.dbell-only .dbell-canvas { display: block; }
+html.dbell-only .dbell video { inset: auto; left: 0; top: 0; width: 2px; height: 2px; opacity: 0; }
 .dbell-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 calc(var(--u) * 8); font-size: calc(var(--u) * 3.6); color: var(--ink-dim, #c9ced6); }
 .dbell-msg[hidden] { display: none; }
 .dbell-tag { position: absolute; left: calc(var(--u) * 3.4); top: calc(var(--u) * 3); display: flex; align-items: center; gap: calc(var(--u) * 1.4); padding: calc(var(--u) * 1) calc(var(--u) * 2.2); border-radius: 999px; background: rgba(0, 0, 0, 0.55); font-size: calc(var(--u) * 3.3); font-weight: 600; color: #fff; }
@@ -461,3 +478,78 @@ html.instant .section { transition: none !important; }
     flex-direction: column; gap: 14px; transform: translateY(-50%) scale(0.8); transform-origin: right center;
   }
 }
+
+/* ---------- Music panel (sections/music-panel.ts) ---------- */
+.music { position: absolute; inset: 0; display: none; z-index: 45; overflow: hidden; background: #06080a; }
+.music.open { display: block; }
+.music-bg { position: absolute; inset: -60px; background: #0b0e11 center / cover no-repeat; filter: blur(60px) saturate(1.2); opacity: 0.55; transition: background-image 0.4s ease; }
+.music-scrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(4, 6, 8, 0.45), rgba(4, 6, 8, 0.7)); }
+.music-body { position: absolute; inset: 96px 110px 110px; display: flex; gap: 100px; }
+.music-now { flex: 0 0 600px; width: 600px; min-width: 0; display: flex; flex-direction: column; }
+.music-art { flex: 0 0 auto; width: 496px; height: 496px; border-radius: 28px; overflow: hidden; background: rgba(255, 255, 255, 0.06); box-shadow: 0 40px 100px -30px rgba(0, 0, 0, 0.8); }
+.music-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.music-art-empty { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--ink-faint); }
+.music-art-empty svg { width: 160px; height: 160px; }
+.music-title { margin-top: 36px; font-size: 44px; font-weight: 700; letter-spacing: -0.8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.music-artist { margin-top: 6px; font-size: 28px; font-weight: 500; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.music-progress { margin-top: 28px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.16); overflow: hidden; }
+.music-progress i { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 3px; transition: width 1s linear; }
+.music-times { display: flex; justify-content: space-between; margin-top: 10px; font-size: 20px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+/* Controls and library sit in frosted bars like the dock: one sheet of glass, the focused item lit. */
+.music-controls, .music-cats { -webkit-backdrop-filter: blur(16px) saturate(1.05); backdrop-filter: blur(16px) saturate(1.05); background: var(--veil); box-shadow: var(--plate-edge); }
+html.glass-tint .music-controls, html.glass-tint .music-cats { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(8, 14, 18, 0.5); }
+.music-controls { margin-top: 18px; display: flex; align-items: center; justify-content: space-between; height: 104px; padding: 0 12px; border-radius: 40px; }
+.mspk { background: rgba(255, 255, 255, 0.06); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: var(--plate-edge); }
+html.glass-tint .mspk { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(8, 14, 18, 0.45); }
+.mbtn { width: 80px; height: 80px; flex: 0 0 auto; border-radius: 26px; border: 0; background: transparent; color: var(--ink); opacity: 0.86; display: flex; align-items: center; justify-content: center; transition: background 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease; }
+.mbtn svg { width: 40px; height: 40px; }
+.mbtn.big svg { width: 52px; height: 52px; }
+.mbtn.focus { opacity: 1; background: var(--plate); box-shadow: var(--plate-edge); }
+.music-vol { min-width: 64px; text-align: center; font-size: 22px; font-weight: 600; color: var(--ink-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.music-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+.music-h { font-size: 22px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 16px 4px; }
+.music-lib-h { margin-top: 36px; }
+.music-speakers { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.mspk { display: flex; align-items: center; gap: 18px; padding: 18px 24px; border-radius: 22px; border: 1px solid transparent; transition: background 0.18s ease, box-shadow 0.18s ease; }
+.mspk-dot { width: 12px; height: 12px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); flex: 0 0 auto; }
+.mspk.playing .mspk-dot { background: var(--warm); box-shadow: 0 0 12px var(--warm); }
+.mspk-text { min-width: 0; }
+.mspk-name { font-size: 26px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mspk-status { font-size: 19px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.music-group { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 20px; color: var(--ink-dim); }
+.music-group svg { width: 24px; height: 24px; flex: 0 0 auto; }
+.mspk-check { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.35); flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
+.mspk-check svg { width: 22px; height: 22px; }
+.mspk-check.on { background: var(--warm); border-color: var(--warm); color: #111; }
+.mspk.grouped:not(.focus) { background: rgba(255, 255, 255, 0.1); }
+.music.grouping .music-cats, .music.grouping .music-lib-h { opacity: 0.35; }
+.mspk.active:not(.focus) { background: rgba(255, 255, 255, 0.13); border-color: rgba(255, 255, 255, 0.2); }
+.mspk.focus { background: var(--plate); box-shadow: var(--ring), var(--plate-edge); }
+.music-home { display: flex; flex-direction: column; min-height: 0; }
+.music-browse { display: none; flex-direction: column; min-height: 0; flex: 1 1 0; }
+.music.browsing .music-home { display: none; }
+.music.browsing .music-browse { display: flex; }
+.music-cats { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; height: 128px; padding: 12px; border-radius: 48px; }
+.mcat { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border-radius: 30px; font-size: 17px; font-weight: 600; color: var(--ink-dim); white-space: nowrap; min-width: 0; transition: background 0.18s ease, box-shadow 0.18s ease, color 0.18s ease; }
+.mcat svg { width: 48px; height: 48px; flex: 0 0 auto; color: var(--ink); opacity: 0.86; }
+.mcat span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.mcat.focus { background: var(--plate); box-shadow: var(--plate-edge); color: var(--ink); }
+.mcat.focus svg { opacity: 1; }
+.music-crumbs { display: flex; align-items: baseline; gap: 12px; font-size: 22px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 16px 4px; white-space: nowrap; overflow: hidden; }
+.music-crumbs span:last-of-type { color: var(--ink); }
+.music-crumbs i { font-style: normal; }
+.music-crumbs em { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 12px; }
+.music-grid { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-width: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 26px 22px; align-content: start; padding: 8px 6px 40px; }
+.music-grid::-webkit-scrollbar { display: none; }
+.music-grid .music-lib-msg { grid-column: 1 / -1; }
+.mcard { min-width: 0; }
+.mcard-art { aspect-ratio: 1; border-radius: 18px; overflow: hidden; background: rgba(255, 255, 255, 0.07); display: flex; align-items: center; justify-content: center; color: var(--ink-faint); transition: box-shadow 0.18s ease, transform 0.18s ease; }
+.mcard-art img { width: 100%; height: 100%; object-fit: cover; }
+.mcard-art svg { width: 64px; height: 64px; }
+.mcard.playall .mcard-art { background: rgba(255, 255, 255, 0.14); color: var(--ink); }
+.mcard-name { margin-top: 10px; font-size: 20px; font-weight: 600; color: var(--ink-dim); line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mcard.focus .mcard-art { box-shadow: var(--ring); transform: scale(1.04); }
+.mcard.focus .mcard-name { color: var(--ink); }
+.mcard.started .mcard-name::before { content: '▶ '; color: var(--warm); }
+.music-lib-msg { font-size: 22px; color: var(--ink-faint); padding: 8px 4px; }
+.music-hint { position: absolute; right: 110px; bottom: 44px; font-size: 20px; color: var(--ink-faint); }

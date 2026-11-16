@@ -1,7 +1,7 @@
 import type { App } from './types';
 import { icon } from './icons';
 import { installedPackages } from './native';
-import { haPath, settings } from './config';
+import { demoMode, haPath, settings } from './config';
 
 // The built-in dock lineup, used when calm-tv.json has no "apps", in order. Each `mark` is a brand SVG from src/icons/,
 // recolored to white in CSS. `pkg` is the Android TV package the tile opens.
@@ -26,11 +26,61 @@ export let apps: App[] = [];
 
 /** Call after loadConfig(). On the TV, apps that aren't installed are hidden; in a browser, all show. */
 export function loadApps(): void {
-  const fromConfig = settings.config.apps?.map((a) => ({ name: a.name, pkg: a.package, mark: markFor(a.name, a.icon) }));
-  const list = fromConfig?.length ? fromConfig : lineup;
+  const fromConfig = settings.config.apps
+    ?.filter((a) => a.package || a.open)
+    .map((a): App => (a.open === 'music' ? { ...musicTile, name: a.name, mark: a.icon ? markFor(a.name, a.icon) : musicTile.mark } : { name: a.name, pkg: a.package, mark: markFor(a.name, a.icon) }));
+  let list = fromConfig?.length ? fromConfig : lineup;
+
+  // With "music" in calm-tv.json, the Music tile goes at the end, next to Settings, unless "apps" places it.
+  if (settings.config.music && !list.some((a) => a.kind === 'music')) list = [...list, musicTile];
   const installed = installedPackages();
-  apps = [...(installed ? list.filter((a) => !a.pkg || installed.has(a.pkg)) : list), settingsTile];
+  apps = [...savedOrder(installed ? list.filter((a) => !a.pkg || installed.has(a.pkg)) : list), settingsTile];
 }
+
+// ---------- your own order (Settings → Arrange dock), kept on this TV ----------
+
+// Demo mode keeps its own, like state.ts and look.ts, so trying the demo on a real TV leaves its dock alone.
+const ORDER_KEY = demoMode ? 'calmtv.demo.dockOrder' : 'calmtv.dockOrder';
+
+/** What identifies a tile in the saved order. */
+export const tileKey = (a: App) => a.pkg ?? a.kind ?? a.name;
+
+function readOrder(): string[] {
+  try {
+    const v: unknown = JSON.parse(localStorage.getItem(ORDER_KEY) ?? '[]');
+
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Tiles in the saved order; ones it doesn't know yet (newly added) go after them, as listed. */
+function savedOrder(list: App[]): App[] {
+  const order = readOrder();
+
+  if (!order.length) return list;
+  const at = (a: App) => { const i = order.indexOf(tileKey(a)); return i < 0 ? order.length : i; };
+
+  return list.map((a, i) => ({ a, i })).sort((x, y) => at(x.a) - at(y.a) || x.i - y.i).map((x) => x.a);
+}
+
+/** Remembers the dock as it is now (Settings stays last either way). */
+export function saveDockOrder(): void {
+  try {
+    localStorage.setItem(ORDER_KEY, JSON.stringify(apps.filter((a) => a.kind !== 'settings').map(tileKey)));
+  } catch { /* storage off: the order lasts until the app restarts */ }
+}
+
+/** Back to calm-tv.json's order. */
+export function resetDockOrder(): void {
+  try { localStorage.removeItem(ORDER_KEY); } catch { /* nothing saved */ }
+}
+
+export const hasDockOrder = () => readOrder().length > 0;
+
+/** Calm TV's Music panel (sections/music-panel.ts). */
+const musicTile: App = { name: 'Music', mark: icon('music'), kind: 'music' };
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 

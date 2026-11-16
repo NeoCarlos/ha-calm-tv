@@ -3,6 +3,7 @@ import type { MessageBase } from 'home-assistant-js-websocket';
 import { ha, type ServiceData } from '../ha';
 import { haPath, settings } from '../config';
 import { child } from '../dom';
+import { icon } from '../icons';
 import {
   attributes, BrowseNodeSchema, MediaPlayerAttributes, MusicQueueReplySchema,
   type BrowseChild, type BrowseNode, type MusicQueue, type QueueEntry,
@@ -172,6 +173,7 @@ export class MusicPanel {
     this.el.innerHTML = `
       <div class="music-bg"></div>
       <div class="music-scrim"></div>
+      <div class="music-logo" aria-hidden="true">${icon('musicassistant')}</div>
       <div class="music-body">
         <div class="music-now">
           <div class="music-art"></div>

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Edit the home setup in Calm TV:** Settings → Home Assistant → Home setup → Edit, in the dashboard
+  or a browser. **Screens & rooms** turns screens on and off and orders them, and switches rooms
+  between your Home Assistant areas and your own list, which can start from your areas and be
+  reordered, renamed and trimmed. **Text** shows the whole setup, checked as you type. Saving keeps
+  it in Home Assistant (admins).
+- A `scene` can be a list of scenes (`"scenes": [...]`), as rooms from areas build them.
 - **Keep the home's setup in Home Assistant:** Settings → Home Assistant → Home setup → Keep it in
   Home Assistant copies calm-tv.json into Home Assistant's own storage (an admin does it once, for
   example from Calm TV's dashboard). It's no longer a public file, it's in Home Assistant's backups,

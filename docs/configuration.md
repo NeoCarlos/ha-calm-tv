@@ -14,8 +14,13 @@ Each time Calm TV starts, it looks in this order:
    preview. It's copied into Home Assistant's own storage, where only signed-in users can read it,
    and it's part of Home Assistant's backups. Every TV and dashboard switches to it at once, and
    any later change reaches them the same way. Then you can delete the public file from `www`.
-   - To change it, put an edited calm-tv.json back in `www` and choose **Copy calm-tv.json again**.
-     A visual setup page is planned.
+   - To change it: Home setup → **Edit**, in the dashboard or a browser, signed in as an admin.
+     **Screens & rooms** turns screens on and off and orders them, and switches rooms between
+     "From my areas" and "My own list". Your own list starts from your areas, and its rooms can be
+     reordered, renamed, removed or added from an area. **Text** is the whole setup as JSON, checked
+     as you type: a mistake is named before anything is saved, and entity ids Home Assistant
+     doesn't have are pointed out. **Save** keeps it in Home Assistant, and every TV and dashboard
+     follows. (An edited calm-tv.json in `www` with **Copy calm-tv.json again** still works too.)
    - **Back to calm-tv.json** removes the copy from Home Assistant (two presses). Without a file in
      `www`, the setup is gone, so keep a copy.
    - The TV's own Home Assistant user doesn't need to be an admin: it only reads the copy.
@@ -286,7 +291,7 @@ Each device is `{ "type", "entity", "name" }` plus a few optional extras:
 | `switch` | `switch.*` (plugs) | On/off |
 | `cover` | `cover.*` | Open/close curtains or blinds. Optional `"batteries": ["sensor.…"]` shows the lowest |
 | `climate` | `climate.*` | Thermostat with set point. The first one in any room is also shown large on the Smart Home screen |
-| `scene` | `select.*` whose options are scenes (e.g. from the Hue integration) | A scene picker |
+| `scene` | `select.*` whose options are scenes (e.g. from the Hue integration), or a list of scenes: `"scenes": ["scene.office_bright", "scene.office_relax"]` with any `entity` name, like `"scenes.office"` | A scene picker |
 | `camera` | `camera.*` that supports WebRTC (Nest, go2rtc, most modern integrations) | Live video |
 | `lock` | `lock.*` | **Status only**, like "Locked (Keypad) · 93% battery". Optional `batteries`, `operator` (a sensor saying how it was locked), `keypad` (a keypad battery sensor) |
 | `sensor` | `sensor.*` or `binary_sensor.*` | Status only: a value with its unit, Open/Closed, or "Someone there"/"Clear" for occupancy sensors. Optional `control`: a `cover.*` (e.g. the garage door this sensor watches) that the ★ side panel opens and closes |

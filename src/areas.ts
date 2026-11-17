@@ -1,8 +1,8 @@
 import type { HassEntities, HassEntity } from 'home-assistant-js-websocket';
 import { ha, type HaLink } from './ha';
-import type { RoomIcon } from './config';
-import type { Device, DeviceType, Zone } from './types';
-import { roomIcon, roomsFrom, setAreaRooms } from './home-data';
+import type { DeviceConfig, RoomConfig, RoomIcon } from './config';
+import type { DeviceType, Zone } from './types';
+import { roomsFrom, setAreaRooms, shortName, zoneFrom } from './home-data';
 import {
   AreaSchema, attributes, decodeList, DeviceRegistrySchema, EntityDisplaySchema, FloorSchema,
   LightGroupAttributes, SensorAttributes, type Area, type EntityDisplay, type Floor,
@@ -55,15 +55,6 @@ function iconFor(area: Area): RoomIcon {
 /** "master bedroom" → "Master bedroom". */
 const capFirst = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
-/** An entity's shown name: its friendly name, without the room's name in front ("Office Desk" → "Desk"). */
-function nameIn(s: HassEntity | undefined, id: string, room: string): string {
-  // Home Assistant always gives a friendly name; failing that, the id: "light.office_desk" → "office desk".
-  const full = (typeof s?.attributes.friendly_name === 'string' ? s.attributes.friendly_name : id.split('.')[1].replace(/_/g, ' ')).trim();
-  const rest = full.toLowerCase().startsWith(room.toLowerCase()) ? full.slice(room.length).replace(/^[\s:·–-]+/, '') : full;
-
-  return capFirst((rest || full).trim());
-}
-
 /** What a main entity is in a room, if anything. */
 function kind(e: EntityDisplay, s: HassEntity | undefined): DeviceType | 'scenes' | null {
   const domain = e.ei.split('.')[0];
@@ -93,11 +84,17 @@ async function ask(link: HaLink, type: string): Promise<unknown> {
   return link.sendMessagePromise<unknown>({ type });
 }
 
+/** The rooms built from Areas, ready to show. */
+export async function roomsFromAreas(link: HaLink, ents: HassEntities): Promise<Zone[]> {
+  return (await areaRooms(link, ents)).map(zoneFrom);
+}
+
 /**
- * The rooms, one per Area that has anything to show. Throws when Home Assistant won't give the
+ * The rooms, one per Area that has anything to show, written as calm-tv.json would write them (so
+ * the setup page can turn them into your own list). Throws when Home Assistant won't give the
  * lists (the caller says so on the Smart Home screen).
  */
-export async function roomsFromAreas(link: HaLink, ents: HassEntities): Promise<Zone[]> {
+export async function areaRooms(link: HaLink, ents: HassEntities): Promise<RoomConfig[]> {
   const [areasRaw, floorsRaw, devicesRaw, displayRaw] = await Promise.all([
     ask(link, 'config/area_registry/list'),
     // Older Home Assistant has no floors: then areas keep their own order.
@@ -140,29 +137,26 @@ export async function roomsFromAreas(link: HaLink, ents: HassEntities): Promise<
 
     if (!kinds) return [];
     const room = capFirst(area.name);
-    const byName = (a: Device, b: Device) => a.name.localeCompare(b.name);
+    const byName = (a: DeviceConfig, b: DeviceConfig) => (a.name ?? '').localeCompare(b.name ?? '');
     const groups = GROUPS.flatMap(({ type, title }) => {
       const ids = kinds.get(type) ?? [];
 
       if (!ids.length) return [];
 
       if (type === 'scenes') {
-        const scenes = ids.map((id) => ({ id, name: nameIn(ents[id], id, room) })).sort((a, b) => a.name.localeCompare(b.name));
+        const scenes = ids.map((id) => ({ id, name: shortName(ents[id], id, room) })).sort((a, b) => a.name.localeCompare(b.name));
 
         return [{
           title,
-          devices: [{
-            type: 'scene' as const, entity: `scenes.${area.area_id}`, name: 'Scene',
-            scenes: scenes.map((x) => x.id), options: scenes.map((x) => x.name),
-          }],
+          devices: [{ type: 'scene' as const, entity: `scenes.${area.area_id}`, name: 'Scene', scenes: scenes.map((x) => x.id) }],
         }];
       }
 
-      return [{ title, devices: ids.map((id): Device => ({ type, entity: id, name: nameIn(ents[id], id, room) })).sort(byName) }];
+      return [{ title, devices: ids.map((id): DeviceConfig => ({ type, entity: id, name: shortName(ents[id], id, room) })).sort(byName) }];
     });
-    const locks = groups.flatMap((g) => g.devices).filter((d) => d.type === 'lock');
+    const locks = groups.flatMap((g) => g.devices).filter((d) => d.type === 'lock').map((d) => d.entity);
 
-    return [{ name: room, icon: roomIcon(iconFor(area)), locks, groups }];
+    return [{ name: room, icon: iconFor(area), ...(locks.length ? { locks } : {}), groups }];
   });
 }
 

@@ -6,7 +6,7 @@ ids in Home Assistant, then put them in `calm-tv.json`, the file the TV reads fr
 `www` folder (see [configuration.md](configuration.md)).
 
 After any change to `calm-tv.json`, reload it on the TV: **Settings → Home Assistant → Home setup
-(calm-tv.json) → OK**. Restarting the app also reloads it.
+→ In use**. Restarting the app also reloads it.
 
 ## Find your entity ids
 

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Keep the home's setup in Home Assistant:** Settings → Home Assistant → Home setup → Keep it in
+  Home Assistant copies calm-tv.json into Home Assistant's own storage (an admin does it once, for
+  example from Calm TV's dashboard). It's no longer a public file, it's in Home Assistant's backups,
+  and every TV and dashboard follows changes at once. calm-tv.json in `www` still works as before.
 - **Choose apps for the dock on the TV:** Settings → Arrange dock → Choose apps lists the TV's
   installed apps; OK adds one to the dock or takes it off, with no JSON and no package names. Apps
   without one of Calm TV's icons show their own Android icon, in colour. Kept on the TV;

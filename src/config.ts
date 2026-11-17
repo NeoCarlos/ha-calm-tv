@@ -199,6 +199,12 @@ export const dashboardMode = new URLSearchParams(location.search).has('dash');
 const servedByHa = !import.meta.env.DEV && location.pathname.startsWith('/local/');
 
 const CACHE_KEY = 'ct.config';
+/**
+ * The copy of the setup kept in Home Assistant (see config-store.ts), as last received: it's
+ * used from the start, before Home Assistant answers. Shared with the doorbell window and the ★
+ * panel, which are pages of the same app.
+ */
+export const STORED_KEY = 'ct.configStored';
 const HA_URL_KEY = 'ct.haUrl';
 
 export const settings = {
@@ -206,6 +212,8 @@ export const settings = {
   config: v.parse(ConfigSchema, {}),
   /** Where it came from: "Home Assistant", "this TV", "this project folder", "last saved copy", or "". */
   source: '',
+  /** True when it's the copy kept in Home Assistant, not a calm-tv.json file. */
+  stored: false,
   /** Why the newest copy couldn't be used, if it couldn't. */
   error: '',
   /** Home Assistant's address, e.g. "http://192.168.1.20:8123" ("" until it's set up). */
@@ -299,11 +307,20 @@ async function fetchConfigFile(url: string): Promise<string> {
   return '';
 }
 
-/** Loads Home Assistant's address and calm-tv.json. Call once, before the screens are built. */
-export async function loadConfig(): Promise<void> {
-  settings.haUrl = readHaUrl();
+/** The setup kept in Home Assistant, as last received ("" if none). */
+export function storedConfigText(): string {
+  try {
+    return localStorage.getItem(STORED_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/** calm-tv.json, wherever this page finds it: the TV app, Home Assistant's www folder, or the project folder. */
+export async function readConfigFile(): Promise<{ text: string; source: string; error: string }> {
   let text = '';
   let source = '';
+  let error = '';
 
   const nativeLoad = native?.loadConfig ? () => native!.loadConfig!()
     : window.CalmTvDoorbell?.loadConfig ? () => window.CalmTvDoorbell!.loadConfig!()
@@ -323,21 +340,50 @@ export async function loadConfig(): Promise<void> {
     if (r.success) {
       text = r.output.text;
       source = r.output.source;
-      settings.error = r.output.error;
+      error = r.output.error;
     } else {
-      settings.error = 'the TV app sent an unreadable answer';
+      error = 'the TV app sent an unreadable answer';
     }
   } else if (servedByHa) {
     text = await fetchConfigFile('/local/calm-tv.json');
     source = text ? 'Home Assistant' : '';
 
-    if (!text) settings.error = 'no calm-tv.json in Home Assistant’s www folder';
+    if (!text) error = 'no calm-tv.json in Home Assistant’s www folder';
   } else {
     text = await fetchConfigFile('calm-tv.json');
     source = text ? 'this project folder' : '';
 
-    if (!text) settings.error = 'no calm-tv.json in the project folder';
+    if (!text) error = 'no calm-tv.json in the project folder';
   }
+
+  return { text, source, error };
+}
+
+/**
+ * Loads Home Assistant's address and the home's setup. Call once, before the screens are built.
+ * The copy kept in Home Assistant comes first, then calm-tv.json, then the last copy that worked.
+ */
+export async function loadConfig(): Promise<void> {
+  settings.haUrl = readHaUrl();
+  const stored = storedConfigText();
+
+  if (stored) {
+    try {
+      settings.config = decodeConfig(stored);
+      settings.source = 'Home Assistant';
+      settings.stored = true;
+
+      return;
+    } catch (e) {
+      // Not expected (it's checked before it's kept), but never a blank screen: use the file.
+      settings.error = `the copy in Home Assistant: ${e instanceof Error ? e.message : 'unreadable'}`;
+    }
+  }
+
+  const file = await readConfigFile();
+  const { text, source } = file;
+
+  if (!settings.error) settings.error = file.error;
 
   if (text) {
     try {

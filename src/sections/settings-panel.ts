@@ -9,6 +9,7 @@ import { child } from '../dom';
 import { FocusGroup } from '../focus';
 import { hint } from '../hints';
 import { isHeld } from '../keys';
+import { copyFileToHa, removeStoredConfig, storedInfo } from '../config-store';
 import { apps, dockChoices, hasDockChoice, hasDockOrder, resetDockOrder, toggleDockApp } from '../apps';
 import {
   glass, glassSource, hasOverrides, resetToConfig, setGlass, setShowFps,
@@ -190,6 +191,76 @@ export class SettingsPanel {
       ],
     };
 
+    const rooms = () => `${zones.length} room${zones.length === 1 ? '' : 's'}${roomsFrom === 'areas' ? ' from Home Assistant’s areas' : ''}`;
+    const setupFrom = (): string => {
+      if (settings.stored) return `Kept in Home Assistant · ${rooms()}${storedInfo.problem ? ` · its newest copy has a problem: ${storedInfo.problem}` : ''}`;
+
+      if (!settings.source) return `No setup found${settings.error ? ` (${settings.error})` : ''} · ${rooms()}`;
+      const from = settings.source === 'last saved copy' ? 'The last saved copy of calm-tv.json' : `calm-tv.json from ${settings.source}`;
+
+      return `${from} · ${rooms()}${settings.error ? ` · its newest copy has a problem: ${settings.error}` : ''}`;
+    };
+    /** Changing the copy in Home Assistant: one at a time, and what went wrong if it did. */
+    let storeBusy = false;
+    let storeProblem = '';
+    const changeStore = (what: () => Promise<void>) => {
+      if (storeBusy || !ha.isAdmin) return;
+      storeBusy = true;
+      storeProblem = '';
+      // Home Assistant then sends the change back, and Calm TV starts again with it (config-store.ts).
+      what().catch((e: unknown) => { storeProblem = e instanceof Error ? e.message : 'it didn’t work'; })
+        .finally(() => { storeBusy = false; this.refresh(); });
+    };
+    const adminOnly = () => (ha.status !== 'connected' ? 'Needs Home Assistant connected' : 'Needs a Home Assistant admin: do this from Calm TV’s dashboard, signed in as one');
+    const storeStatus = (ready: string) =>
+      storeBusy ? 'Saving in Home Assistant…' : storeProblem ? `Didn’t work: ${storeProblem}` : ha.isAdmin && ha.status === 'connected' ? ready : adminOnly();
+
+    // Removing the copy in Home Assistant takes two presses: without calm-tv.json, it's gone.
+    let confirmRemove = 0;
+    // Where the home's setup comes from, and keeping it in Home Assistant instead of a public file.
+    const setupRows: Row[] = [
+        { icon: ICONS.file, name: 'In use', status: () => `${setupFrom()} · OK to load it again`, run: () => location.reload() },
+        {
+          icon: ICONS.ha,
+          name: 'Keep it in Home Assistant',
+          status: () => storeStatus('Copies calm-tv.json into Home Assistant, where only signed-in users can read it · OK to copy'),
+          run: () => changeStore(copyFileToHa),
+        },
+        {
+          icon: ICONS.ha,
+          name: 'Copy calm-tv.json again',
+          status: () => storeStatus('Replaces the copy in Home Assistant with calm-tv.json as it is now · OK to copy'),
+          run: () => changeStore(copyFileToHa),
+        },
+        {
+          icon: ICONS.reset,
+          name: 'Back to calm-tv.json',
+          status: () => storeStatus(Date.now() < confirmRemove
+            ? 'OK again to remove it · without calm-tv.json in the www folder, this setup is gone'
+            : 'Removes the copy from Home Assistant; calm-tv.json (or your areas) is used again · OK twice to remove'),
+          run: () => {
+            // A doubled or held OK isn't the second press.
+            if (Date.now() < confirmRemove - 3000) return;
+
+            if (Date.now() >= confirmRemove) {
+              confirmRemove = Date.now() + 4000;
+              window.setTimeout(() => this.refresh(), 4100);
+
+              return;
+            }
+
+            confirmRemove = 0;
+            changeStore(removeStoredConfig);
+          },
+        },
+    ];
+    const homeSetup: Menu = {
+      title: 'Home setup',
+      rows: [],
+      // Only the rows that make sense now.
+      fill: () => setupRows.filter((r) => r.name === 'In use' || (r.name === 'Keep it in Home Assistant') !== settings.stored),
+    };
+
     const homeAssistant: Menu = {
       title: 'Home Assistant',
       rows: [
@@ -236,19 +307,7 @@ export class SettingsPanel {
             showSetup({ canCancel: true });
           },
         },
-        {
-          icon: ICONS.file,
-          name: 'Home setup (calm-tv.json)',
-          status: () => {
-            const rooms = `${zones.length} room${zones.length === 1 ? '' : 's'}${roomsFrom === 'areas' ? ' from Home Assistant’s areas' : ''}`;
-
-            if (!settings.source) return `Not found${settings.error ? ` (${settings.error})` : ''} · OK to look again`;
-            const from = settings.source === 'last saved copy' ? 'Using the last saved copy' : `From ${settings.source}`;
-
-            return `${from} · ${rooms}${settings.error ? ` · newest copy has a problem: ${settings.error}` : ''} · OK to reload`;
-          },
-          run: () => location.reload(),
-        },
+        { icon: ICONS.file, name: 'Home setup', status: () => setupFrom(), menu: homeSetup },
         {
           icon: ICONS.music,
           name: 'Music Assistant',

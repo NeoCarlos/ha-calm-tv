@@ -31,7 +31,8 @@ let failures = 0;
 try {
   let targets = [];
 
-  for (let i = 0; i < 60 && !targets.length; i++) {
+  // Wait for Chrome's page, not just any target: on a busy CI machine the page can come a moment later.
+  for (let i = 0; i < 120 && !targets.some((t) => t.type === 'page'); i++) {
     await sleep(250);
     targets = await fetch('http://127.0.0.1:9557/json').then((r) => r.json()).catch(() => []);
   }
@@ -531,6 +532,24 @@ try {
   check(!(await rows())[2]?.status.startsWith('On the dock') && (await tiles()) === dockBefore, 'OK again takes it off');
   await key('Escape'); await key('Escape'); await key('Escape');
   check(await page("const t = [...document.querySelectorAll('.gb-track .tile')]; return t.at(-1).classList.contains('is-focus');"), 'leaving Settings, the Settings tile still has the focus');
+
+  // The setup kept in Home Assistant comes before calm-tv.json (config.ts, config-store.ts).
+  mode = 'setup in HA';
+  await open('demo', 1920, 1080);
+  await key('ArrowLeft'); await key('Enter'); await sleep(500);
+  const pick = async (name) => { await page(`[...document.querySelectorAll('.detail.open .drow')].find((r) => r.querySelector('.dname')?.textContent.trim() === ${JSON.stringify(name)})?.click();`); await sleep(500); };
+  await pick('Home Assistant');
+  await pick('Home setup');
+  const setupRows = await page("return [...document.querySelectorAll('.detail.open .drow')].map((r) => r.querySelector('.dname').textContent + ': ' + r.querySelector('.dstatus').textContent);");
+  check(setupRows.length === 2 && setupRows[1].startsWith('Keep it in Home Assistant: Needs'), `Home setup offers to keep it in Home Assistant, for admins (${setupRows.join(' | ')})`);
+  const errorsBefore = errors.length;
+  const stored = await call('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('ct.configStored', '{"screens":["weather"]}');` });
+  await open('x', 1920, 1080);
+  await call('Page.removeScriptToEvaluateOnNewDocument', { identifier: stored.result.identifier });
+  const used = await page("const { settings } = await import('/src/config.ts'); return JSON.stringify({ source: settings.source, stored: settings.stored, screens: settings.config.screens });");
+  check(used === '{"source":"Home Assistant","stored":true,"screens":["weather"]}', `the copy kept in Home Assistant is used first (${used})`);
+  await page("localStorage.removeItem('ct.configStored');");
+  errors.length = errorsBefore; // the start without a Home Assistant address isn't what's tested here
 
   check(errors.length === 0, `no errors in the page${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
   ws.close();

@@ -31,7 +31,8 @@ let failures = 0;
 try {
   let targets = [];
 
-  for (let i = 0; i < 60 && !targets.length; i++) {
+  // Wait for Chrome's page, not just any target: on a busy CI machine the page can come a moment later.
+  for (let i = 0; i < 120 && !targets.some((t) => t.type === 'page'); i++) {
     await sleep(250);
     targets = await fetch('http://127.0.0.1:9557/json').then((r) => r.json()).catch(() => []);
   }

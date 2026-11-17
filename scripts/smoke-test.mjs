@@ -532,6 +532,24 @@ try {
   await key('Escape'); await key('Escape'); await key('Escape');
   check(await page("const t = [...document.querySelectorAll('.gb-track .tile')]; return t.at(-1).classList.contains('is-focus');"), 'leaving Settings, the Settings tile still has the focus');
 
+  // The setup kept in Home Assistant comes before calm-tv.json (config.ts, config-store.ts).
+  mode = 'setup in HA';
+  await open('demo', 1920, 1080);
+  await key('ArrowLeft'); await key('Enter'); await sleep(500);
+  const pick = async (name) => { await page(`[...document.querySelectorAll('.detail.open .drow')].find((r) => r.querySelector('.dname')?.textContent.trim() === ${JSON.stringify(name)})?.click();`); await sleep(500); };
+  await pick('Home Assistant');
+  await pick('Home setup');
+  const setupRows = await page("return [...document.querySelectorAll('.detail.open .drow')].map((r) => r.querySelector('.dname').textContent + ': ' + r.querySelector('.dstatus').textContent);");
+  check(setupRows.length === 2 && setupRows[1].startsWith('Keep it in Home Assistant: Needs'), `Home setup offers to keep it in Home Assistant, for admins (${setupRows.join(' | ')})`);
+  const errorsBefore = errors.length;
+  const stored = await call('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('ct.configStored', '{"screens":["weather"]}');` });
+  await open('x', 1920, 1080);
+  await call('Page.removeScriptToEvaluateOnNewDocument', { identifier: stored.result.identifier });
+  const used = await page("const { settings } = await import('/src/config.ts'); return JSON.stringify({ source: settings.source, stored: settings.stored, screens: settings.config.screens });");
+  check(used === '{"source":"Home Assistant","stored":true,"screens":["weather"]}', `the copy kept in Home Assistant is used first (${used})`);
+  await page("localStorage.removeItem('ct.configStored');");
+  errors.length = errorsBefore; // the start without a Home Assistant address isn't what's tested here
+
   check(errors.length === 0, `no errors in the page${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
   ws.close();
 } finally {

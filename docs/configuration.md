@@ -8,24 +8,35 @@ The TypeScript definition, which is the source of truth, is `CalmTvConfig` in [`
 
 Each time Calm TV starts, it looks in this order:
 
-1. **Home Assistant's `www` folder**, served at `http://<ha>/local/calm-tv.json`.
+1. **Kept in Home Assistant** (Home Assistant 2025.x or newer). Once you're happy with your
+   calm-tv.json, open Settings → Home Assistant → **Home setup** → **Keep it in Home Assistant**,
+   signed in as a Home Assistant **admin**: in Calm TV's dashboard (see dashboard.md) or the browser
+   preview. It's copied into Home Assistant's own storage, where only signed-in users can read it,
+   and it's part of Home Assistant's backups. Every TV and dashboard switches to it at once, and
+   any later change reaches them the same way. Then you can delete the public file from `www`.
+   - To change it, put an edited calm-tv.json back in `www` and choose **Copy calm-tv.json again**.
+     A visual setup page is planned.
+   - **Back to calm-tv.json** removes the copy from Home Assistant (two presses). Without a file in
+     `www`, the setup is gone, so keep a copy.
+   - The TV's own Home Assistant user doesn't need to be an admin: it only reads the copy.
+2. **Home Assistant's `www` folder**, served at `http://<ha>/local/calm-tv.json`.
    *This is the recommended place.* Edit the file in Home Assistant, for example with the
    **File editor** or **Studio Code Server** add-on, then reopen Calm TV or choose
-   Settings → Home setup → OK. No computer, no rebuild.
+   Settings → Home Assistant → Home setup → In use. No computer, no rebuild.
    - Create the folder `/config/www/` if it doesn't exist. Home Assistant only serves `/local/` after
      a **restart** that happens once `www` exists.
    - Files in `www` can be read by anyone on your network without signing in. This file only
      names entities, but don't put anything secret in it.
-2. **A file on the TV**, pushed from a computer:
+3. **A file on the TV**, pushed from a computer:
    ```bash
    adb push calm-tv.json /sdcard/Android/data/io.github.neocarlos.hacalmtv/files/calm-tv.json
    ```
    Open Calm TV once first, so that folder exists. This is handy before you've set up a way to edit
    Home Assistant's files.
-3. **The last copy that worked**, kept by the app. A typo in the newest file, or Home Assistant
+4. **The last copy that worked**, kept by the app. A typo in the newest file, or Home Assistant
    being down at start-up, won't blank the screen.
 
-Settings → **Home setup** shows which source was used, how many rooms it has, and any error, such as
+Settings → Home Assistant → **Home setup** shows which source was used, how many rooms it has, and any error, such as
 `room "Kitchen" needs "groups": [ … ]`.
 
 In the **desktop browser preview** (`npm run dev`), the file is read from the project folder
@@ -336,9 +347,9 @@ addresses also work. They're added after the built-in backgrounds in Settings �
 
 ## After editing
 
-- **File in Home Assistant:** reopen Calm TV, or Settings → Home setup → OK.
+- **File in Home Assistant:** reopen Calm TV, or Settings → Home Assistant → Home setup → In use.
 - **File on the TV:** push it again, then reopen Calm TV.
 - **Browser preview:** just reload the page.
 
-If something doesn't show, check Settings → Home setup for an error, and make sure each entity id
+If something doesn't show, check Settings → Home Assistant → Home setup for an error, and make sure each entity id
 exists in Home Assistant. A device whose entity doesn't exist shows "Unavailable".

@@ -8,6 +8,7 @@ import { wallpapers } from './wallpapers';
 import { videos } from './videos';
 import { showSetup, SIGN_IN_NEXT } from './setup';
 import { ha } from './ha';
+import { watchStoredConfig } from './config-store';
 
 async function main(): Promise<void> {
   // Everything specific to a home comes from calm-tv.json (see config.ts), or the made-up home in demo mode.
@@ -33,6 +34,8 @@ async function main(): Promise<void> {
   }
 
   new CalmTv().start();
+  // The setup kept in Home Assistant: when it changes there, start again with it.
+  watchStoredConfig();
 
   if (!settings.haUrl) {
     showSetup({ canCancel: false });

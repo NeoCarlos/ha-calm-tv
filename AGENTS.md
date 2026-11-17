@@ -20,7 +20,7 @@ Follow [docs/getting-started.md](docs/getting-started.md):
    - If they give you a Home Assistant token, list entities with `GET /api/states`. Use the token only on
      their machine; never write it into the project.
 2. **Browser preview:** add `.env.local` with `VITE_HA_URL=…`, run `npm install` and `npm run dev`, and let them
-   sign in. Fix "Unavailable" devices, which mean wrong entity ids, and check Settings → Home setup.
+   sign in. Fix "Unavailable" devices, which mean wrong entity ids, and check Settings → Home Assistant → Home setup.
 3. **Home Assistant:** set up the TV user, Open-Meteo, calendar refresh, and a place for the config
    ([docs/home-assistant.md](docs/home-assistant.md)).
 4. **TV:** follow [docs/tv-setup.md](docs/tv-setup.md): adb, install, home screen, address, sign-in, config.

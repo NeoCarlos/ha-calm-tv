@@ -144,6 +144,8 @@ class HomeAssistant {
   status: HaStatus = 'signed-out';
   entities: HassEntities = {};
   userName = '';
+  /** True when the signed-in user is a Home Assistant admin (who can change the setup kept there). */
+  isAdmin = false;
   private conn: Connection | null = null;
   /** What the screens use: the connection's messages, or demo mode's stand-in. */
   private link: HaLink | null = null;
@@ -307,8 +309,8 @@ class HomeAssistant {
       });
       this.connected(conn);
       conn
-        .sendMessagePromise<{ name: string }>({ type: 'auth/current_user' })
-        .then((u) => { this.userName = u.name; this.statusListeners.forEach((fn) => fn()); })
+        .sendMessagePromise<{ name: string; is_admin?: boolean }>({ type: 'auth/current_user' })
+        .then((u) => { this.userName = u.name; this.isAdmin = !!u.is_admin; this.statusListeners.forEach((fn) => fn()); })
         .catch(() => {});
     } catch (err) {
       const badCallback = location.search.includes('auth_callback');
@@ -348,6 +350,7 @@ class HomeAssistant {
     this.link = null;
     this.auth = null;
     this.userName = '';
+    this.isAdmin = false;
   }
 
   private setStatus(s: HaStatus): void {

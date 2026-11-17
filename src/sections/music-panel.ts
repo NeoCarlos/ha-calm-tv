@@ -101,7 +101,8 @@ function artTint(url: string): Promise<string | null> {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onerror = () => {
-      console.warn('Album art colour: the picture could not be read', url);
+      // Only the host: Home Assistant's picture addresses carry an access token.
+      console.warn('Album art colour: the picture could not be read, from', new URL(url, location.href).host);
       resolve(null);
     };
     img.onload = () => {
@@ -589,6 +590,9 @@ export class MusicPanel {
         type: 'call_service', domain: 'music_assistant', service: 'get_queue',
         target: { entity_id: p.entity }, return_response: true,
       }));
+
+      // The queue may have closed, or another speaker's opened, while this was on its way.
+      if (!this.queueOpen || this.queueFor !== p.entity) return;
       this.queue = reply.response?.[p.entity] ?? null;
       this.queueMsg = this.queue ? '' : 'No queue';
 
@@ -640,10 +644,13 @@ export class MusicPanel {
 
     if (this.maStart + this.maItems.length >= q.items) return;
     this.maLoading = true;
+    const id = this.maQueueId;
 
     try {
-      const more = await ma.items(this.maQueueId, this.maStart + this.maItems.length, QUEUE_PAGE);
-      this.maItems = [...this.maItems, ...more];
+      const more = await ma.items(id, this.maStart + this.maItems.length, QUEUE_PAGE);
+
+      // The queue may have closed, or another speaker's opened, while this page was on its way.
+      if (this.queueOpen && this.maQueueId === id) this.maItems = [...this.maItems, ...more];
     } catch (e) {
       console.warn('Music Assistant queue', e);
     }

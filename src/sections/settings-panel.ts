@@ -200,11 +200,15 @@ export class SettingsPanel {
           },
           run: () => {
             this.close();
-            showMaSetup();
+            // When the setup closes, come back here (Settings → Home Assistant → Music Assistant).
+            showMaSetup(() => this.reopen(homeAssistant, 'Music Assistant'));
           },
         },
       ],
     };
+
+    // Without "music" in calm-tv.json there's no Music panel, so nothing to connect Music Assistant to.
+    if (!settings.config.music) homeAssistant.rows = homeAssistant.rows.filter((r) => r.name !== 'Music Assistant');
 
     this.root = {
       title: 'Settings',
@@ -305,6 +309,17 @@ export class SettingsPanel {
     this.open = true;
     this.build();
     this.el.classList.add('open');
+  }
+
+  /** Opens Settings on a sub-menu, with the focus on one of its rows (by name). */
+  private reopen(menu: Menu, rowName: string): void {
+    this.show();
+    const i = this.root.rows.findIndex((r) => r.menu === menu);
+
+    if (i < 0) return;
+    this.level.focus = i;
+    this.stack.push({ menu, focus: Math.max(0, menu.rows.findIndex((r) => r.name === rowName)) });
+    this.build();
   }
 
   close(): void {

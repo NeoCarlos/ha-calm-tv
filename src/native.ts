@@ -7,6 +7,8 @@ interface CalmTvNative {
   apps(): string;
   /** Opens an installed app; false if it isn't installed. */
   launch(pkg: string): boolean;
+  /** An installed app's own icon as a PNG data URL, or "" (newer TV apps only). */
+  appIcon?(pkg: string): string;
   /** Opens Android's own TV settings. */
   openSettings(): void;
   /** Switches to Google's home screen until Calm TV is opened again. */
@@ -48,15 +50,14 @@ export const native: CalmTvNative | undefined = window.CalmTvNative;
 /** What the TV app's apps() returns. */
 const InstalledApps = v.array(v.object({ pkg: v.string(), label: v.optional(v.string()) }));
 
-/** Package names of installed TV apps, or null when not running on the TV. */
-export function installedPackages(): Set<string> | null {
+/** Installed TV apps (package and name), or null when not running on the TV. */
+export function installedApps(): { pkg: string; label: string }[] | null {
   if (!native) return null;
 
   try {
-    const list = v.parse(InstalledApps, JSON.parse(native.apps()));
-
-    return new Set(list.map((a) => a.pkg));
+    return v.parse(InstalledApps, JSON.parse(native.apps())).map((a) => ({ pkg: a.pkg, label: a.label ?? a.pkg }));
   } catch {
     return null;
   }
 }
+

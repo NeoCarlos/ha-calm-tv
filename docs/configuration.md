@@ -54,6 +54,11 @@ default app dock.
 
 ### `apps`: the dock, in order
 
+The easiest way needs no JSON: on the TV, **Settings → Arrange dock → Choose apps** lists every app
+installed on the TV; OK adds one to the end of the dock or takes it off. **Move tiles** puts them in
+order. Both are kept on the TV, and **Back to calm-tv.json's dock** undoes them. `apps` sets the
+starting dock, for example on a TV you set up for someone else.
+
 ```json
 { "name": "Netflix", "icon": "netflix", "package": "com.netflix.ninja" }
 ```
@@ -72,7 +77,8 @@ default app dock.
     its path, e.g. `"icon": "/local/calm-tv/icons/moonlight.svg"` (or a full `https://` address).
     It's shown as a white silhouette like the built-in icons, so a one-colour logo on a transparent
     background works best. [Simple Icons](https://simpleicons.org) (CC0) has thousands.
-  - Without an icon, the tile shows the app's name.
+  - Without an icon: the built-in icon for that package if there is one, otherwise the app's own
+    Android icon in its colours, otherwise its name.
 - Apps that aren't installed on the TV are hidden automatically.
 - Leave `apps` out entirely for a default lineup of common streaming apps.
 

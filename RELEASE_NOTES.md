@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Choose apps for the dock on the TV:** Settings → Arrange dock → Choose apps lists the TV's
+  installed apps; OK adds one to the dock or takes it off, with no JSON and no package names. Apps
+  without one of Calm TV's icons show their own Android icon, in colour. Kept on the TV;
+  "Back to calm-tv.json's dock" resets it and the order.
 - **Rooms from your Home Assistant Areas:** leave `rooms` out of calm-tv.json and each Area becomes
   a room, in floor order, with its lights, plugs, curtains, thermostats, locks, cameras, door and
   window sensors, and a scene picker from its scenes. Only each device's main control is shown, and

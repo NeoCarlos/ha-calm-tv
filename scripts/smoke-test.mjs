@@ -488,6 +488,50 @@ try {
   await tap('.bgpick-done');
   check(!(await has('.bgpick.open')), 'Done closes the picker');
 
+  // On the TV: Settings → Arrange dock → Choose apps, with a stand-in for the TV app's bridge.
+  mode = 'TV apps';
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const bridge = await call('Page.addScriptToEvaluateOnNewDocument', { source: `
+    localStorage.removeItem('calmtv.demo.dockChoice');
+    window.CalmTvNative = {
+      apps: () => JSON.stringify([
+        { pkg: 'com.google.android.youtube.tv', label: 'YouTube' },
+        { pkg: 'com.example.zeta', label: 'Zeta Player' },
+        { pkg: 'com.example.blank', label: 'Blank' },
+      ]),
+      appIcon: (pkg) => (pkg === 'com.example.zeta' ? '${PNG}' : ''),
+      launch: () => true, openSettings() {}, openGoogleHome() {},
+    };` });
+  await open('demo', 1920, 1080);
+  await call('Page.removeScriptToEvaluateOnNewDocument', { identifier: bridge.result.identifier });
+  const tiles = () => page("return document.querySelectorAll('.gb-track .tile').length;");
+  const dockBefore = await tiles();
+  await key('ArrowLeft');
+  await key('Enter');
+  await sleep(500);
+  await key('ArrowDown');
+  await key('Enter');
+  await sleep(500);
+  check((await text('.settings .detail-title')) === 'Arrange dock', 'Settings → Arrange dock opens');
+  await key('Enter');
+  await sleep(500);
+  const rows = () => page("return [...document.querySelectorAll('.settings .drow')].map((r) => ({ name: r.querySelector('.dname').textContent, status: r.querySelector('.dstatus').textContent, own: !!r.querySelector('.mark-app'), letter: r.querySelector('.mark-text')?.textContent ?? '' }));");
+  let list = await rows();
+  check(list.map((r) => r.name).join() === 'Blank,YouTube,Zeta Player', `Choose apps lists the installed apps by name (${list.map((r) => r.name).join()})`);
+  check(list[1]?.status.startsWith('On the dock') && !list[2]?.status.startsWith('On the dock'), 'it says which are on the dock');
+  check(list[2]?.own && list[0]?.letter === 'B', 'an app without a Calm TV icon shows Android’s icon, or else its first letter');
+  await key('ArrowDown');
+  await key('ArrowDown');
+  await key('Enter');
+  list = await rows();
+  check(list[2]?.status.startsWith('On the dock') && (await tiles()) === dockBefore + 1 && (await has('.gb-track .tile .mark-app')), 'OK adds the app to the dock, with its own icon');
+  check((await page("return localStorage.getItem('calmtv.demo.dockChoice') ?? '';")).includes('com.example.zeta'), 'the choice is kept on this TV');
+  await sleep(500);
+  await key('Enter');
+  check(!(await rows())[2]?.status.startsWith('On the dock') && (await tiles()) === dockBefore, 'OK again takes it off');
+  await key('Escape'); await key('Escape'); await key('Escape');
+  check(await page("const t = [...document.querySelectorAll('.gb-track .tile')]; return t.at(-1).classList.contains('is-focus');"), 'leaving Settings, the Settings tile still has the focus');
+
   check(errors.length === 0, `no errors in the page${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
   ws.close();
 } finally {

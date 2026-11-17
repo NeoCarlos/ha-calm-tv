@@ -83,7 +83,7 @@ export class CalmTv {
       openPicker: () => this.picker.show(),
     };
 
-    this.settings = new SettingsPanel(qs('#stage'), bg, () => this.arrangeDock());
+    this.settings = new SettingsPanel(qs('#stage'), bg, () => this.arrangeDock(), () => this.dockChanged());
     // Only the screens calm-tv.json asks for are built (see "screens"), so a hidden one never loads
     // anything. Smart Home is always made, unseen if hidden: the rooms' states, the "Outside" line and
     // the room panels hang off it.
@@ -714,6 +714,15 @@ export class CalmTv {
     this.render();
     this.appsSection.startArrange();
     this.showArrangeHint(true);
+  }
+
+  /** Settings → Choose apps added or took off an app: the dock's tiles again, the focus kept in range. */
+  private dockChanged(): void {
+    const sec = this.sections.indexOf(this.appsSection);
+
+    if (sec < 0) return;
+    this.cols[sec] = this.appsSection.rebuild(this.cols[sec]);
+    this.render();
   }
 
   private showArrangeHint(on: boolean): void {

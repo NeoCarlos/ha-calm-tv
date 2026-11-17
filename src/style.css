@@ -170,6 +170,8 @@ html.calm .section .gb:not(.mx-frost) { opacity: 0; transform: translateY(18px);
 .mark svg text { fill: currentColor; }
 /* Your own icon files (calm-tv.json "icon": "/local/…"): any colours become a white silhouette. */
 .mark-img { width: 76px; height: 76px; object-fit: contain; display: block; filter: brightness(0) invert(1); }
+/* An app without one of Calm TV's icons: Android's own icon, in its colours (apps.ts, markFor). */
+.mark-app { width: 76px; height: 76px; display: block; border-radius: 18px; }
 .tile.is-focus .mark { opacity: 1; }
 /* Settings → Arrange dock: tiles show their outlines; the one picked up lifts and glows. */
 #secApps.arranging .plate { opacity: 1; background: rgba(255, 255, 255, 0.05); border: 1px dashed rgba(255, 255, 255, 0.25); }
@@ -279,6 +281,12 @@ html.calm .section .gb:not(.mx-frost) { opacity: 0; transform: translateY(18px);
 .drow.focus::before { opacity: 1; }
 .dicon { width: 56px; height: 56px; border-radius: 15px; background: rgba(255, 255, 255, 0.06); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; color: var(--ink); }
 .dicon svg { width: 30px; height: 30px; }
+/* Choose apps: each app's dock mark, small. */
+.dmark { display: flex; color: var(--ink); }
+.dmark svg { width: 34px; height: 34px; fill: currentColor; }
+.dmark svg path, .dmark svg text { fill: currentColor; }
+.dmark .mark-img, .dmark .mark-app { width: 40px; height: 40px; border-radius: 10px; }
+.dmark .mark-text { font-size: 24px; }
 .dmeta { min-width: 0; flex: 1 1 auto; }
 .dname { font-size: 27px; font-weight: 600; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dstatus { font-size: 19px; margin-top: 2px; color: var(--ink-dim); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }

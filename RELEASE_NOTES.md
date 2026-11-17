@@ -30,7 +30,7 @@
 - **Music screen** (with `"music"` in calm-tv.json, after Smart Home): the album art with the song,
   artist and time beneath it, and the main controls on a frosted bar. Resting, the bar fades and the
   art settles to the middle.
-  Nothing playing, nothing shown. The album's colour can show behind it: `"background"` under
+  Nothing playing: a placeholder cover with a music note, and no words. The album's colour can show behind it: `"background"` under
   `music` (or **Settings → Appearance → Music background**) picks none (the default), glow, wash or
   solid. A thin wave under the time lights up as the song plays and drifts while it does (**Music
   wave**, on by default). On the dashboard,

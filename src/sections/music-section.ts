@@ -54,6 +54,7 @@ export class MusicSection implements Section {
     });
     this.el.innerHTML = `
       <div class="mx-glow"></div>
+      <div class="gb mx-frost" id="mxfrost"><div class="gb-mat"><div class="gb-img"></div><div class="gb-veil"></div></div><div class="gb-edge"></div></div>
       <div class="mx-art"></div>
       <div class="mx-caption"><div class="mx-title"></div><div class="mx-artist"></div><div class="mx-time"></div>
         <div class="mx-wave"><div class="w-amp">${waveSvg}<div class="w-done">${waveSvg}</div></div></div></div>
@@ -136,14 +137,17 @@ export class MusicSection implements Section {
     const on = s?.state === 'playing' || s?.state === 'paused';
     const a = s?.a;
 
-    // Nothing playing: no art, no words, just the background (and the bar, until it fades).
+    // Nothing playing: a placeholder cover (below) and no words (and the bar, until it fades).
     this.el.classList.toggle('idle', !on);
     this.el.classList.toggle('playing', s?.state === 'playing');
     const pic = on && a?.entity_picture ? haPath(a.entity_picture) : '';
 
     if (pic !== this.artUrl) {
       this.artUrl = pic;
-      child(this.el, '.mx-art').innerHTML = pic ? `<img src="${esc(pic)}" alt="">` : '';
+      // No cover (nothing playing, or a stream without one): a note on frosted glass like the bars'
+      // (#mxfrost), so the screen still reads as Music.
+      child(this.el, '.mx-art').innerHTML = pic ? `<img src="${esc(pic)}" alt="">` : `<div class="mx-art-empty">${ICON.note}</div>`;
+      this.el.classList.toggle('no-cover', !pic);
       this.el.classList.remove('tinted');
 
       void artTint(pic).then((rgb) => {

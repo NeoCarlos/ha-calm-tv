@@ -30,6 +30,8 @@ const DeviceSchema = v.object({
   operator: v.optional(EntityId),
   /** Lock: a keypad's battery sensor. */
   keypad: v.optional(EntityId),
+  /** Sensor: what OK opens/closes in the ★ side panel, e.g. the garage door's "cover.left_garage_door". */
+  control: v.optional(EntityId),
 });
 
 /** The screens, in their default order (↓ moves through them). */
@@ -105,6 +107,18 @@ const ConfigSchema = v.object({
     }),
   ),
   /**
+   * A small pop-up in the corner when a door opens, even over other apps (it never pauses them):
+   * an open door with the door's name for a few seconds. A door still open after `leftOpen` seconds
+   * (default 10) pops up again with a red "!" and "Left open", until it closes. Off unless doors are listed.
+   */
+  doors: v.optional(
+    v.object({
+      popup: v.optional(v.boolean()),
+      entities: v.optional(v.array(v.object({ name: v.string(), entity: EntityId }))),
+      leftOpen: v.optional(v.pipe(v.number('should be a number of seconds, e.g. 10'), v.minValue(5))),
+    }),
+  ),
+  /**
    * The screens to show, in order, e.g. ["apps", "smarthome", "weather"] for no Calendar. Apps is
    * always shown, and first (it holds Settings). Default: all four.
    */
@@ -176,8 +190,9 @@ const devHaUrl = import.meta.env.DEV ? import.meta.env.VITE_HA_URL ?? '' : '';
 function readHaUrl(): string {
   if (native?.getHaUrl) return native.getHaUrl();
 
-  // The doorbell window over other apps has its own, smaller bridge.
+  // The doorbell window and the ★ side panel over other apps have their own, smaller bridges.
   if (window.CalmTvDoorbell?.getHaUrl) return window.CalmTvDoorbell.getHaUrl();
+  if (window.CalmTvPanel?.getHaUrl) return window.CalmTvPanel.getHaUrl();
 
   try {
     return devHaUrl || localStorage.getItem(HA_URL_KEY) || '';
@@ -254,7 +269,9 @@ export async function loadConfig(): Promise<void> {
   let text = '';
   let source = '';
 
-  const nativeLoad = native?.loadConfig ? () => native!.loadConfig!() : window.CalmTvDoorbell?.loadConfig ? () => window.CalmTvDoorbell!.loadConfig!() : null;
+  const nativeLoad = native?.loadConfig ? () => native!.loadConfig!()
+    : window.CalmTvDoorbell?.loadConfig ? () => window.CalmTvDoorbell!.loadConfig!()
+    : window.CalmTvPanel?.loadConfig ? () => window.CalmTvPanel!.loadConfig!() : null;
 
   if (nativeLoad) {
     let answer;

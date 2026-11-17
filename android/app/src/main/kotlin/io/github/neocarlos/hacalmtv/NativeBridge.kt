@@ -92,6 +92,31 @@ class NativeBridge(private val activity: Activity) {
         return true
     }
 
+    /**
+     * A door pop-up over the current app: JSON { "id": "binary_sensor.front_door", "name": "Front door",
+     * "left": false, "stay": false }. With "stay" it stays until hideDoor(id). Returns false if the
+     * Home button service (which draws it) isn't running or the JSON is bad.
+     */
+    @JavascriptInterface
+    fun showDoor(json: String): Boolean {
+        val service = HomeButtonService.instance ?: return false
+        val door = try {
+            JSONObject(json)
+        } catch (e: Exception) {
+            return false
+        }
+        val name = door.optString("name").take(40)
+        if (name.isEmpty()) return false
+        service.showDoor(door.optString("id", name).take(80), name, door.optBoolean("left"), door.optBoolean("stay"))
+        return true
+    }
+
+    /** Takes away a door's pop-up shown with "stay". */
+    @JavascriptInterface
+    fun hideDoor(id: String) {
+        HomeButtonService.instance?.hideDoor(id)
+    }
+
     /** Home Assistant's address, or "" before it's set up. */
     @JavascriptInterface
     fun getHaUrl(): String = Prefs.haUrl(activity)

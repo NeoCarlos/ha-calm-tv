@@ -24,6 +24,8 @@ export const ClimateAttributes = v.object({
   temperature: maybeNumber,
   target_temp_low: maybeNumber,
   target_temp_high: maybeNumber,
+  /** What it's doing right now: heating, cooling, idle, off... */
+  hvac_action: maybeString,
 });
 
 export const CameraAttributes = v.object({

@@ -247,11 +247,19 @@ try {
   await call('Input.synthesizeScrollGesture', { x: row.x, y: row.y, xDistance: -300, yDistance: 0, gestureSourceType: 'touch', speed: 1200 });
   await sleep(600);
   const dragged = await rowLeft();
-  check(dragged > 100, `dragging the rooms scrolls them (${dragged}px)`);
+  const why = dragged > 100 ? '' : await page(`const s = document.querySelector('#secHome .touch-row');
+    const at = document.elementFromPoint(${row.x}, ${row.y});
+    return '; scrollWidth ' + s.scrollWidth + ', clientWidth ' + s.clientWidth + ', under the finger: ' + (at ? at.tagName + '.' + at.className : 'nothing')
+      + ', touch points ' + navigator.maxTouchPoints;`);
+  check(dragged > 100, `dragging the rooms scrolls them (${dragged}px${why})`);
   check(await has('#secHome.is-active'), 'a sideways drag doesn’t change screens');
-  await tap('#secHome [data-item="4"]');
-  await tap('.detail.open .detail-close');
-  check(Math.abs((await rowLeft()) - dragged) < 200, `tapping a card doesn’t snap the row back (${dragged} → ${await rowLeft()}px)`);
+
+  // Tapping a card that the drag brought into view must not snap the row back (only if the drag worked).
+  if (dragged > 100) {
+    await tap('#secHome [data-item="4"]');
+    await tap('.detail.open .detail-close');
+    check(Math.abs((await rowLeft()) - dragged) < 200, `tapping a card doesn’t snap the row back (${dragged} → ${await rowLeft()}px)`);
+  }
   await swipe(row.x, row.y, 0, -200);
   check(await has('#secCalendar.is-active'), 'swiping up on the rooms still changes screens');
   await tap('#dashboardBar .tb-tab:nth-child(1)');
@@ -293,10 +301,17 @@ try {
   check(errors.length === 0, `no errors in the page${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
   ws.close();
 } finally {
+  // Wait for Chrome to exit before removing its profile; a leftover temp folder must never fail the run.
+  const exited = new Promise((r) => chrome.once('exit', r));
   chrome.kill();
+  await Promise.race([exited, sleep(5000)]);
   await server.close();
-  // Chrome can still be writing to its profile for a moment after it's killed.
-  rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+
+  try {
+    rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  } catch {
+    console.warn(`(couldn't remove ${profile})`);
+  }
 }
 
 console.log(failures ? `\n${failures} check(s) failed.` : '\nAll checks passed.');

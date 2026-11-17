@@ -2,6 +2,7 @@ import { wallpapers } from './wallpapers';
 import { videos } from './videos';
 import { fadeWhenIdle, glass, onLookChange, showFps, transitions, videosOn } from './look';
 import { fpsCounter } from './fps';
+import { isHeld } from './keys';
 import { load, save } from './state';
 import { AppsSection } from './sections/apps-section';
 import { SmartHomeSection } from './sections/smarthome-section';
@@ -444,7 +445,7 @@ export class CalmTv {
       }
 
       // A held-down OK repeats; only the first press counts, everywhere.
-      if (e.repeat && (k === 'Enter' || k === ' ')) {
+      if (isHeld(e) && (k === 'Enter' || k === ' ')) {
         e.preventDefault();
 
         return;
@@ -503,8 +504,8 @@ export class CalmTv {
       switch (k) {
         case 'ArrowUp': e.preventDefault(); this.moveV(-1); break;
         case 'ArrowDown': e.preventDefault(); this.moveV(1); break;
-        case 'ArrowLeft': e.preventDefault(); this.moveH(-1, e.repeat); break;
-        case 'ArrowRight': e.preventDefault(); this.moveH(1, e.repeat); break;
+        case 'ArrowLeft': e.preventDefault(); this.moveH(-1, isHeld(e)); break;
+        case 'ArrowRight': e.preventDefault(); this.moveH(1, isHeld(e)); break;
         case 'Enter':
         case ' ': e.preventDefault(); this.activate(); break;
         case 'w':

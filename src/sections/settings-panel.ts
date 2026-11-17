@@ -8,6 +8,7 @@ import { ma, maSettings } from '../music-assistant';
 import { child } from '../dom';
 import { FocusGroup } from '../focus';
 import { hint } from '../hints';
+import { isHeld } from '../keys';
 import { apps, hasDockOrder, resetDockOrder } from '../apps';
 import {
   glass, glassSource, hasOverrides, resetToConfig, setGlass, setShowFps,
@@ -352,7 +353,7 @@ export class SettingsPanel {
         // OK right after opening is the end (or a double) of the press that opened the panel or
         // menu. Any other key in between means the next OK is a new press.
         if (e.key === 'Enter' || e.key === ' ') {
-          if (e.repeat || Date.now() - this.openedAt < 400) {
+          if (isHeld(e) || Date.now() - this.openedAt < 400) {
             e.preventDefault();
 
             return true;

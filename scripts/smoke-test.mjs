@@ -152,6 +152,17 @@ try {
   const lastRoom = await page("return document.querySelectorAll('#secHome [data-item]').length - 1;");
   await key('ArrowRight');
   check(firstRoom === 0 && wrapped === lastRoom && (await roomFocus()) === 0, `the rooms wrap: ← from the first goes to the last (${wrapped} of ${lastRoom})`);
+  // Held, as the TV's remote sends it: key-downs with no repeat flag and no key-up until the end. It
+  // stops at the last room instead of wrapping round.
+  const right = { key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: KEYS.ArrowRight };
+  for (let i = 0; i < lastRoom + 3; i++) {
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', ...right });
+    await sleep(60);
+  }
+  await call('Input.dispatchKeyEvent', { type: 'keyUp', ...right });
+  check((await roomFocus()) === lastRoom, `holding → stops at the last room, as the TV sends it (on ${await roomFocus()})`);
+  await key('ArrowRight');
+  check((await roomFocus()) === 0, '…and a new press then wraps to the first');
 
   await key('Enter');
   check(await has('.detail.open:not(.settings)'), 'OK opens a room');

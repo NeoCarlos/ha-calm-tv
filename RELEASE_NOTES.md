@@ -36,7 +36,8 @@
   wave**, on by default). On the dashboard,
   Music is a tab.
 - **Every row wraps around**, like the dock: ← on the first room, day, event or Music button goes to
-  the last, and → on the last to the first. Holding the arrow still stops at the end.
+  the last, and → on the last to the first. Holding the arrow stops at the end, on the TV too: its
+  remote's held buttons aren't marked as repeats, so Calm TV tells them apart itself (src/keys.ts).
 - **Fade when idle:** after 8 seconds without a key press, every screen rests: its bar fades away
   and only the clock, the weather, the album art… stay. The first key or tap only brings the bar
   back, so ↑ or OK never acts by accident. Settings → Appearance, or `"fade"` under `display`.

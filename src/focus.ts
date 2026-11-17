@@ -1,3 +1,5 @@
+import { isHeld } from './keys';
+
 // The shared input layer for Calm TV's panels (a room, Settings, Music, the background picker…).
 //
 // A panel marks each thing you can land on with `data-focus="<id>"` and gives it a click listener
@@ -114,7 +116,7 @@ export class FocusGroup {
 
     if (!dir) return;
     e.preventDefault();
-    this.move(dir, e.repeat);
+    this.move(dir, isHeld(e));
   }
 
   /** Moves the focus one step `dir`, to the nearest item that way; at an edge it stays put, or wraps (see `wrap`). */

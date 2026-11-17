@@ -7,7 +7,7 @@ import { dashboardMode } from './config';
 const HINTS = {
   doorbellClose: ['Back to dismiss', 'Tap to close'],
   signIn: ['Press OK to sign in', 'Tap to sign in'],
-  signInRow: ['Not signed in · OK to sign in', 'Not signed in · tap to sign in'],
+  signInRow: ['OK to sign in', 'tap to sign in'],
   signOutAgain: ['Press OK again to sign out', 'Tap again to sign out'],
   chooseBackgroundRow: [' · OK to choose', ''],
   backgroundPicker: ['OK to choose · Back when done', 'Tap to choose'],
@@ -18,7 +18,10 @@ const HINTS = {
   musicClose: ['Back to close', 'Close'],
   musicUp: ['Back to go back', 'Back'],
   musicDone: ['Back when done', 'Done'],
-  groupSpeakers: ['OK to add or remove · Back when done', 'Tap to add or remove'],
+  musicVolume: ['← → volume · OK when done', 'Done'],
+  musicQueue: ['Back to close the queue', 'Close the queue'],
+  groupSpeakers: ['OK on a speaker to add or take it out · Done or Back when finished', 'Tap a speaker to add or take it out'],
+  musicSpeakers: ['OK on the active speaker to change its volume · OK on an idle speaker to play music there', 'Tap the active speaker for its volume · tap an idle one to play there'],
 } as const satisfies Record<string, readonly [remote: string, touch: string]>;
 
 /** The wording `name`, for the remote on the TV or for touch on the dashboard. */

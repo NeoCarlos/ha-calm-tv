@@ -142,6 +142,11 @@ try {
   mode = 'remote';
   await open('demo', 1920, 1080);
   check(await has('#secApps.is-active'), 'starts on the Apps screen');
+  // A screen name this version doesn't know (from a newer calm-tv.json) is skipped, not fatal.
+  const decoded = await page(`const { decodeConfig } = await import('/src/config.ts');
+    const c = decodeConfig(JSON.stringify({ screens: ['apps', 'some-future-screen', 'weather'], rooms: [{ name: 'Den', groups: [] }] }));
+    return JSON.stringify([c.screens, c.rooms.length]);`);
+  check(decoded === '[["apps","weather"],1]', `an unknown screen name is skipped, and the rest of calm-tv.json still loads (${decoded})`);
   await key('ArrowDown');
   check(await has('#secHome.is-active'), '↓ goes to Smart Home');
 

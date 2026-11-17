@@ -122,7 +122,16 @@ const ConfigSchema = v.object({
    * The screens to show, in order, e.g. ["apps", "smarthome", "weather"] for no Calendar. Apps is
    * always shown, and first (it holds Settings). Default: all four.
    */
-  screens: v.optional(v.array(v.picklist(SCREENS, `should be one of ${SCREENS.join(', ')}`))),
+  // A name this version doesn't know (a screen added in a newer one, or a typo) is skipped with a
+  // warning, not an error: one unknown word mustn't make the whole file unreadable, so an older TV
+  // or dashboard can still read a newer calm-tv.json.
+  screens: v.optional(v.pipe(v.array(v.string()), v.transform((names) => names.filter((n): n is ScreenName => {
+    const known = (SCREENS as readonly string[]).includes(n);
+
+    if (!known) console.warn(`calm-tv.json: "screens" has "${n}", which this version doesn't know; skipped`);
+
+    return known;
+  })))),
   /** Rooms in the Smart Home bar, in order. */
   rooms: v.optional(v.array(RoomSchema)),
   /** Look options. */

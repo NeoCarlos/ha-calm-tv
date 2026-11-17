@@ -50,9 +50,49 @@ export const MediaPlayerAttributes = v.object({
   entity_picture: maybeString,
   /** Speakers playing together, this one included (Music Assistant lists the whole group). */
   group_members: maybeStrings,
+  /** Shuffle on. */
+  shuffle: v.fallback(v.optional(v.boolean()), undefined),
 });
 
 export type MediaPlayerAttributes = v.InferOutput<typeof MediaPlayerAttributes>;
+
+// ---------- Music Assistant's queue (music_assistant.get_queue) ----------
+
+const maybeNullable = <T extends v.GenericSchema>(schema: T) => v.fallback(v.optional(v.nullable(schema)), undefined);
+
+/** A song in the queue (only the parts the Music panel shows). */
+const QueueEntrySchema = v.object({
+  name: maybeString,
+  /** Seconds. */
+  duration: maybeNullable(v.number()),
+  media_item: maybeNullable(v.object({
+    name: maybeString,
+    /** A path on HA, or a full address. */
+    image: maybeNullable(v.string()),
+    artists: v.fallback(v.optional(v.array(v.object({ name: maybeString }))), undefined),
+    album: maybeNullable(v.object({ name: maybeString })),
+  })),
+});
+
+/** A speaker's queue: what's playing, what's next and how many in all (not the whole list). */
+const MusicQueueSchema = v.object({
+  queue_id: maybeString,
+  items: maybeNumber,
+  current_index: maybeNullable(v.number()),
+  shuffle_enabled: v.fallback(v.optional(v.boolean()), undefined),
+  repeat_mode: maybeString,
+  current_item: maybeNullable(QueueEntrySchema),
+  next_item: maybeNullable(QueueEntrySchema),
+});
+
+/** get_queue's answer: one queue per speaker asked about. */
+export const MusicQueueReplySchema = v.object({
+  response: v.fallback(v.optional(v.record(v.string(), MusicQueueSchema)), undefined),
+});
+
+export type MusicQueue = v.InferOutput<typeof MusicQueueSchema>;
+
+export type QueueEntry = v.InferOutput<typeof QueueEntrySchema>;
 
 // ---------- the media browser (media_player/browse_media) ----------
 

@@ -345,6 +345,8 @@ class DemoHome {
   private states = new Map<string, DemoEntity>();
   private listeners: ((e: HassEntities) => void)[] = [];
   private lastBrightness = new Map<string, number>();
+  /** Covers on their way open or closed: the timer that finishes the move. */
+  private moving = new Map<string, number>();
 
   constructor() {
     // Changed "a while ago", so nothing counts as just changed.
@@ -511,12 +513,19 @@ class DemoHome {
       case 'cover.close_cover': {
         const opening = call.service === 'open_cover';
         this.set(id, opening ? 'opening' : 'closing');
-        window.setTimeout(() => this.set(id, opening ? 'open' : 'closed'), 4000);
+        window.clearTimeout(this.moving.get(id));
+        this.moving.set(id, window.setTimeout(() => this.set(id, opening ? 'open' : 'closed'), 4000));
 
         // The garage door's open/closed sensor follows the door.
         if (id === 'cover.garage_door') this.set('binary_sensor.garage_door', opening ? 'on' : 'off');
         break;
       }
+
+      // Stopped part-way, a cover reports itself open (as Home Assistant does).
+      case 'cover.stop_cover':
+        window.clearTimeout(this.moving.get(id));
+        if (s.state === 'opening' || s.state === 'closing') this.set(id, 'open');
+        break;
 
       case 'select.select_option':
         if (data.option) this.set(id, data.option);

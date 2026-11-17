@@ -234,6 +234,30 @@ try {
   await key('Escape');
   check(!(await has('.music.open')), 'Back closes Music');
 
+  // ---------- the ★ side panel: a garage door moves only on a deliberate second OK ----------
+  await open('demo&panel', 684, 1080);
+  const garage = () => page("const f = document.querySelector('.sp-item.focus'); return f ? f.textContent : '';");
+  for (let i = 0; i < 25 && !/garage/i.test(await garage()); i++) await key('ArrowDown');
+  check(/garage/i.test(await garage()) && /closed/i.test(await garage()), `the ★ panel reaches the garage door (${(await garage()).trim()})`);
+  await key('Enter');
+  check(/OK again to open/.test(await garage()), 'OK on the garage door asks "OK again to open"');
+  await key('Enter');
+  check(/OK again to open/.test(await garage()), 'a second OK straight away (a bounce) does nothing');
+  await key('ArrowUp');
+  await key('ArrowDown');
+  check(!/OK again/.test(await garage()), 'moving away cancels it');
+  await key('Enter');
+  await sleep(650);
+  await key('Enter');
+  await sleep(200);
+  check(/opening/i.test(await garage()), 'a deliberate second OK opens it');
+  await key('Enter');
+  check(/OK again to stop/.test(await garage()), 'while it moves, the hint is "OK again to stop"');
+  await sleep(650);
+  await key('Enter');
+  await sleep(300);
+  check(!/opening|closing/i.test(await garage()), `…and a second OK stops it, not reverses it (${(await garage()).trim()})`);
+
   // ---------- the Home Assistant dashboard: taps only ----------
   mode = 'touch';
   await open('demo&dash', 1280, 800, true);

@@ -33,6 +33,17 @@ interface Item {
   door?: { name: string; entity: string };
 }
 
+/** What OK does to a cover in this state: close it, open it, stop it while moving, or nothing when unknown. */
+function coverAction(state: string | undefined): { service: string; verb: string } | null {
+  switch (state) {
+    case 'open': return { service: 'close_cover', verb: 'close' };
+    case 'closed': return { service: 'open_cover', verb: 'open' };
+    case 'opening':
+    case 'closing': return { service: 'stop_cover', verb: 'stop' };
+    default: return null;
+  }
+}
+
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /** Player names in calm-tv.json's "music", by entity. */
@@ -54,8 +65,13 @@ class SidePanel {
    * when to show them instead of HA's older values.
    */
   private range: { entity: string; lo: number; hi: number; which: 'lo' | 'hi'; until: number; editing?: boolean } | null = null;
-  /** A garage door asks for OK a second time before it moves: which one, and until when. */
-  private confirm: { entity: string; until: number } | null = null;
+  /**
+   * A garage door asks for OK a second time before it moves (AGENTS.md: never by accident): which
+   * one, when it asked, and until when.
+   */
+  private confirm: { entity: string; at: number; until: number } | null = null;
+  /** A word about a door that couldn't move ("Can't tell if it's open"…), shown for a moment. */
+  private notice: { entity: string; text: string; until: number } | null = null;
   /** The camera opened big, if any. */
   private camera: Device | null = null;
 
@@ -191,7 +207,11 @@ class SidePanel {
       it.el.classList.toggle('open', !!d.on && !d.occupancy);
       const asking = this.confirm?.entity === d.control && Date.now() < (this.confirm?.until ?? 0);
       const moving = d.control ? ha.entities[d.control]?.state : undefined;
-      const status = asking ? `OK again to ${d.on ? 'close' : 'open'}` : moving === 'opening' || moving === 'closing' ? cap(moving) : d.status ?? '';
+      const action = d.control ? coverAction(moving) : null;
+      const n = this.notice;
+      const notice = n && n.entity === d.control && Date.now() < n.until ? n.text : '';
+      // The hint comes from the cover itself, so it always says what OK will do.
+      const status = notice || (asking && action ? `OK again to ${action.verb}` : moving === 'opening' || moving === 'closing' ? cap(moving) : d.status ?? '');
       it.el.classList.toggle('asking', asking);
       it.el.innerHTML = `${d.occupancy ? SENSOR : /garage/i.test(d.entity + d.name) ? GARAGE : d.on ? DOOR_ICON : DOOR_SHUT}<div><div class="n">${esc(d.name)}</div><div class="s">${esc(status)}</div></div>`;
     } else if (it.kind === 'music') {
@@ -231,22 +251,57 @@ class SidePanel {
     return { lo: Math.round(a.target_temp_low), hi: Math.round(a.target_temp_high), which: 'lo' };
   }
 
-  /** OK on a garage door: the first press asks, a second within 4 s opens or closes it. */
+  /**
+   * OK on a garage door: the first press asks, a second one on the same door (at least half a second
+   * later, within 4 s, with no other key between) opens, closes or, while it's moving, stops it.
+   * Nothing moves on a state Calm TV can't read, and a refusal from Home Assistant is shown.
+   */
   private garage(d: Device): void {
     const cover = d.control;
 
     if (!cover) return;
+    const action = coverAction(ha.entities[cover]?.state);
+    const now = Date.now();
 
-    if (this.confirm?.entity === cover && Date.now() < this.confirm.until) {
+    if (!action) {
       this.confirm = null;
-      const state = ha.entities[cover]?.state;
-      const service = state === 'open' || state === 'opening' ? 'close_cover' : state === 'closed' || state === 'closing' ? 'open_cover' : 'toggle';
-      void ha.call('cover', service, { entity_id: cover });
+      this.tell(cover, 'Can’t tell if it’s open, so it won’t move');
 
       return;
     }
 
-    this.confirm = { entity: cover, until: Date.now() + 4000 };
+    const c = this.confirm;
+
+    if (c?.entity === cover && now < c.until) {
+      // A second press this soon is the same press bouncing, or a remote that doubles presses.
+      if (now - c.at < 500) return;
+      this.confirm = null;
+      const conn = ha.connection;
+
+      if (!conn) {
+        this.tell(cover, 'Not connected to Home Assistant');
+
+        return;
+      }
+
+      conn.sendMessagePromise({ type: 'call_service', domain: 'cover', service: action.service, service_data: { entity_id: cover } })
+        .catch((e: unknown) => {
+          console.warn('Garage door', action.service, e);
+          this.tell(cover, `Home Assistant didn’t ${action.verb} it`);
+        });
+      this.render();
+
+      return;
+    }
+
+    this.confirm = { entity: cover, at: now, until: now + 4000 };
+    window.setTimeout(() => this.render(), 4100);
+  }
+
+  /** Shows a short word on a door's row for a few seconds. */
+  private tell(entity: string, text: string): void {
+    this.notice = { entity, text, until: Date.now() + 4000 };
+    this.render();
     window.setTimeout(() => this.render(), 4100);
   }
 
@@ -261,6 +316,12 @@ class SidePanel {
   private key(e: KeyboardEvent): void {
     const k = e.key;
     const f = this.focused;
+
+    // Any other key cancels a garage door's "OK again": the second OK must follow the first.
+    if (this.confirm && k !== 'Enter' && k !== ' ') {
+      this.confirm = null;
+      this.render();
+    }
 
     if (k === 'Escape' || k === 'Backspace') {
       e.preventDefault();

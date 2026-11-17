@@ -30,8 +30,8 @@ const DeviceSchema = v.object({
   operator: v.optional(EntityId),
   /** Lock: a keypad's battery sensor. */
   keypad: v.optional(EntityId),
-  /** Sensor: what OK opens/closes in the ★ side panel, e.g. the garage door's "cover.left_garage_door". */
-  control: v.optional(EntityId),
+  /** Sensor: what OK opens/closes in the ★ side panel, e.g. the garage door's "cover.left_garage_door". Only a cover. */
+  control: v.optional(v.pipe(EntityId, v.startsWith('cover.', 'should be a cover, like "cover.garage_door"'))),
 });
 
 /** The screens, in their default order (↓ moves through them). */

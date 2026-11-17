@@ -229,8 +229,16 @@ export class CalmTv {
     this.bar?.setActive(this.secIndex);
   }
 
-  private moveV(d: number): void {
-    this.goTo(this.secIndex + d);
+  /**
+   * ↑/↓ (or a swipe): the screen above or below. The screens wrap round like the rows: ↑ on the
+   * first goes to the last, ↓ on the last to the first. Not while the button is held, so holding it
+   * stops at the end.
+   */
+  private moveV(d: number, held = false): void {
+    const n = this.sections.length;
+    const next = this.secIndex + d;
+
+    this.goTo(!held && (next < 0 || next >= n) ? (next + n) % n : next);
   }
 
   /** Shows screen i (from ↑/↓, a swipe, or a dashboard tab). */
@@ -502,8 +510,8 @@ export class CalmTv {
       }
 
       switch (k) {
-        case 'ArrowUp': e.preventDefault(); this.moveV(-1); break;
-        case 'ArrowDown': e.preventDefault(); this.moveV(1); break;
+        case 'ArrowUp': e.preventDefault(); this.moveV(-1, isHeld(e)); break;
+        case 'ArrowDown': e.preventDefault(); this.moveV(1, isHeld(e)); break;
         case 'ArrowLeft': e.preventDefault(); this.moveH(-1, isHeld(e)); break;
         case 'ArrowRight': e.preventDefault(); this.moveH(1, isHeld(e)); break;
         case 'Enter':

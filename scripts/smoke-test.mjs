@@ -142,6 +142,21 @@ try {
   mode = 'remote';
   await open('demo', 1920, 1080);
   check(await has('#secApps.is-active'), 'starts on the Apps screen');
+  // The screens wrap round too: ↑ on the first goes to the last, ↓ comes back.
+  await key('ArrowUp');
+  const lastScreen = await page("return document.querySelector('.section.is-active')?.id;");
+  await key('ArrowDown');
+  check(lastScreen === 'secWeather' && await has('#secApps.is-active'), `↑ on the first screen goes to the last (${lastScreen}), ↓ comes back`);
+  // Holding ↑ (as the TV sends it): the first press wraps to the last screen, the repeats go on up
+  // through the screens, and stop at the first instead of circling again.
+  const up = { key: 'ArrowUp', code: 'ArrowUp', windowsVirtualKeyCode: KEYS.ArrowUp };
+  for (let i = 0; i < 9; i++) {
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', ...up });
+    await sleep(60);
+  }
+  await call('Input.dispatchKeyEvent', { type: 'keyUp', ...up });
+  await sleep(300);
+  check(await has('#secApps.is-active'), 'holding ↑ goes round once and stops at the first screen');
   await key('ArrowDown');
   check(await has('#secHome.is-active'), '↓ goes to Smart Home');
   // The rooms wrap around like the dock: ← on the first goes to the last, → comes back.

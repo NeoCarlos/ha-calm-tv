@@ -30,6 +30,25 @@ class NativeBridge(private val activity: Activity) {
         return out.toString()
     }
 
+    /**
+     * An installed app's own icon, as Android shows it in its app list: a 128 px PNG data URL, or ""
+     * if there's no such app. For dock tiles without one of Calm TV's built-in icons.
+     */
+    @JavascriptInterface
+    fun appIcon(pkg: String): String = try {
+        val drawable = pm.getApplicationIcon(pkg)
+        val size = 128
+        val bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+        drawable.setBounds(0, 0, size, size)
+        drawable.draw(android.graphics.Canvas(bitmap))
+        val out = java.io.ByteArrayOutputStream()
+        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+        bitmap.recycle()
+        "data:image/png;base64," + android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP)
+    } catch (e: PackageManager.NameNotFoundException) {
+        ""
+    }
+
     /** Opens an installed app. Returns false if it isn't installed. */
     @JavascriptInterface
     fun launch(pkg: String): Boolean {

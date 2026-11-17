@@ -47,7 +47,15 @@ export class AppsSection implements Section {
     this.shelf = child(s, '.gb-shelf');
     this.clockEl = child(s, '#clock');
     this.dateEl = child(s, '#cdate');
+    this.buildTiles();
 
+    return s;
+  }
+
+  /** The dock's tiles, from `apps` (again after Choose apps changes the dock). */
+  private buildTiles(): void {
+    this.track.innerHTML = '';
+    this.tiles = [];
     const top = (DOCK_H - TH) / 2;
     apps.forEach((a, i) => {
       const t = document.createElement('div');
@@ -62,8 +70,13 @@ export class AppsSection implements Section {
       this.track.appendChild(t);
       this.tiles.push(t);
     });
+  }
 
-    return s;
+  /** The dock changed (Settings → Choose apps): new tiles. Returns the focused column, kept in range. */
+  rebuild(col: number): number {
+    this.buildTiles();
+
+    return Math.max(0, Math.min(col, this.tiles.length - 1));
   }
 
   count(): number {

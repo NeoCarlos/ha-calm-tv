@@ -9,7 +9,7 @@ import { child } from '../dom';
 import { FocusGroup } from '../focus';
 import { hint } from '../hints';
 import { isHeld } from '../keys';
-import { apps, hasDockOrder, resetDockOrder } from '../apps';
+import { apps, dockChoices, hasDockChoice, hasDockOrder, resetDockOrder, toggleDockApp } from '../apps';
 import {
   glass, glassSource, hasOverrides, resetToConfig, setGlass, setShowFps,
   setTransitions, setVideos, showFps, transitions, transitionsSource, videosOn, videosSource,
@@ -39,6 +39,7 @@ const ICONS = {
   glass: line('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 15l7-7M12 16l4-4"/>'),
   counter: line('<path d="M4 18h16M6 15l3-4 3 2 5-6"/>'),
   arrange: line('<rect x="3" y="8" width="5" height="8" rx="1.5"/><rect x="10" y="8" width="5" height="8" rx="1.5"/><path d="M18 12h4M20 10l2 2-2 2"/>'),
+  apps: line('<rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><path d="M17 14v6M14 17h6"/>'),
   reset: line('<path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/>'),
 };
 
@@ -63,6 +64,8 @@ interface Row {
 interface Menu {
   title: string;
   rows: Row[];
+  /** Rows made when the menu opens (e.g. the TV's installed apps). */
+  fill?: () => Row[];
 }
 
 const onOff = (on: boolean) => (on ? 'On' : 'Off');
@@ -97,7 +100,13 @@ export class SettingsPanel {
   /** Remote, touch and mouse (see focus.ts): the rows, and the round button ("close"). */
   private nav!: FocusGroup;
 
-  constructor(mount: HTMLElement, private bg: BackgroundControls, private arrangeDock: () => void) {
+  constructor(
+    mount: HTMLElement,
+    private bg: BackgroundControls,
+    private arrangeDock: () => void,
+    /** Choose apps changed the dock: the Apps screen builds its tiles again. */
+    private dockChanged: () => void,
+  ) {
     const onTv = !!native;
 
     const connection = (): string =>
@@ -275,10 +284,28 @@ export class SettingsPanel {
         {
           icon: ICONS.arrange,
           name: 'Arrange dock',
-          status: () => `${hasDockOrder() ? 'Your order' : 'As in calm-tv.json'} · ${apps.length - 1} tiles · OK to move them`,
+          status: () => `${hasDockOrder() || hasDockChoice() ? 'Your dock' : 'As in calm-tv.json'} · ${apps.length - 1} apps`,
           menu: {
             title: 'Arrange dock',
             rows: [
+              {
+                icon: ICONS.apps,
+                name: 'Choose apps',
+                status: () => `${apps.length - 1} on the dock · OK to add or take off apps installed on this TV`,
+                menu: {
+                  title: 'Choose apps',
+                  rows: [],
+                  fill: () => dockChoices().map((a) => ({
+                    icon: `<span class="dmark">${a.mark}</span>`,
+                    name: a.name,
+                    status: () => (apps.some((x) => x.pkg === a.pkg) ? 'On the dock · OK to take it off' : 'OK to add it to the dock'),
+                    run: () => {
+                      toggleDockApp(a.pkg, a.label);
+                      this.dockChanged();
+                    },
+                  })),
+                },
+              },
               {
                 icon: ICONS.arrange,
                 name: 'Move tiles',
@@ -290,10 +317,10 @@ export class SettingsPanel {
               },
               {
                 icon: ICONS.reset,
-                name: 'Back to the original order',
-                status: () => (hasDockOrder() ? 'The order in calm-tv.json · OK to reset' : 'Already in the original order'),
+                name: 'Back to calm-tv.json’s dock',
+                status: () => (hasDockOrder() || hasDockChoice() ? 'Its apps, in its order · OK to reset' : 'Already as in calm-tv.json'),
                 run: () => {
-                  if (!hasDockOrder()) return;
+                  if (!hasDockOrder() && !hasDockChoice()) return;
                   resetDockOrder();
                   location.reload();
                 },
@@ -340,6 +367,9 @@ export class SettingsPanel {
     // The dashboard has no dock, Google TV home or TV settings.
     if (dashboardMode) this.root.rows = this.root.rows.filter((r) => !['Arrange dock', 'Home button', 'Google TV home', 'TV settings'].includes(r.name));
     // Only a TV app new enough to say whether the Home button service is on.
+    // Choosing apps needs the TV's list of installed apps.
+    if (!native) this.walk((m) => { m.rows = m.rows.filter((r) => r.name !== 'Choose apps'); });
+
     if (!native?.homeServiceOn) this.root.rows = this.root.rows.filter((r) => r.name !== 'Home button');
 
     this.el = document.createElement('div');
@@ -424,6 +454,12 @@ export class SettingsPanel {
     if (this.open) this.paint();
   }
 
+  /** Every menu, from the top. */
+  private walk(fn: (m: Menu) => void, m: Menu = this.root): void {
+    fn(m);
+    m.rows.forEach((r) => { if (r.menu) this.walk(fn, r.menu); });
+  }
+
   private get level(): { menu: Menu; focus: number } {
     return this.stack[this.stack.length - 1];
   }
@@ -435,6 +471,7 @@ export class SettingsPanel {
     if (!row) return;
 
     if (row.menu) {
+      if (row.menu.fill) row.menu.rows = row.menu.fill();
       this.stack.push({ menu: row.menu, focus: 0 });
       this.confirmSignOut = false;
       // The OK that opened this menu can arrive twice; the second mustn't press its first row.

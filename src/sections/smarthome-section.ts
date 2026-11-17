@@ -1,6 +1,6 @@
 import type { Section } from './section';
 import type { Zone } from '../types';
-import { zones, summarize, primaryClimate } from '../home-data';
+import { zones, summarize, primaryClimate, roomsFrom, areasProblem } from '../home-data';
 import { ha } from '../ha';
 import { child } from '../dom';
 import { hint } from '../hints';
@@ -93,6 +93,15 @@ export class SmartHomeSection implements Section {
     else zones.forEach((z, i) => this.card(i, z.icon, z.name));
   }
 
+  /** The rooms changed (rooms from Areas arrived, or were rebuilt): new cards, same focus place. */
+  roomsChanged(): void {
+    const focused = this.cards.findIndex((c) => c.classList.contains('is-focus'));
+    this.buildCards();
+    this.refresh();
+
+    if (focused >= 0) this.focus(Math.min(focused, this.cards.length - 1));
+  }
+
   /** Weather line under the thermostat, from the weather entity (Open-Meteo). */
   setOutside(o: Outside): void {
     this.outside = o;
@@ -129,7 +138,9 @@ export class SmartHomeSection implements Section {
     }
 
     if (!zones.length) {
-      this.statusEls[0].textContent = 'Add rooms to calm-tv.json · see Settings';
+      // Without "rooms" in calm-tv.json the rooms are Home Assistant's Areas: say why there are none.
+      this.statusEls[0].textContent = roomsFrom === 'config' ? 'Add rooms to calm-tv.json · see Settings'
+        : areasProblem || (ha.status === 'connected' ? 'Put devices in Areas in Home Assistant' : 'Rooms come from Home Assistant’s areas');
 
       return;
     }

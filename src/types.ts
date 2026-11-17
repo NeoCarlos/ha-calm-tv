@@ -45,6 +45,11 @@ export interface Device {
   maxTemp?: number;
   /** Scene: the choices HA offers, and the last one picked (Hue doesn't report the active scene). */
   options?: string[];
+  /**
+   * Scene picker built from an Area's scene entities (rooms from Areas, areas.ts), instead of one
+   * select entity: picking turns that scene on. `options` are their names, in the same order.
+   */
+  scenes?: string[];
   /** Sensor: an occupancy sensor (Someone there / Clear) rather than a door. */
   occupancy?: boolean;
   picked?: string;

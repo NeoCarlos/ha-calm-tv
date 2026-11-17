@@ -17,7 +17,8 @@ import { native } from './native';
 import { ha, type HaLink } from './ha';
 import { attributes, forecastEntries, WeatherAttributes, type ForecastEntry, type ForecastMessage } from './ha-data';
 import { child, find, itemAt } from './dom';
-import { applyStates, WEATHER } from './home-data';
+import { applyStates, onZonesChange, WEATHER } from './home-data';
+import { watchAreaRooms } from './areas';
 import { conditionLabel } from './sections/weather-section';
 import { MusicPanel } from './sections/music-panel';
 import { MusicSection } from './sections/music-section';
@@ -170,6 +171,22 @@ export class CalmTv {
     };
 
     ha.onEntities(update);
+
+    // Rooms from Home Assistant's Areas (no "rooms" in calm-tv.json) arrive after connecting, and
+    // are rebuilt on reconnecting: redraw the rooms, and close a room panel showing an old room.
+    watchAreaRooms();
+    onZonesChange(() => {
+      if (this.detail.isOpen()) this.detail.close();
+      applyStates(ha.entities);
+      this.home.roomsChanged();
+      this.settings.refresh();
+
+      if (this.sections[this.secIndex] === this.home) {
+        const sec = this.secIndex;
+        this.cols[sec] = Math.min(this.cols[sec], Math.max(0, this.home.count() - 1));
+        this.render();
+      }
+    });
     ha.onStatus(() => {
       this.home.refresh();
       this.settings.refresh();

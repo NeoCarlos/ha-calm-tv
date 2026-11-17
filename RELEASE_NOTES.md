@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Rooms from your Home Assistant Areas:** leave `rooms` out of calm-tv.json and each Area becomes
+  a room, in floor order, with its lights, plugs, curtains, thermostats, locks, cameras, door and
+  window sensors, and a scene picker from its scenes. Only each device's main control is shown, and
+  garage doors stay out of rooms. Tidy it in Home Assistant: Areas, names, the Visible switch, or
+  the label "Hide in Calm TV". Rooms update when Areas change. Rooms you list keep working as before.
 - **Settings → Home button** says whether Calm TV's Home button service is on, and opens the TV's
   settings for it. Android switches the service off whenever the app is updated, so the first time
   Calm TV opens after an update with it off, a note says how to turn it back on.

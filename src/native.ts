@@ -29,6 +29,12 @@ interface CalmTvNative {
   loadConfig?(): string;
   /** Music Assistant's address and token given with adb, as JSON { url, token }, once; "" if none. */
   takeMaSetup?(): string;
+  /** Whether the Home button service (an accessibility service) is on; Android turns it off on every update. */
+  homeServiceOn?(): boolean;
+  /** When the app was installed or last updated (ms since 1970). */
+  installedAt?(): number;
+  /** Opens the TV's accessibility settings, where the Home button service is switched on. */
+  openAccessibilitySettings?(): void;
 }
 
 declare global {

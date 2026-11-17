@@ -676,6 +676,14 @@ html.glass-tint .mq-list { -webkit-backdrop-filter: none; backdrop-filter: none;
 /* Buttons only a touch screen needs: hidden on the TV, shown in dashboard mode (below). */
 .ctl-step, .bgpick-done { display: none; }
 
+/* "The Home button is off" (app.ts, checkHomeService): a note at the top after an update. */
+#serviceNote {
+  position: absolute; left: 50%; top: 48px; transform: translateX(-50%); width: 1060px; z-index: 65;
+  padding: 26px 36px; border-radius: 28px; background: rgba(14, 16, 19, 0.9); border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 30px 90px -20px rgba(0, 0, 0, 0.8); color: var(--ink-dim); font-size: 26px; line-height: 1.45;
+}
+#serviceNote b { color: var(--ink); font-weight: 600; }
+
 /* ---------- Dashboard mode (index.html?dash; dashboard-bar.ts) ----------
    The 1920×1080 screens sit above a tab bar; the remote's hints give way to things to tap. */
 html.dashboard #hint { display: none; }

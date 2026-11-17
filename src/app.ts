@@ -28,6 +28,8 @@ import { hint } from './hints';
 
 /** A finger moved at least this far (CSS pixels) counts as a swipe, not a tap. */
 const SWIPE_MIN = 60;
+/** Where the app remembers which update it last showed the "Home button is off" note for. */
+const SERVICE_NOTE_KEY = 'calmtv.serviceNote';
 
 
 /** An element of the page's own markup (index.html). */
@@ -120,6 +122,7 @@ export class CalmTv {
     }
 
     this.wireInput();
+    this.checkHomeService();
     this.paintInitial();
     this.fit();
     window.addEventListener('resize', () => this.fit());
@@ -544,12 +547,45 @@ export class CalmTv {
       Object.assign(window, { ctRing: () => this.ring(), ctRingEnd: () => this.doorbell.hide() });
     }
 
-    window.addEventListener('ct-resume', () => { this.closeLaunch(); this.pauseVideo(false); });
+    window.addEventListener('ct-resume', () => { this.closeLaunch(); this.pauseVideo(false); this.checkHomeService(); });
     window.addEventListener('ct-pause', () => this.pauseVideo(true));
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.closeLaunch();
       this.pauseVideo(document.hidden);
     });
+  }
+
+  /**
+   * Android turns Calm TV's Home button service off whenever the app is updated, and then Home,
+   * the doorbell window, door pop-ups and ★ quietly stop working. So the first time Calm TV opens
+   * after an update with the service off, a note says how to turn it back on (Settings → Home
+   * button too). It goes once the service is on, at the next key, or after 30 seconds.
+   */
+  private checkHomeService(): void {
+    const note = document.getElementById('serviceNote');
+
+    if (!native?.homeServiceOn || native.homeServiceOn()) {
+      note?.remove();
+
+      return;
+    }
+
+    const installed = String(native.installedAt?.() ?? '');
+    let shown = '';
+
+    try { shown = localStorage.getItem(SERVICE_NOTE_KEY) ?? ''; } catch { /* storage off: show it */ }
+
+    if (note || shown === installed) return;
+
+    try { localStorage.setItem(SERVICE_NOTE_KEY, installed); } catch { /* once is enough */ }
+    const el = document.createElement('div');
+    el.id = 'serviceNote';
+    el.innerHTML = '<b>The Home button is off.</b> Android turns it off after every update of Calm TV. To turn it back on: '
+      + 'TV Settings → System → Accessibility → <b>Calm TV: Home button</b> → On (or Calm TV\u2019s Settings → Home button).';
+    qs('#stage').appendChild(el);
+    const done = () => el.remove();
+    window.setTimeout(done, 30000);
+    document.addEventListener('keydown', done, { once: true });
   }
 
   /** Closes whatever panel is open: the background picker, Settings, a room, Music, arranging. */

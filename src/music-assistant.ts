@@ -156,7 +156,8 @@ const cleanToken = (raw: string) => raw.replace(/\s+/g, '').replace(/^["']|["']$
 /** A command's arguments. */
 type Args = { [key: string]: string | number | boolean };
 
-type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; partial: unknown[] | null; timer: number };
+/** A command waiting for its answer, and the connection it went out on. */
+type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; partial: unknown[] | null; timer: number; ws: WebSocket };
 
 class MusicAssistant {
   private ws: WebSocket | null = null;
@@ -239,7 +240,24 @@ class MusicAssistant {
 
       this.ws = ws;
       let greeted = false;
-      const timer = window.setTimeout(() => { ws.close(); reject(this.fail('Music Assistant didn’t answer')); }, 8000);
+      // The first outcome is the one reported: once signed in, timed out, unreachable or refused,
+      // nothing later (such as the close that follows a timeout) can overwrite it.
+      let settled = false;
+      const done = (problem?: string): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+
+        if (problem === undefined) {
+          this.connected = true;
+          this.problem = '';
+          resolve();
+        } else reject(this.fail(problem));
+      };
+      const timer = window.setTimeout(() => {
+        done('Music Assistant didn’t answer');
+        ws.close();
+      }, 8000);
 
       ws.onmessage = (ev) => {
         let data: unknown;
@@ -258,27 +276,18 @@ class MusicAssistant {
           console.info('Music Assistant', info.output.server_version, 'schema', info.output.schema_version);
 
           if (info.output.schema_version < 28) {
-            clearTimeout(timer);
-            this.connected = true;
-            this.problem = '';
-            resolve();
+            done();
 
             return;
           }
 
           this.send('auth', { token }, ws)
-            .then(() => {
-              clearTimeout(timer);
-              this.connected = true;
-              this.problem = '';
-              resolve();
-            })
+            .then(() => done())
             .catch((err: Error) => {
-              clearTimeout(timer);
+              // Say why, and how long the TV's token is (never any of it: it's shown on screen), so
+              // a cut-off paste is easy to spot.
+              done(`Music Assistant refused the token (${err.message}). The token on this TV is ${token.length} characters long.`);
               ws.close();
-              // Say why, and what the TV has, so a mistyped or cut-off token is easy to spot.
-              const t = token.length > 12 ? `${token.slice(0, 6)}…${token.slice(-6)}` : token;
-              reject(this.fail(`Music Assistant refused the token (${err.message}). This TV has ${token.length} characters: ${t}`));
             });
 
           return;
@@ -289,17 +298,23 @@ class MusicAssistant {
         // Anything else (events) isn't needed here.
         if (result.success) this.onResult(result.output);
       };
-      ws.onerror = () => {
-        clearTimeout(timer);
-        reject(this.fail('Can’t reach Music Assistant at that address'));
-      };
+      ws.onerror = () => done('Can’t reach Music Assistant at that address');
       ws.onclose = () => {
+        done('Music Assistant closed the connection');
+
+        // Only this socket's own commands fail. A socket replaced by a newer one (Settings saved a
+        // new address or token) mustn't take the new connection, or its sign-in, down with it.
+        for (const [id, p] of this.pending) {
+          if (p.ws !== ws) continue;
+          clearTimeout(p.timer);
+          p.reject(new Error('Connection closed'));
+          this.pending.delete(id);
+        }
+
+        if (this.ws !== ws) return;
         this.connected = false;
         this.ready = null;
         this.ws = null;
-
-        for (const p of this.pending.values()) p.reject(new Error('Connection closed'));
-        this.pending.clear();
       };
     });
 
@@ -352,7 +367,7 @@ class MusicAssistant {
         this.pending.delete(message_id);
         reject(new Error('Music Assistant didn’t answer'));
       }, 10000);
-      this.pending.set(message_id, { resolve, reject, partial: null, timer });
+      this.pending.set(message_id, { resolve, reject, partial: null, timer, ws });
       ws.send(JSON.stringify({ message_id, command, args }));
     });
   }

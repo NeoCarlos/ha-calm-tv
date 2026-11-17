@@ -17,6 +17,10 @@ interface CalmTvNative {
   showDoorbell?(): boolean;
   /** The same, sized and placed by JSON { size, center, pause } (see DoorbellLook); newer TV apps only. */
   showDoorbellWith?(look: string): boolean;
+  /** A door pop-up in the corner over the current app, JSON { id, name, left, stay }; false if it can't. */
+  showDoor?(json: string): boolean;
+  /** Takes away a door's pop-up that stays ("left open"), by the id it was shown with. */
+  hideDoor?(id: string): void;
   /** Home Assistant's address saved on the TV, or "". */
   getHaUrl?(): string;
   /** Saves Home Assistant's address; returns the cleaned-up address, or "" if invalid. */
@@ -25,6 +29,12 @@ interface CalmTvNative {
   loadConfig?(): string;
   /** Music Assistant's address and token given with adb, as JSON { url, token }, once; "" if none. */
   takeMaSetup?(): string;
+  /** Whether the Home button service (an accessibility service) is on; Android turns it off on every update. */
+  homeServiceOn?(): boolean;
+  /** When the app was installed or last updated (ms since 1970). */
+  installedAt?(): number;
+  /** Opens the TV's accessibility settings, where the Home button service is switched on. */
+  openAccessibilitySettings?(): void;
 }
 
 declare global {

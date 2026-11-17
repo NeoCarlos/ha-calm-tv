@@ -142,6 +142,11 @@ try {
   mode = 'remote';
   await open('demo', 1920, 1080);
   check(await has('#secApps.is-active'), 'starts on the Apps screen');
+  // A screen name this version doesn't know (from a newer calm-tv.json) is skipped, not fatal.
+  const decoded = await page(`const { decodeConfig } = await import('/src/config.ts');
+    const c = decodeConfig(JSON.stringify({ screens: ['apps', 'some-future-screen', 'weather'], rooms: [{ name: 'Den', groups: [] }] }));
+    return JSON.stringify([c.screens, c.rooms.length]);`);
+  check(decoded === '[["apps","weather"],1]', `an unknown screen name is skipped, and the rest of calm-tv.json still loads (${decoded})`);
   await key('ArrowDown');
   check(await has('#secHome.is-active'), '↓ goes to Smart Home');
 
@@ -213,11 +218,18 @@ try {
   await key('ArrowRight');
   check((await page("return document.querySelector('.music .focus')?.dataset.focus;")) === 'library-1', 'Music library: → from Artists goes to Albums, the next one in its row');
   await page("document.querySelector('.music [data-focus=\"speaker-0\"]').dispatchEvent(new PointerEvent('pointerover', { pointerType: 'mouse', bubbles: true }));");
+  // Down the speakers, then across to the end of the library row (Playlists)…
   await key('ArrowDown');
   await key('ArrowDown');
   await key('ArrowRight');
   await key('ArrowRight');
+  const endOfRow = await page("return document.querySelector('.music .focus')?.dataset.focus;");
+  // …where → goes round to the first control level with it, and ← comes back.
   await key('ArrowRight');
+  const wrappedTo = await page("return document.querySelector('.music .focus')?.dataset.focus;");
+  await key('ArrowLeft');
+  check(wrappedTo === 'control-shuffle' && (await page("return document.querySelector('.music .focus')?.dataset.focus;")) === endOfRow,
+    `Music: → at the end of the library row goes round to the controls, ← comes back (${endOfRow} → ${wrappedTo})`);
   await key('Enter');
   await sleep(300);
   check(await has('.music.browsing .mcard'), 'OK on a library button opens it');
@@ -226,6 +238,30 @@ try {
   check(!(await has('.music.browsing')), 'Back leaves the folder');
   await key('Escape');
   check(!(await has('.music.open')), 'Back closes Music');
+
+  // ---------- the ★ side panel: a garage door moves only on a deliberate second OK ----------
+  await open('demo&panel', 684, 1080);
+  const garage = () => page("const f = document.querySelector('.sp-item.focus'); return f ? f.textContent : '';");
+  for (let i = 0; i < 25 && !/garage/i.test(await garage()); i++) await key('ArrowDown');
+  check(/garage/i.test(await garage()) && /closed/i.test(await garage()), `the ★ panel reaches the garage door (${(await garage()).trim()})`);
+  await key('Enter');
+  check(/OK again to open/.test(await garage()), 'OK on the garage door asks "OK again to open"');
+  await key('Enter');
+  check(/OK again to open/.test(await garage()), 'a second OK straight away (a bounce) does nothing');
+  await key('ArrowUp');
+  await key('ArrowDown');
+  check(!/OK again/.test(await garage()), 'moving away cancels it');
+  await key('Enter');
+  await sleep(650);
+  await key('Enter');
+  await sleep(200);
+  check(/opening/i.test(await garage()), 'a deliberate second OK opens it');
+  await key('Enter');
+  check(/OK again to stop/.test(await garage()), 'while it moves, the hint is "OK again to stop"');
+  await sleep(650);
+  await key('Enter');
+  await sleep(300);
+  check(!/opening|closing/i.test(await garage()), `…and a second OK stops it, not reverses it (${(await garage()).trim()})`);
 
   // ---------- the Home Assistant dashboard: taps only ----------
   mode = 'touch';

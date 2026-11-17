@@ -29,10 +29,11 @@ export interface FocusOptions {
   /** false when the panel brings the focused item into view itself (default true: the browser does). */
   scrollIntoView?: boolean;
   /**
-   * At an edge, an arrow goes round to the far end of the same row or column (like the dock). Not
-   * while the key is held, so holding it stops at the end.
+   * At an edge, an arrow goes round to the far end of the same row or column (like the dock): true
+   * for every arrow, 'sideways' for ← and → only. Not while the key is held, so holding it stops at
+   * the end, and not from inside an element marked data-nowrap.
    */
-  wrap?: boolean;
+  wrap?: boolean | 'sideways';
 }
 
 const ARROWS = new Map<string, Direction>([['ArrowUp', 'up'], ['ArrowDown', 'down'], ['ArrowLeft', 'left'], ['ArrowRight', 'right']]);
@@ -131,12 +132,20 @@ export class FocusGroup {
 
     const others = this.items().filter((i) => i !== from);
     const back = this.lastMove && this.lastMove.dir === OPPOSITE[dir] ? others.find((i) => i.dataset.focus === this.lastMove?.from) : undefined;
-    const next = back ?? nearest(from, others, dir) ?? (this.opts.wrap && !held ? farthest(from, others, OPPOSITE[dir]) : null);
+    const next = back ?? nearest(from, others, dir) ?? (this.wraps(from, dir) && !held ? farthest(from, others, OPPOSITE[dir]) : null);
 
     if (!next) return;
     const fromId = this.focused;
     this.set(next, true);
     this.lastMove = fromId ? { from: fromId, dir } : null;
+  }
+
+  private wraps(from: HTMLElement, dir: Direction): boolean {
+    const { wrap } = this.opts;
+
+    if (!wrap || from.closest('[data-nowrap]')) return false;
+
+    return wrap === true || dir === 'left' || dir === 'right';
   }
 
   private set(el: HTMLElement, reveal: boolean): void {
@@ -173,9 +182,26 @@ export class FocusGroup {
 
 /** The item furthest from `from` towards `dir` in the same row or column (for wrapping round). */
 function farthest(from: HTMLElement, items: HTMLElement[], dir: Direction): HTMLElement | null {
+  const a = from.getBoundingClientRect();
+  const vertical = dir === 'up' || dir === 'down';
   let best: HTMLElement | null = null;
+  let bestAlong = 0;
 
-  for (let next = nearest(from, items, dir), at = from; next; at = next, next = nearest(at, items.filter((i) => i !== at), dir)) best = next;
+  for (const el of items) {
+    const b = el.getBoundingClientRect();
+    // Only the same row (for ← →) or column (for ↑ ↓): wrapping never jumps diagonally.
+    const lined = vertical ? b.left < a.right && a.left < b.right : b.top < a.bottom && a.top < b.bottom;
+
+    if (!lined) continue;
+    const along = vertical
+      ? (dir === 'down' ? b.top - a.top : a.top - b.top)
+      : (dir === 'right' ? b.left - a.left : a.left - b.left);
+
+    if (along > bestAlong) {
+      bestAlong = along;
+      best = el;
+    }
+  }
 
   return best;
 }

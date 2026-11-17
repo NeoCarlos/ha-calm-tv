@@ -30,6 +30,8 @@ const DeviceSchema = v.object({
   operator: v.optional(EntityId),
   /** Lock: a keypad's battery sensor. */
   keypad: v.optional(EntityId),
+  /** Sensor: what OK opens/closes in the ★ side panel, e.g. the garage door's "cover.left_garage_door". Only a cover. */
+  control: v.optional(v.pipe(EntityId, v.startsWith('cover.', 'should be a cover, like "cover.garage_door"'))),
 });
 
 /** The screens, in their default order (↓ moves through them). */
@@ -105,10 +107,31 @@ const ConfigSchema = v.object({
     }),
   ),
   /**
+   * A small pop-up in the corner when a door opens, even over other apps (it never pauses them):
+   * an open door with the door's name for a few seconds. A door still open after `leftOpen` seconds
+   * (default 10) pops up again with a red "!" and "Left open", until it closes. Off unless doors are listed.
+   */
+  doors: v.optional(
+    v.object({
+      popup: v.optional(v.boolean()),
+      entities: v.optional(v.array(v.object({ name: v.string(), entity: EntityId }))),
+      leftOpen: v.optional(v.pipe(v.number('should be a number of seconds, e.g. 10'), v.minValue(5))),
+    }),
+  ),
+  /**
    * The screens to show, in order, e.g. ["apps", "smarthome", "weather"] for no Calendar. Apps is
    * always shown, and first (it holds Settings). Default: all four.
    */
-  screens: v.optional(v.array(v.picklist(SCREENS, `should be one of ${SCREENS.join(', ')}`))),
+  // A name this version doesn't know (a screen added in a newer one, or a typo) is skipped with a
+  // warning, not an error: one unknown word mustn't make the whole file unreadable, so an older TV
+  // or dashboard can still read a newer calm-tv.json.
+  screens: v.optional(v.pipe(v.array(v.string()), v.transform((names) => names.filter((n): n is ScreenName => {
+    const known = (SCREENS as readonly string[]).includes(n);
+
+    if (!known) console.warn(`calm-tv.json: "screens" has "${n}", which this version doesn't know; skipped`);
+
+    return known;
+  })))),
   /** Rooms in the Smart Home bar, in order. */
   rooms: v.optional(v.array(RoomSchema)),
   /** Look options. */
@@ -185,8 +208,9 @@ const devHaUrl = import.meta.env.DEV ? import.meta.env.VITE_HA_URL ?? '' : '';
 function readHaUrl(): string {
   if (native?.getHaUrl) return native.getHaUrl();
 
-  // The doorbell window over other apps has its own, smaller bridge.
+  // The doorbell window and the ★ side panel over other apps have their own, smaller bridges.
   if (window.CalmTvDoorbell?.getHaUrl) return window.CalmTvDoorbell.getHaUrl();
+  if (window.CalmTvPanel?.getHaUrl) return window.CalmTvPanel.getHaUrl();
 
   // Served from Home Assistant's www folder: Home Assistant is this page's own server.
   if (servedByHa) return location.origin;
@@ -267,7 +291,9 @@ export async function loadConfig(): Promise<void> {
   let text = '';
   let source = '';
 
-  const nativeLoad = native?.loadConfig ? () => native!.loadConfig!() : window.CalmTvDoorbell?.loadConfig ? () => window.CalmTvDoorbell!.loadConfig!() : null;
+  const nativeLoad = native?.loadConfig ? () => native!.loadConfig!()
+    : window.CalmTvDoorbell?.loadConfig ? () => window.CalmTvDoorbell!.loadConfig!()
+    : window.CalmTvPanel?.loadConfig ? () => window.CalmTvPanel!.loadConfig!() : null;
 
   if (nativeLoad) {
     let answer;

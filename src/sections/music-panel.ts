@@ -295,7 +295,7 @@ export class MusicPanel {
               <div class="music-h music-spk-h">Speakers</div>
               <div class="music-note"></div>
             </div>
-            <div class="music-spk-wrap"><div class="music-speakers"></div><div class="music-spk-track"><i></i></div></div>
+            <div class="music-spk-wrap" data-nowrap><div class="music-speakers"></div><div class="music-spk-track"><i></i></div></div>
             <div class="music-h music-lib-h">Library</div>
             <div class="music-cats"></div>
           </div>
@@ -310,6 +310,8 @@ export class MusicPanel {
     mount.appendChild(this.el);
     this.nav = new FocusGroup(this.el, {
       onBack: () => this.back(),
+      // ← and → go round between the library and the controls level with it (the speakers don't).
+      wrap: 'sideways',
       onKey: (e) => this.sliderKey(e),
       onFocus: (id) => {
         // The focused speaker's group lights up, and a long name scrolls (see render).

@@ -64,6 +64,10 @@ To check the TV's page, open `chrome://inspect` with adb connected (debug builds
 - **Controls act on the real house.** When testing with the user's HA, avoid toggling things they
   didn't ask you to; reading states is fine.
 - **`adb shell settings put secure enabled_accessibility_services`** replaces the whole list. Read it
-  first and append.
+  first and append. It's a security setting on the user's TV: leave turning it on to them.
+- **Every install switches the Home button service off** (Android turns an accessibility service off
+  when its app is updated). After `tv:install`, tell the user to turn it back on (TV Settings → System
+  → Accessibility → Calm TV: Home button), or Home, the doorbell window, door pop-ups and ★ stop working.
+  Keys sent with `adb shell input keyevent` never reach the service either, so test ★ with a real remote.
 - **Performance:** test animations and video on the TV itself. See [docs/lessons-learned.md](docs/lessons-learned.md)
   before changing transitions, blur or video handling.

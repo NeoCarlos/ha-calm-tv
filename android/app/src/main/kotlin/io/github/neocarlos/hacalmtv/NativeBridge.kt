@@ -52,6 +52,35 @@ class NativeBridge(private val activity: Activity) {
     }
 
     /**
+     * Whether Calm TV's Home button service (an accessibility service) is on. It catches Home, and
+     * shows the doorbell window, door pop-ups and the ★ panel over other apps. Android switches it off
+     * whenever the app is updated, so the page checks and says so.
+     */
+    @JavascriptInterface
+    fun homeServiceOn(): Boolean {
+        // Asks Android which services are really on. The "enabled services" setting can still list
+        // ours after an update has switched accessibility off, so it isn't enough on its own.
+        val am = activity.getSystemService(android.view.accessibility.AccessibilityManager::class.java) ?: return false
+        if (!am.isEnabled) return false
+        val me = android.content.ComponentName(activity, HomeButtonService::class.java)
+        return am.getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+            .any { it.resolveInfo?.serviceInfo?.let { s -> s.packageName == me.packageName && s.name == me.className } == true }
+    }
+
+    /** When this copy of the app was installed or last updated (ms), to tell an update apart. */
+    @JavascriptInterface
+    fun installedAt(): Double =
+        activity.packageManager.getPackageInfo(activity.packageName, 0).lastUpdateTime.toDouble()
+
+    /** Opens the TV's accessibility settings, where the Home button service is switched on. */
+    @JavascriptInterface
+    fun openAccessibilitySettings() {
+        activity.runOnUiThread {
+            activity.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+    }
+
+    /**
      * Switches to Google's home screen. The Home button service leaves it alone until Calm TV
      * is opened again (from Google's apps row), which switches back.
      */
@@ -90,6 +119,31 @@ class NativeBridge(private val activity: Activity) {
         val service = HomeButtonService.instance ?: return false
         service.showDoorbell(DoorbellLook.parse(look))
         return true
+    }
+
+    /**
+     * A door pop-up over the current app: JSON { "id": "binary_sensor.front_door", "name": "Front door",
+     * "left": false, "stay": false }. With "stay" it stays until hideDoor(id). Returns false if the
+     * Home button service (which draws it) isn't running or the JSON is bad.
+     */
+    @JavascriptInterface
+    fun showDoor(json: String): Boolean {
+        val service = HomeButtonService.instance ?: return false
+        val door = try {
+            JSONObject(json)
+        } catch (e: Exception) {
+            return false
+        }
+        val name = door.optString("name").take(40)
+        if (name.isEmpty()) return false
+        service.showDoor(door.optString("id", name).take(80), name, door.optBoolean("left"), door.optBoolean("stay"))
+        return true
+    }
+
+    /** Takes away a door's pop-up shown with "stay". */
+    @JavascriptInterface
+    fun hideDoor(id: String) {
+        HomeButtonService.instance?.hideDoor(id)
     }
 
     /** Home Assistant's address, or "" before it's set up. */

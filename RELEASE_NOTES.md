@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Settings → Home button** says whether Calm TV's Home button service is on, and opens the TV's
+  settings for it. Android switches the service off whenever the app is updated, so the first time
+  Calm TV opens after an update with it off, a note says how to turn it back on.
+
 - **Dashboard mode** (`?dash`): the app for a touch screen, as a Home Assistant dashboard. A tab bar
   (time, screens, now playing, Music, Settings) replaces the Apps screen; everything can be tapped,
   dimmers are dragged, the thermostat has − and +, and swiping changes screens. Inside a dashboard

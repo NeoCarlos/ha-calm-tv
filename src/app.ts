@@ -1,6 +1,6 @@
 import { wallpapers } from './wallpapers';
 import { videos } from './videos';
-import { glass, onLookChange, showFps, transitions, videosOn } from './look';
+import { fadeWhenIdle, glass, onLookChange, showFps, transitions, videosOn } from './look';
 import { fpsCounter } from './fps';
 import { load, save } from './state';
 import { AppsSection } from './sections/apps-section';
@@ -27,6 +27,8 @@ import { hint } from './hints';
 
 /** A finger moved at least this far (CSS pixels) counts as a swipe, not a tap. */
 const SWIPE_MIN = 60;
+/** Seconds without input before the screens rest: their bars fade (Settings → Appearance → Fade when idle). */
+const REST_AFTER = 8;
 
 
 /** An element of the page's own markup (index.html). */
@@ -42,6 +44,9 @@ export class CalmTv {
   private overlay: null | 'launch' = null;
   private launchTimer = 0;
   private hintTimer = 0;
+  private restTimer = 0;
+  /** The press (a touch, or a click with no mouse move before it) that woke the screens: it only wakes them. */
+  private wakingPress = false;
   private readonly reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   private track!: HTMLElement;
   private detail!: ZoneDetail;
@@ -125,6 +130,8 @@ export class CalmTv {
     }
 
     this.wireInput();
+    this.stir();
+    onLookChange(() => this.stir());
     this.paintInitial();
     this.fit();
     window.addEventListener('resize', () => this.fit());
@@ -427,6 +434,14 @@ export class CalmTv {
     document.addEventListener('keydown', (e) => {
       const k = e.key;
 
+      // Resting: the first key only wakes the screens, whatever it is (so ↑ doesn't also change screen).
+      // Not over the doorbell window, where Back closes it.
+      if (this.stir() && !this.doorbell.isOpen()) {
+        e.preventDefault();
+
+        return;
+      }
+
       // A held-down OK repeats; only the first press counts, everywhere.
       if (e.repeat && (k === 'Enter' || k === ' ')) {
         e.preventDefault();
@@ -484,13 +499,6 @@ export class CalmTv {
         return;
       }
 
-      // A screen that rests (the Music screen's bar fades) may take the first key just to wake up.
-      if (this.sections[this.secIndex].wakeKey?.(k)) {
-        e.preventDefault();
-
-        return;
-      }
-
       switch (k) {
         case 'ArrowUp': e.preventDefault(); this.moveV(-1); break;
         case 'ArrowDown': e.preventDefault(); this.moveV(1); break;
@@ -503,6 +511,17 @@ export class CalmTv {
         default: return;
       }
     });
+
+    // Resting: a press only wakes the screens (its tap, click or swipe is dropped). A mouse wakes them
+    // as soon as it moves, so its clicks then act as usual.
+    document.addEventListener('pointerdown', () => { this.wakingPress = this.stir(); }, true);
+    document.addEventListener('click', (e) => {
+      if (!this.wakingPress) return;
+      this.wakingPress = false;
+      e.stopPropagation();
+      e.preventDefault();
+    }, true);
+    document.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') this.stir(); });
 
     const sections = qs('#sections');
     sections.addEventListener('mouseover', (e) => {
@@ -536,7 +555,7 @@ export class CalmTv {
     // Touch: swipe up or down for the next or previous screen. Sideways, the rows scroll by
     // themselves like any touch list (see row-scroll.ts), which ends this gesture (pointercancel).
     let start: { x: number; y: number } | null = null;
-    sections.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') start = { x: e.clientX, y: e.clientY }; });
+    sections.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && !this.wakingPress) start = { x: e.clientX, y: e.clientY }; });
     sections.addEventListener('pointerup', (e) => {
       if (!start || e.pointerType !== 'touch') return;
       const dx = e.clientX - start.x;
@@ -548,19 +567,45 @@ export class CalmTv {
     sections.addEventListener('pointercancel', () => { start = null; });
 
     // From the TV app: Home pressed (back to the app dock), and returning from another app.
-    window.addEventListener('ct-home', () => this.goHome());
+    window.addEventListener('ct-home', () => { this.stir(); this.goHome(); });
 
     // Dev only: try the doorbell window without anyone ringing.
     if (import.meta.env.DEV) {
       Object.assign(window, { ctRing: () => this.ring(), ctRingEnd: () => this.doorbell.hide() });
     }
 
-    window.addEventListener('ct-resume', () => { this.closeLaunch(); this.pauseVideo(false); });
+    window.addEventListener('ct-resume', () => { this.stir(); this.closeLaunch(); this.pauseVideo(false); });
     window.addEventListener('ct-pause', () => this.pauseVideo(true));
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.closeLaunch();
       this.pauseVideo(document.hidden);
     });
+  }
+
+  // ---------- resting ----------
+
+  /**
+   * Input: wakes the screens if they were resting, and starts the countdown to the next rest. True
+   * when they were resting, so the caller can treat this input as only waking them.
+   */
+  private stir(): boolean {
+    const html = document.documentElement;
+    const resting = html.classList.contains('calm');
+    html.classList.remove('calm');
+    clearTimeout(this.restTimer);
+
+    if (fadeWhenIdle()) this.restTimer = window.setTimeout(() => this.rest(), REST_AFTER * 1000);
+
+    return resting;
+  }
+
+  /** After a while without input the screens' bars fade (see html.calm in style.css), unless something's open. */
+  private rest(): void {
+    const busy = this.picker.isOpen() || this.settings.isOpen() || this.detail.isOpen() || this.music.isOpen()
+      || this.appsSection.arranging || this.overlay !== null;
+
+    if (busy) this.restTimer = window.setTimeout(() => this.rest(), REST_AFTER * 1000);
+    else document.documentElement.classList.add('calm');
   }
 
   /** Closes whatever panel is open: the background picker, Settings, a room, Music, arranging. */

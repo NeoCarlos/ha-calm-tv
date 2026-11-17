@@ -129,9 +129,10 @@ off). On the TV: **Settings → Accessibility → Calm TV: Home button → On**,
 ## The Music screen
 
 The **Music** screen (↓ from Smart Home) is a calm view of what's playing: the album art on its
-own, and a frosted bar with the song, previous / play-pause / next and volume. After a few seconds
-without a key press the bar fades away; the first OK, ← or → only brings it back. With nothing
-playing, the screen is just your background.
+own, and a frosted bar with the song, previous / play-pause / next and volume. Like every screen, it
+rests after a few seconds without a key press: the bar fades away and the art and caption settle to
+the middle; the first key only brings the bar back. With nothing playing, the screen is just your
+background.
 
 **More** on the bar opens the Music panel: shuffle, the queue, the speakers, speaker grouping, and
 library buttons (Artists, Albums, Tracks, Playlists, Radio, Podcasts, Audiobooks) that you can

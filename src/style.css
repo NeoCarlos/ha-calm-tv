@@ -125,6 +125,10 @@ html.glass-tint .gb-veil { background: rgba(8, 14, 18, 0.5); }
 }
 
 /* ---------- Frosted glass bar (shared by the app dock and the zone bar) ---------- */
+/* Resting (app.ts, "Fade when idle"): after a while without input every screen's bar fades away and
+   slips down a little, leaving the clock, the weather, the album art…; the first key brings it back. */
+.section .gb { transition: opacity 0.35s ease, transform 0.35s ease; }
+html.calm .section .gb { opacity: 0; transform: translateY(18px); transition: opacity 1.4s ease, transform 1.4s ease; }
 .gb { position: absolute; overflow: hidden; border-radius: 48px; }
 .gb-mat { position: absolute; inset: 0; overflow: hidden; }
 .gb-img {
@@ -694,16 +698,15 @@ html.glass-tint .mq-list { -webkit-backdrop-filter: none; backdrop-filter: none;
 }
 /* When the bar fades, the art and its caption settle to the middle of the screen, in step with it. */
 #secMusic { --drift: 0.35s; }
-#secMusic.calm { --drift: 1.4s; }
-#secMusic.calm .mx-art, #secMusic.calm .mx-caption { transform: translate(-50%, 90px); }
+html.calm #secMusic { --drift: 1.4s; }
+html.calm #secMusic .mx-art, html.calm #secMusic .mx-caption { transform: translate(-50%, 90px); }
 #secMusic.idle .mx-caption { opacity: 0; }
 .mx-title, .mx-artist { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mx-title { font-size: 38px; font-weight: 600; letter-spacing: -0.6px; color: var(--ink); }
 .mx-artist { margin-top: 4px; font-size: 24px; color: var(--ink-dim); }
 .mx-time { margin-top: 10px; font-size: 19px; color: var(--ink-faint); font-variant-numeric: tabular-nums; letter-spacing: 0.3px; }
-#mxbar { left: 208px; top: 864px; width: 1504px; height: 128px; transition: opacity 0.35s ease, transform var(--drift) ease; }
+#mxbar { left: 208px; top: 864px; width: 1504px; height: 128px; }
 #mxbar .gb-img { left: -208px; top: -864px; }
-#secMusic.calm #mxbar { opacity: 0; transform: translateY(18px); transition: opacity 1.4s ease, transform 1.4s ease; }
 .mx-row { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 24px; padding: 0 28px 0 44px; }
 .mx-speaker { min-width: 0; display: flex; align-items: center; gap: 12px; font-size: 22px; color: var(--ink-dim); }
 .mx-speaker svg { width: 28px; height: 28px; flex: 0 0 auto; opacity: 0.8; }

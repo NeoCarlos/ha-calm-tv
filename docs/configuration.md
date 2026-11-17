@@ -47,7 +47,7 @@ default app dock.
   "calendar": { "events": "calendar.family", "meals": "calendar.meal_plan" },
   "doorbell": { "window": false, "camera": "camera.front_door", "ringing": "input_boolean.doorbell_ringing" },
   "rooms": [ … ],         // the Smart Home bar
-  "display": { "glass": "blur", "videos": true, "transitions": "fade" },
+  "display": { "glass": "blur", "videos": true, "transitions": "fade", "fade": true },
   "backgrounds": { "photos": [ … ], "videos": [ … ] }
 }
 ```
@@ -240,6 +240,10 @@ TV's own changes.
   so turning videos off and on again returns to the same clip.
 - `transitions`: how screens change. `"fade"` (the default) cross-fades; `"instant"` switches with no
   animation, the lightest option on slow devices.
+- `fade`: `true` (the default) lets the screens rest. After 8 seconds without a key press, every
+  screen's bar fades away and only the essentials stay: the clock, the weather, the album art. The
+  first key (or tap) only brings the bar back, so ↑ or OK never does anything by accident. `false`
+  keeps the bars up (Settings → Appearance → *Fade when idle*).
 
 ### `backgrounds`: extra photos and videos
 

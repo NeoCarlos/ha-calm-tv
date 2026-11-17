@@ -28,13 +28,16 @@
   cards with scrolling names, bigger library buttons (3 across) and podcast icon; everything else
   fades back while grouping; Up from the controls reaches the library.
 - **Music screen** (with `"music"` in calm-tv.json, after Smart Home): the album art with the song,
-  artist and time beneath it, and the main controls on a frosted bar. After a few seconds without a
-  key press the bar fades and the art settles to the middle (the first OK, ← or → only wakes it).
+  artist and time beneath it, and the main controls on a frosted bar. Resting, the bar fades and the
+  art settles to the middle.
   Nothing playing, nothing shown. The album's colour can show behind it: `"background"` under
   `music` (or **Settings → Appearance → Music background**) picks none (the default), glow, wash or
   solid. A thin wave under the time lights up as the song plays and drifts while it does (**Music
   wave**, on by default). On the dashboard,
   Music is a tab.
+- **Fade when idle:** after 8 seconds without a key press, every screen rests: its bar fades away
+  and only the clock, the weather, the album art… stay. The first key or tap only brings the bar
+  back, so ↑ or OK never acts by accident. Settings → Appearance, or `"fade"` under `display`.
 - **Settings → Appearance** gathers everything about how Calm TV looks: Background, Music
   background and wave, video backgrounds, visual effects and the frame-rate counter (it replaces
   Performance, and Background moves into it). **Visual effects** switches frosted glass and screen

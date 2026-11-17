@@ -203,6 +203,13 @@ try {
   await page(`document.querySelectorAll('.settings .drow')[${waveRow}].click();`);
   const waveOff = await page("return document.querySelector('#secMusic').dataset.wave;");
   await page(`document.querySelectorAll('.settings .drow')[${waveRow}].click();`);
+  const fadeRow = await page("return [...document.querySelectorAll('.settings .drow')].findIndex((r) => r.querySelector('.dname')?.textContent === 'Fade when idle');");
+  const fadeStatus = () => page(`return document.querySelectorAll('.settings .drow')[${fadeRow}].querySelector('.dstatus').textContent;`);
+  const fadeOn = await fadeStatus();
+  await page(`document.querySelectorAll('.settings .drow')[${fadeRow}].click();`);
+  const fadeOff = await fadeStatus();
+  await page(`document.querySelectorAll('.settings .drow')[${fadeRow}].click();`);
+  check(fadeOn.startsWith('On') && fadeOff.startsWith('Off') && (await fadeStatus()).startsWith('On'), 'Fade when idle is on by default, and OK turns it off and on');
   check(waveOn === 'on' && waveOff === 'off' && (await page("return document.querySelector('#secMusic').dataset.wave;")) === 'on', 'Music wave is on by default, and OK turns it off and on');
   const fxRow = await page("return [...document.querySelectorAll('.settings .drow')].findIndex((r) => r.querySelector('.dname')?.textContent === 'Visual effects');");
   const fx = () => page(`return document.querySelectorAll('.settings .drow')[${fxRow}].querySelector('.dstatus').textContent;`);
@@ -230,9 +237,15 @@ try {
   await key('Enter');
   check(wasLabel === 'Pause' && (await playLabel()) === 'Play', `OK on play/pause pauses (${wasLabel} → ${await playLabel()})`);
   await key('Enter');
-  await page("document.querySelector('#secMusic').classList.add('calm');");
+  // Resting: after 8 s without input every screen's bar fades; the first key, any key, only wakes it.
+  await sleep(9000);
+  const rested = await page("return document.documentElement.classList.contains('calm');");
+  await key('ArrowUp');
+  check(rested && !(await page("return document.documentElement.classList.contains('calm');")) && await has('#secMusic.is-active'),
+    'after 8 s the screens rest; ↑ then only wakes them (still on Music)');
+  await page("document.documentElement.classList.add('calm');");
   await key('Enter');
-  check(!(await has('#secMusic.calm')) && (await playLabel()) === 'Pause', 'when the bar has faded, OK only brings it back');
+  check((await playLabel()) === 'Pause', 'resting, OK only wakes the screens (the music keeps playing)');
   for (let i = 0; i < 4; i++) await key('ArrowRight');
   await key('Enter');
   check(await has('.music.open'), 'More opens the Music panel');
@@ -266,6 +279,9 @@ try {
   check(await has('#secMusic.is-active'), 'swiping down goes back a screen (Music)');
   await tap('#dashboardBar .tb-tab:nth-child(1)');
 
+  await page("document.documentElement.classList.add('calm');");
+  await tap('#secHome [data-item="0"]');
+  check(!(await has('.detail.open')) && !(await page("return document.documentElement.classList.contains('calm');")), 'resting, a tap only wakes the screens');
   await tap('#secHome [data-item="0"]');
   check(await has('.detail.open:not(.settings)'), 'tapping a room opens it');
   await tap('.detail.open [data-focus="device-0-0"]');

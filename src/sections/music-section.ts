@@ -6,13 +6,10 @@ import { artTint, ICON, speaker, type Control, type MusicPanel } from './music-p
 import type { Section } from './section';
 
 // The Music screen: a calm view of what's playing, like the Weather and Calendar screens. The album
-// art, with the song, the artist and the time beneath it, sits above the frosted bar of controls;
-// after a few seconds without a key press the bar fades away and only the art and its caption stay. Everything else (speakers,
-// grouping, the queue, the library) is one press away under More, in the Music panel
-// (music-panel.ts), which also does the work behind the buttons here.
-
-/** Seconds without a key press (or touch) before the bar fades out. */
-const FADE_AFTER = 8;
+// art, with the song, the artist and the time beneath it, sits above the frosted bar of controls.
+// When the screens rest (app.ts, "Fade when idle"), the bar fades and the art and its caption settle
+// to the middle. Everything else (speakers, grouping, the queue, the library) is one press away
+// under More, in the Music panel (music-panel.ts), which also does the work behind the buttons here.
 
 const MORE = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
 
@@ -41,7 +38,6 @@ export class MusicSection implements Section {
   private buttons: HTMLElement[] = [];
   private focused = 1;
   private active = false;
-  private calmTimer = 0;
   private tick = 0;
   private artUrl: string | null = null;
 
@@ -87,9 +83,6 @@ export class MusicSection implements Section {
       return btn;
     });
 
-    // A touch anywhere on the screen (or a mouse moving over it) brings the bar back.
-    this.el.addEventListener('pointerdown', () => this.wake());
-    this.el.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') this.wake(); });
     ha.onEntities(() => { if (this.active) this.render(); });
     this.render();
   }
@@ -103,7 +96,6 @@ export class MusicSection implements Section {
   focus(i: number): void {
     this.focused = i;
     this.buttons.forEach((b, j) => b.classList.toggle('is-focus', j === i));
-    this.wake();
   }
 
   blur(): void {
@@ -116,7 +108,6 @@ export class MusicSection implements Section {
     if (b === 'more') this.panel.show();
     else if (b) this.panel.control(b satisfies Control);
     this.render();
-    this.wake();
   }
 
   onEnter(): void {
@@ -132,34 +123,11 @@ export class MusicSection implements Section {
 
       this.render();
     }, 1000);
-    this.wake();
-  }
-
-  /**
-   * While the bar has faded, the first OK, ← or → only brings it back (so waking the screen never
-   * skips a song by accident). Up and Down still change screens. Returns true when the key was used.
-   */
-  wakeKey(key: string): boolean {
-    const calm = this.el.classList.contains('calm');
-    this.wake();
-
-    return calm && ['Enter', ' ', 'ArrowLeft', 'ArrowRight'].includes(key);
-  }
-
-  // ---------- the calm view ----------
-
-  private wake(): void {
-    this.el.classList.remove('calm');
-    clearTimeout(this.calmTimer);
-
-    if (this.active) this.calmTimer = window.setTimeout(() => this.el.classList.add('calm'), FADE_AFTER * 1000);
   }
 
   private leave(): void {
     this.active = false;
     clearInterval(this.tick);
-    clearTimeout(this.calmTimer);
-    this.el.classList.remove('calm');
   }
 
   private render(): void {

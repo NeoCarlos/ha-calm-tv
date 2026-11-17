@@ -28,6 +28,7 @@ const OverridesSchema = v.object({
   transitions: v.fallback(v.nullable(v.picklist(['fade', 'instant'])), null),
   musicBackground: v.fallback(v.nullable(v.picklist(MUSIC_BACKGROUNDS)), null),
   musicWave: v.fallback(v.nullable(v.boolean()), null),
+  fade: v.fallback(v.nullable(v.boolean()), null),
   /** A small frame-rate counter in the corner, for comparing settings on the TV. */
   showFps: v.fallback(v.boolean(), false),
 });
@@ -80,6 +81,20 @@ export function transitions(): Transitions {
 
 export function musicBackground(): MusicBackground {
   return overrides.musicBackground ?? settings.config.music?.background ?? 'none';
+}
+
+/** Whether the screens rest after a while without input: their bars fade (app.ts). */
+export function fadeWhenIdle(): boolean {
+  return overrides.fade ?? display()?.fade ?? true;
+}
+
+export function fadeSource(): Source {
+  return overrides.fade !== null ? 'set on this TV' : display()?.fade !== undefined ? 'from calm-tv.json' : 'default';
+}
+
+export function setFadeWhenIdle(on: boolean): void {
+  overrides.fade = on;
+  changed();
 }
 
 export function musicWave(): boolean {
@@ -143,7 +158,7 @@ export function setShowFps(on: boolean): void {
 
 /** True if this TV overrides any of calm-tv.json's choices. */
 export function hasOverrides(): boolean {
-  return overrides.videos !== null || overrides.glass !== null || overrides.transitions !== null || overrides.musicBackground !== null || overrides.musicWave !== null;
+  return overrides.videos !== null || overrides.glass !== null || overrides.transitions !== null || overrides.musicBackground !== null || overrides.musicWave !== null || overrides.fade !== null;
 }
 
 /** Back to calm-tv.json's choices (or the defaults). The frame-rate counter is left as it is. */
@@ -153,5 +168,6 @@ export function resetToConfig(): void {
   overrides.transitions = null;
   overrides.musicBackground = null;
   overrides.musicWave = null;
+  overrides.fade = null;
   changed();
 }

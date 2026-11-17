@@ -132,6 +132,8 @@ const ConfigSchema = v.object({
       videos: v.optional(v.boolean('should be true or false')),
       /** How screens change: "fade" (the default) or "instant" (no animation; lightest on the TV). */
       transitions: v.optional(v.picklist(['fade', 'instant'], 'should be "fade" or "instant"')),
+      /** After a few seconds without a key press, the screens' bars fade and only the essentials stay (default true). */
+      fade: v.optional(v.boolean('should be true or false')),
     }),
   ),
   /** Extra backgrounds, e.g. files in Home Assistant's www folder ("/local/beach.jpg"). */

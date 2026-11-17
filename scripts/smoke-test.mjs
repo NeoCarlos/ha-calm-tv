@@ -144,6 +144,14 @@ try {
   check(await has('#secApps.is-active'), 'starts on the Apps screen');
   await key('ArrowDown');
   check(await has('#secHome.is-active'), '↓ goes to Smart Home');
+  // The rooms wrap around like the dock: ← on the first goes to the last, → comes back.
+  const roomFocus = () => page("return Number(document.querySelector('#secHome .is-focus')?.dataset.item);");
+  const firstRoom = await roomFocus();
+  await key('ArrowLeft');
+  const wrapped = await roomFocus();
+  const lastRoom = await page("return document.querySelectorAll('#secHome [data-item]').length - 1;");
+  await key('ArrowRight');
+  check(firstRoom === 0 && wrapped === lastRoom && (await roomFocus()) === 0, `the rooms wrap: ← from the first goes to the last (${wrapped} of ${lastRoom})`);
 
   await key('Enter');
   check(await has('.detail.open:not(.settings)'), 'OK opens a room');

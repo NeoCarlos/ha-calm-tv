@@ -250,9 +250,10 @@ export class CalmTv {
     if (n <= 0) return;
     const next = this.cols[this.secIndex] + d;
 
-    // The dock wraps around: Left on the first tile goes to the last, and Right on the last to the
-    // first. Not while the button is held, so holding it stops at the end instead of circling.
-    if (s === this.appsSection && !held && (next < 0 || next >= n)) this.cols[this.secIndex] = (next + n) % n;
+    // Every screen's row wraps around (the dock, the rooms, the days, the Music bar…): Left on the
+    // first goes to the last, and Right on the last to the first. Not while the button is held, so
+    // holding it stops at the end instead of circling.
+    if (!held && (next < 0 || next >= n)) this.cols[this.secIndex] = (next + n) % n;
     else this.cols[this.secIndex] = Math.max(0, Math.min(next, n - 1));
     s.focus(this.cols[this.secIndex]);
     this.hideHint();

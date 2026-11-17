@@ -90,8 +90,8 @@ On the Streamer that holds 60 fps at rest, dipping to about 52 fps while switchi
 video. Other Google TV and Android TV devices (Android 12 or newer) should run it, but I haven't
 tried any, and cheaper ones with less memory, like the Chromecast with Google TV, may struggle.
 
-You can check on your own TV: **Settings → Appearance** has switches for video backgrounds,
-frosted glass and screen transitions, and a frame-rate counter, so
+You can check on your own TV: **Settings → Appearance** has switches for video backgrounds and
+visual effects (frosted glass and screen fades), and a frame-rate counter, so
 you can flip a setting and see the difference straight away. Each TV keeps its own choices; to set
 a default for every TV, use `display` in `calm-tv.json`. Your mileage may vary.
 

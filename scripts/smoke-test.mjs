@@ -204,9 +204,15 @@ try {
   const waveOff = await page("return document.querySelector('#secMusic').dataset.wave;");
   await page(`document.querySelectorAll('.settings .drow')[${waveRow}].click();`);
   check(waveOn === 'on' && waveOff === 'off' && (await page("return document.querySelector('#secMusic').dataset.wave;")) === 'on', 'Music wave is on by default, and OK turns it off and on');
-  // Up from Music wave to Background, the first row.
-  await key('ArrowUp');
-  await key('ArrowUp');
+  const fxRow = await page("return [...document.querySelectorAll('.settings .drow')].findIndex((r) => r.querySelector('.dname')?.textContent === 'Visual effects');");
+  const fx = () => page(`return document.querySelectorAll('.settings .drow')[${fxRow}].querySelector('.dstatus').textContent;`);
+  const fxBefore = await fx();
+  await page(`document.querySelectorAll('.settings .drow')[${fxRow}].click();`);
+  const fxOff = await fx();
+  await page(`document.querySelectorAll('.settings .drow')[${fxRow}].click();`);
+  check(fxBefore.startsWith('On') && fxOff.startsWith('Off') && (await fx()).startsWith('On'), `Visual effects switches glass and fades together (${fxOff.split(' · ')[1]})`);
+  // Up from Visual effects to Background, the first row.
+  for (let i = 0; i < 4; i++) await key('ArrowUp');
   await key('Enter');
   check(await has('.bgpick.open'), 'Background opens the picker');
   await allReachable('.bgpick.open', 'background picker');

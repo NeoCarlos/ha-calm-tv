@@ -226,8 +226,8 @@ services → Entities.
 { "glass": "blur", "videos": true, "transitions": "fade" }
 ```
 
-These are **defaults for every TV**. Each TV can override any of them in **Settings → Appearance**,
-whose rows say whether a value is the default, from calm-tv.json, or set on this TV. *Reset to calm-tv.json* there undoes a
+These are **defaults for every TV**. Each TV can override any of them in **Settings → Appearance**
+(`glass` and `transitions` together, as *Visual effects*), whose rows say whether a value is the default, from calm-tv.json, or set on this TV. *Reset to calm-tv.json* there undoes a
 TV's own changes.
 
 - `glass`: how the bars along the bottom look.

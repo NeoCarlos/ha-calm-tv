@@ -2,8 +2,8 @@ import * as v from 'valibot';
 import { demoMode, settings, MUSIC_BACKGROUNDS, type MusicBackground } from './config';
 
 /**
- * The look-and-performance choices: video backgrounds, frosted glass, screen transitions, and the
- * Music screen's background.
+ * The look-and-performance choices: video backgrounds, frosted glass and screen transitions (one
+ * "Visual effects" row in Settings switches both), and the Music screen's background and wave.
  *
  * Each comes from, in order: this TV's own choice (Settings, kept in localStorage), else
  * calm-tv.json ("display", or "music" for the Music screen's background and wave), else the

@@ -2,8 +2,8 @@
 
 Built and tested on a **Google TV Streamer (2024)**. Other Google TV / Android TV devices on Android 12+
 (`minSdk 31`) should run it, but live blur and video backgrounds lean on the Streamer's hardware. On a
-slower device, turn off video backgrounds, frosted glass or screen transitions in **Settings →
-Appearance**, and turn on *Show frame rate* to compare. To make your choice the default for every TV, use `display` in `calm-tv.json`
+slower device, turn off video backgrounds or visual effects (frosted glass and screen fades) in
+**Settings → Appearance**, and turn on *Show frame rate* to compare. To make your choice the default for every TV, use `display` in `calm-tv.json`
 ([configuration.md](configuration.md#display-look-options)).
 
 ## 1. Connect a computer to the TV with adb

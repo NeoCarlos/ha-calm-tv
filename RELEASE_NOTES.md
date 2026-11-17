@@ -36,8 +36,10 @@
   wave**, on by default). On the dashboard,
   Music is a tab.
 - **Settings → Appearance** gathers everything about how Calm TV looks: Background, Music
-  background, video backgrounds, frosted glass, screen transitions and the frame-rate counter (it
-  replaces Performance, and Background moves into it).
+  background and wave, video backgrounds, visual effects and the frame-rate counter (it replaces
+  Performance, and Background moves into it). **Visual effects** switches frosted glass and screen
+  fades together; calm-tv.json's `display` can still set them apart. The menu is more compact, and
+  scrolls if it ever gets taller than the screen.
 - **Music panel**, under More on the Music screen: now playing,
   controls, speakers and library buttons (Artists, Albums, Playlists, Radio…) that open a browsable grid, through Home Assistant (made for Music Assistant). In demo mode too.
   The group button picks speakers to play along with the chosen one (media_player.join / unjoin).

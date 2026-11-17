@@ -220,7 +220,15 @@ html.glass-tint .gb-veil { background: rgba(8, 14, 18, 0.5); }
 @keyframes load { to { width: 100%; } }
 
 /* ---------- Settings panel (reuses the zone detail look, one narrow column) ---------- */
-.settings .detail-panel { width: 960px; }
+.settings .detail-panel { width: 960px; max-height: 1000px; }
+/* A menu taller than the screen scrolls inside the panel (the focused row scrolls into view). */
+.settings .dcol-list { min-height: 0; overflow-y: auto; scrollbar-width: none; padding: 6px; margin: -6px; }
+/* Settings rows are a little more compact than a room's, so a menu fits the screen without scrolling. */
+.settings .detail-panel { padding: 44px 52px 36px; }
+.settings .detail-head { margin-bottom: 26px; }
+.settings .dcol-list { gap: 10px; }
+.settings .drow { padding: 14px 20px; }
+.settings .dcol-list::-webkit-scrollbar { display: none; }
 .settings .dstatus { white-space: normal; }
 
 /* ---------- Zone detail panel ---------- */

@@ -33,7 +33,6 @@ const ICONS = {
   file: line('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>'),
   video: line('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/>'),
   glass: line('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 15l7-7M12 16l4-4"/>'),
-  fade: line('<rect x="3" y="6" width="11" height="12" rx="2"/><path d="M17 8v8M20 10v4"/>'),
   counter: line('<path d="M4 18h16M6 15l3-4 3 2 5-6"/>'),
   arrange: line('<rect x="3" y="8" width="5" height="8" rx="1.5"/><rect x="10" y="8" width="5" height="8" rx="1.5"/><path d="M18 12h4M20 10l2 2-2 2"/>'),
   reset: line('<path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/>'),
@@ -137,17 +136,25 @@ export class SettingsPanel {
           run: () => setVideos(!videosOn()),
         },
         {
+          // Frosted glass and screen fades together: the two effects that cost a slower TV the most.
+          // calm-tv.json can still set them apart ("display"); then this row says which is on.
           icon: ICONS.glass,
-          name: 'Frosted glass',
-          status: () =>
-            `${glass() === 'blur' ? 'On' : 'Off (tinted)'} · ${glassSource()}${videosOn() ? '' : ' · free over photos'}`,
-          run: () => setGlass(glass() === 'blur' ? 'tint' : 'blur'),
-        },
-        {
-          icon: ICONS.fade,
-          name: 'Screen transitions',
-          status: () => `${transitions() === 'fade' ? 'Fade' : 'Instant'} · ${transitionsSource()}`,
-          run: () => setTransitions(transitions() === 'fade' ? 'instant' : 'fade'),
+          name: 'Visual effects',
+          status: () => {
+            const frosted = glass() === 'blur';
+            const fades = transitions() === 'fade';
+            const how = frosted && fades ? 'On · frosted glass, fading screens'
+              : !frosted && !fades ? 'Off · tinted glass, instant screens (lightest)'
+              : `Partly on · ${frosted ? 'frosted glass' : 'tinted glass'}, ${fades ? 'fading' : 'instant'} screens`;
+            const from = glassSource() === transitionsSource() ? ` · ${glassSource()}` : '';
+
+            return how + from;
+          },
+          run: () => {
+            const on = !(glass() === 'blur' && transitions() === 'fade');
+            setGlass(on ? 'blur' : 'tint');
+            setTransitions(on ? 'fade' : 'instant');
+          },
         },
         {
           icon: ICONS.counter,

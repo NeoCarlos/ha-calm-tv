@@ -1,9 +1,11 @@
 import { native } from '../native';
 import { ha } from '../ha';
-import { settings } from '../config';
+import { settings, dashboardMode } from '../config';
 import { zones } from '../home-data';
 import { showSetup } from '../setup';
 import { child } from '../dom';
+import { FocusGroup } from '../focus';
+import { hint } from '../hints';
 import { apps, hasDockOrder, resetDockOrder } from '../apps';
 import {
   glass, glassSource, hasOverrides, resetToConfig, setGlass, setShowFps,
@@ -77,6 +79,8 @@ export class SettingsPanel {
   private confirmTimer = 0;
   /** OK presses right after opening belong to the press that opened the panel. */
   private openedAt = 0;
+  /** Remote, touch and mouse (see focus.ts): the rows, and the round button ("close"). */
+  private nav!: FocusGroup;
 
   constructor(mount: HTMLElement, private bg: BackgroundControls, private arrangeDock: () => void) {
     const onTv = !!native;
@@ -131,8 +135,8 @@ export class SettingsPanel {
           icon: ICONS.ha,
           name: 'Connection',
           status: () =>
-            ha.status === 'signed-out' ? 'Not signed in · OK to sign in'
-            : this.confirmSignOut ? 'Press OK again to sign out'
+            ha.status === 'signed-out' ? hint('signInRow')
+            : this.confirmSignOut ? hint('signOutAgain')
             : connection(),
           run: () => {
             if (ha.status === 'signed-out') {
@@ -187,7 +191,7 @@ export class SettingsPanel {
         {
           icon: ICONS.wallpaper,
           name: 'Background',
-          status: () => `${this.bg.name()} · ${this.bg.mode() === 'video' ? 'video' : 'photo'} · OK to choose`,
+          status: () => `${this.bg.name()} · ${this.bg.mode() === 'video' ? 'video' : 'photo'}${hint('chooseBackgroundRow')}`,
           run: () => {
             this.close();
             this.bg.openPicker();
@@ -251,6 +255,9 @@ export class SettingsPanel {
       ],
     };
 
+    // The dashboard has no dock, Google TV home or TV settings.
+    if (dashboardMode) this.root.rows = this.root.rows.filter((r) => !['Arrange dock', 'Google TV home', 'TV settings'].includes(r.name));
+
     this.el = document.createElement('div');
     this.el.className = 'detail settings';
     this.el.innerHTML = `
@@ -258,7 +265,7 @@ export class SettingsPanel {
       <div class="detail-panel">
         <div class="detail-head">
           <div class="detail-title"></div>
-          <button class="detail-close" aria-label="Close">${ICONS.close}</button>
+          <button class="detail-close" data-focus="close" aria-label="Close">${ICONS.close}</button>
         </div>
         <div class="dcol-list"></div>
       </div>`;
@@ -266,8 +273,29 @@ export class SettingsPanel {
     this.listEl = child(this.el, '.dcol-list');
     this.closeEl = child(this.el, '.detail-close');
     this.titleEl = child(this.el, '.detail-title');
-    this.closeEl.addEventListener('click', () => this.close());
+    // In a sub-menu the round button shows a back arrow, so it goes back a level, like Back does.
+    this.closeEl.addEventListener('click', () => this.back());
     child(this.el, '.detail-scrim').addEventListener('click', () => this.close());
+
+    this.nav = new FocusGroup(this.el, {
+      onBack: () => this.back(),
+      onKey: (e) => {
+        // OK right after opening is the end of the press that opened the panel.
+        if ((e.key === 'Enter' || e.key === ' ') && (e.repeat || Date.now() - this.openedAt < 400)) {
+          e.preventDefault();
+
+          return true;
+        }
+
+        if (this.confirmSignOut && e.key.startsWith('Arrow')) {
+          this.confirmSignOut = false;
+          this.paint();
+        }
+
+        return false;
+      },
+      onFocus: (id) => { this.level.focus = id === 'close' ? -1 : Number(id.slice(4)); },
+    });
   }
 
   isOpen(): boolean {
@@ -279,8 +307,9 @@ export class SettingsPanel {
     this.confirmSignOut = false;
     this.openedAt = Date.now();
     this.open = true;
-    this.build();
+    // Visible first, so the rows can take the focus as they're built.
     this.el.classList.add('open');
+    this.build();
   }
 
   close(): void {
@@ -328,42 +357,7 @@ export class SettingsPanel {
   }
 
   handleKey(e: KeyboardEvent): void {
-    const k = e.key;
-
-    if (k === 'Escape' || k === 'Backspace') {
-      e.preventDefault();
-      this.back();
-
-      return;
-    }
-
-    if (k === 'Enter' || k === ' ') {
-      e.preventDefault();
-
-      if (e.repeat || Date.now() - this.openedAt < 400) return;
-
-      if (this.level.focus < 0) this.back();
-      else this.activate(this.level.focus);
-
-      return;
-    }
-
-    if (this.confirmSignOut && k.startsWith('Arrow')) {
-      this.confirmSignOut = false;
-      this.paint();
-    }
-
-    if (k === 'ArrowUp') {
-      e.preventDefault();
-      this.level.focus = Math.max(-1, this.level.focus - 1);
-      this.render();
-    }
-    else if (k === 'ArrowDown') {
-      e.preventDefault();
-      this.level.focus = Math.min(this.level.menu.rows.length - 1, this.level.focus + 1);
-      this.render();
-    }
-    else if (k.startsWith('Arrow')) e.preventDefault();
+    this.nav.handleKey(e);
   }
 
   /** Builds the rows of the current menu. */
@@ -377,19 +371,14 @@ export class SettingsPanel {
     this.rowEls = this.level.menu.rows.map((r, i) => {
       const row = document.createElement('button');
       row.className = 'drow';
-      row.addEventListener('mouseenter', () => {
-        this.level.focus = i;
-        this.render();
-      });
-      row.addEventListener('click', () => {
-        this.level.focus = i;
-        this.activate(i);
-      });
+      row.dataset.focus = `row-${i}`;
+      row.addEventListener('click', () => this.activate(i));
       this.listEl.appendChild(row);
 
       return row;
     });
     this.paint();
+    this.nav.focus(this.level.focus < 0 ? 'close' : `row-${this.level.focus}`);
   }
 
   private paint(): void {
@@ -403,7 +392,6 @@ export class SettingsPanel {
   }
 
   private render(): void {
-    this.closeEl.classList.toggle('focus', this.level.focus < 0);
-    this.rowEls.forEach((el, i) => el.classList.toggle('focus', i === this.level.focus));
+    this.nav.paint();
   }
 }

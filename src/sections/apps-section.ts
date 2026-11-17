@@ -2,6 +2,7 @@ import { apps, saveDockOrder } from '../apps';
 import type { App } from '../types';
 import type { Section } from './section';
 import { child } from '../dom';
+import { slideRow } from '../row-scroll';
 
 // Icon-only tiles; the label appears only for the focused app.
 const TW = 150;
@@ -94,7 +95,7 @@ export class AppsSection implements Section {
       else if (canRight) this.shelf.classList.add('fade-r');
     }
 
-    this.track.style.transform = `translateX(${tx}px)`;
+    slideRow(this.shelf, this.track, tx, this.tiles[i]);
     this.tiles[i]?.classList.add('is-focus');
   }
 

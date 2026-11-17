@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Dashboard mode** (`?dash`): the app for a touch screen, as a Home Assistant dashboard. A tab bar
+  (time, screens, now playing, Music, Settings) replaces the Apps screen; everything can be tapped,
+  dimmers are dragged, the thermostat has − and +, and swiping changes screens. Inside a dashboard
+  it uses Home Assistant's own sign-in. `npm run publish:ha` puts it in Home Assistant's www folder
+  and updates the dashboard's address. See docs/dashboard.md.
+- **One input layer for every panel** (`src/focus.ts`): rooms, Settings, Music and the background
+  picker now share how the remote, touch and a mouse work, so OK and a tap always do the same thing.
+  On the TV, the arrows move to the nearest item by position, and going back the way you came
+  returns to where you were.
+- **`npm test`:** type-checks and drives the demo with the remote and with taps; it runs on every
+  pull request. A pull request template lists what to check.
+- After signing in with Home Assistant's login page, the address keeps its other settings (it used
+  to drop all of them).
+- Settings: the round button in a sub-menu now goes back a level when clicked, as Back does.
+
 - **Music panel:** a Music tile in the dock (with `"music"` in calm-tv.json) opens now playing,
   controls, speakers and library buttons (Artists, Albums, Playlists, Radio…) that open a browsable grid, through Home Assistant (made for Music Assistant). In demo mode too.
   The group button picks speakers to play along with the chosen one (media_player.join / unjoin).

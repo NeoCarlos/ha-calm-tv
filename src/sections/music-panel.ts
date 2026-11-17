@@ -3,7 +3,9 @@ import type { MessageBase } from 'home-assistant-js-websocket';
 import { ha } from '../ha';
 import { haPath, settings } from '../config';
 import { child } from '../dom';
+import { FocusGroup } from '../focus';
 import { attributes, BrowseNodeSchema, MediaPlayerAttributes, type BrowseChild, type BrowseNode } from '../ha-data';
+import { hint } from '../hints';
 
 // The Music panel: Music Assistant (or any media players) through Home Assistant. Opened from the
 // dock's Music tile. Left: what the chosen speaker is playing, with its controls. Right: the
@@ -69,10 +71,9 @@ interface Level {
   type: string;
   items: LibraryItem[] | null;
   msg: string;
-  focus: number;
+  /** The item that opened this folder, to go back to it. */
+  cameFrom: string | null;
 }
-
-type Area = 'controls' | 'speakers' | 'cats' | 'browse';
 
 const CONTROLS = ['prev', 'playpause', 'next', 'volDown', 'volUp', 'group'] as const;
 
@@ -81,7 +82,6 @@ const MAX_ITEMS = 500;
 
 /** The library buttons, in order, when calm-tv.json's "library" doesn't name its own: Music Assistant's folders. */
 const DEFAULT_LIBRARY = ['Artists', 'Albums', 'Tracks', 'Playlists', 'Radio', 'Podcasts', 'Audiobooks'];
-const GRID_COLS = 5;
 const VOLUME_STEP = 0.05;
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -111,10 +111,11 @@ function speaker(entity: string): { state: string; a: MediaPlayerAttributes } | 
 export class MusicPanel {
   private el: HTMLElement;
   private open = false;
-  private area: Area = 'speakers';
-  private ctrl = 1;
-  private spk = 0;
-  private cat = 0;
+  /**
+   * Remote, touch and mouse (see focus.ts). Ids: "control-play" etc., "speaker-2", "library-1",
+   * "card-4" (in the open folder). OK and a tap both click the item; onClick says what that does.
+   */
+  private nav: FocusGroup;
   /** The browser's folders, outermost first; empty when the speakers and categories show. */
   private levels: Level[] = [];
   private active = 0;
@@ -149,7 +150,7 @@ export class MusicPanel {
           <div class="music-progress"><i></i></div>
           <div class="music-times"><span class="t-pos"></span><span class="t-dur"></span></div>
           <div class="music-controls">
-            ${CONTROLS.map((c) => `<button class="mbtn" data-c="${c}"></button>`).join('')}
+            ${CONTROLS.map((c) => `<button class="mbtn" data-focus="control-${c}"></button>`).join('')}
             <span class="music-vol"></span>
           </div>
         </div>
@@ -166,8 +167,10 @@ export class MusicPanel {
           </div>
         </div>
       </div>
-      <div class="music-hint">Back to close</div>`;
+      <button class="music-hint">${hint('musicClose')}</button>`;
     mount.appendChild(this.el);
+    this.nav = new FocusGroup(this.el, { onBack: () => this.back() });
+    this.el.addEventListener('click', (e) => this.onClick(e));
     // Every state change in the house arrives here; redraw only when one of the speakers changed.
     ha.onEntities(() => {
       if (!this.open) return;
@@ -188,13 +191,13 @@ export class MusicPanel {
     this.open = true;
     // Start on the speaker that's playing, if any.
     const playing = this.players.findIndex((p) => ha.entities[p.entity]?.state === 'playing');
-    this.active = this.spk = Math.max(0, playing);
-    this.area = 'speakers';
+    this.active = Math.max(0, playing);
     this.grouping = false;
     this.levels = [];
     this.lastSig = this.playersSignature();
     this.el.classList.add('open');
     this.render();
+    this.nav.focus(`speaker-${this.active}`);
     void this.loadCats();
     this.tick = window.setInterval(() => this.renderProgress(), 1000);
   }
@@ -261,8 +264,8 @@ export class MusicPanel {
       this.catsMsg = 'Couldn’t load the library';
     }
 
-    this.cat = Math.min(this.cat, Math.max(0, this.cats.length - 1));
     this.renderCats();
+    this.nav.paint();
   }
 
   /** Opens a folder in the browser (a category, an artist, an album…). */
@@ -270,9 +273,8 @@ export class MusicPanel {
     const p = this.player;
 
     if (!p) return;
-    const level: Level = { title: item.title, id: item.id, type: item.type, items: null, msg: 'Loading…', focus: 0 };
+    const level: Level = { title: item.title, id: item.id, type: item.type, items: null, msg: 'Loading…', cameFrom: this.nav.id };
     this.levels.push(level);
-    this.area = 'browse';
     this.renderBrowse();
 
     try {
@@ -289,14 +291,16 @@ export class MusicPanel {
       level.msg = 'Couldn’t load this';
     }
 
-    if (this.levels.at(-1) === level) this.renderBrowse();
+    if (this.levels.at(-1) !== level) return;
+    this.renderBrowse();
+    this.nav.focus('card-0');
   }
 
+  /** Up a folder, back to what opened it. */
   private closeFolder(): void {
-    this.levels.pop();
-
-    if (!this.levels.length) this.area = 'cats';
+    const level = this.levels.pop();
     this.render();
+    this.nav.focus(level?.cameFrom ?? null);
   }
 
   private act(service: string, data: Record<string, string | number> = {}): void {
@@ -348,8 +352,14 @@ export class MusicPanel {
   private startGrouping(): void {
     if (this.players.length < 2) return;
     this.grouping = true;
-    this.area = 'speakers';
-    this.spk = this.active === 0 ? 1 : 0;
+    this.render();
+    this.nav.focus(`speaker-${this.active === 0 ? 1 : 0}`);
+  }
+
+  private stopGrouping(): void {
+    this.grouping = false;
+    this.render();
+    this.nav.focus(`speaker-${this.active}`);
   }
 
   private press(c: (typeof CONTROLS)[number]): void {
@@ -404,14 +414,16 @@ export class MusicPanel {
     const group = this.group();
     const others = this.players.filter((pl) => pl.entity !== p?.entity && group.has(pl.entity)).map((pl) => pl.name);
     child(this.el, '.music-group').innerHTML = others.length ? `${ICON.group}<span>Also on ${esc(others.join(', '))}</span>` : '';
-    child(this.el, '.music-spk-h').textContent = this.grouping ? `Play on ${p?.name ?? ''} and… · OK to add or remove · Back when done` : 'Speakers';
+    const how = hint('groupSpeakers');
+    child(this.el, '.music-spk-h').textContent = this.grouping ? `Play on ${p?.name ?? ''} and… · ${how}` : 'Speakers';
     this.el.classList.toggle('grouping', this.grouping);
 
     this.el.querySelectorAll<HTMLElement>('.mbtn').forEach((b, i) => {
       const c = CONTROLS[i];
       b.innerHTML = c === 'playpause' ? (s?.state === 'playing' ? ICON.pause : ICON.play) : ICON[c];
       b.classList.toggle('big', c === 'playpause');
-      b.classList.toggle('focus', this.area === 'controls' && this.ctrl === i);
+      // While grouping, only the speakers can be chosen.
+      b.setAttribute('aria-disabled', String(this.grouping));
     });
     const vol = this.volume();
     child(this.el, '.music-vol').textContent = vol === undefined ? '' : `${Math.round(vol * 100)}%`;
@@ -426,16 +438,18 @@ export class MusicPanel {
           : this.grouping && i === this.active ? 'Chosen speaker · OK when done'
           : e.state === 'playing' ? `Playing · ${e.a.media_title ?? ''}` : e.state === 'paused' ? 'Paused' : 'Idle';
 
-        const cls = ['mspk', i === this.active ? 'active' : '', inGroup ? 'grouped' : '', e?.state === 'playing' ? 'playing' : '', this.area === 'speakers' && this.spk === i ? 'focus' : ''].join(' ');
+        const cls = ['mspk', i === this.active ? 'active' : '', inGroup ? 'grouped' : '', e?.state === 'playing' ? 'playing' : ''].join(' ');
         const mark = this.grouping ? `<span class="mspk-check${i === this.active || inGroup ? ' on' : ''}">${i === this.active || inGroup ? ICON.check : ''}</span>` : '<span class="mspk-dot"></span>';
 
-        return `<div class="${cls}">${mark}<div class="mspk-text"><div class="mspk-name">${esc(pl.name)}</div><div class="mspk-status">${esc(status)}</div></div></div>`;
+        return `<div class="${cls}" data-focus="speaker-${i}">${mark}<div class="mspk-text"><div class="mspk-name">${esc(pl.name)}</div><div class="mspk-status">${esc(status)}</div></div></div>`;
       })
       .join('');
 
     this.renderProgress();
     this.renderCats();
     this.renderBrowse();
+    // The speakers and buttons were drawn again: put the focus back on them.
+    this.nav.paint();
   }
 
   private renderCats(): void {
@@ -448,7 +462,7 @@ export class MusicPanel {
     }
 
     box.innerHTML = this.cats
-      .map((c, i) => `<div class="mcat${this.area === 'cats' && this.cat === i ? ' focus' : ''}">${folderIcon(c.title)}<span>${esc(norm(c.title) === 'radio' ? 'Radio' : c.title)}</span></div>`)
+      .map((c, i) => `<div class="mcat" data-focus="library-${i}" aria-disabled="${this.grouping}">${folderIcon(c.title)}<span>${esc(norm(c.title) === 'radio' ? 'Radio' : c.title)}</span></div>`)
       .join('');
   }
 
@@ -458,7 +472,7 @@ export class MusicPanel {
   private renderBrowse(): void {
     const level = this.levels.at(-1);
     this.el.classList.toggle('browsing', !!level);
-    child(this.el, '.music-hint').textContent = level ? 'Back to go back' : this.grouping ? 'Back when done' : 'Back to close';
+    child(this.el, '.music-hint').textContent = hint(level ? 'musicUp' : this.grouping ? 'musicDone' : 'musicClose');
 
     if (!level) {
       this.drawnLevel = null;
@@ -477,19 +491,10 @@ export class MusicPanel {
       grid.innerHTML = !level.items?.length
         ? `<div class="music-lib-msg">${esc(level.msg)}</div>`
         : level.items
-          .map((it) => `<div class="mcard${it.playAll ? ' playall' : ''}">
+          .map((it, i) => `<div class="mcard${it.playAll ? ' playall' : ''}" data-focus="card-${i}">
               <div class="mcard-art">${it.playAll ? ICON.playAll : it.thumb ? `<img loading="lazy" src="${esc(it.thumb)}" alt="">` : it.canExpand ? folderIcon(this.levels[0]?.title ?? '') : ICON.note}</div>
               <div class="mcard-name">${esc(it.title)}</div></div>`)
           .join('');
-    }
-
-    const cards = grid.children;
-    grid.querySelector('.mcard.focus')?.classList.remove('focus');
-    const focused = this.area === 'browse' ? cards[level.focus] : undefined;
-
-    if (focused?.classList.contains('mcard')) {
-      focused.classList.add('focus');
-      focused.scrollIntoView({ block: 'nearest' });
     }
   }
 
@@ -510,125 +515,66 @@ export class MusicPanel {
     child(this.el, '.t-dur').textContent = dur ? mmss(dur) : '';
   }
 
-  // ---------- remote ----------
+  // ---------- remote, touch and mouse (see focus.ts) ----------
 
-  handleKey(e: KeyboardEvent): void {
-    const k = e.key;
+  /** Back: up a folder, out of grouping, or closed. */
+  private back(): void {
+    if (this.levels.length) this.closeFolder();
+    else if (this.grouping) this.stopGrouping();
+    else this.close();
+  }
 
-    if (k === 'Escape' || k === 'Backspace') {
-      e.preventDefault();
+  /**
+   * What choosing an item does, whether by OK on the remote (which clicks the focused item), a tap
+   * or a mouse click. The bottom hint is the Back button for touch and mouse.
+   */
+  private onClick(e: MouseEvent): void {
+    const target = e.target instanceof Element ? e.target : null;
 
-      if (this.levels.length) {
-        this.closeFolder();
+    if (target?.closest('.music-hint')) {
+      this.back();
 
-        return;
-      }
+      return;
+    }
+
+    const id = target?.closest<HTMLElement>('[data-focus]')?.dataset.focus ?? '';
+    const [kind, which = ''] = id.split('-');
+    const i = Number(which);
+
+    if (kind === 'control') {
+      const c = CONTROLS.find((x) => x === which);
+
+      if (c && !this.grouping) this.press(c);
+    } else if (kind === 'speaker') {
+      const pl = this.players[i];
+
+      if (!pl) return;
 
       if (this.grouping) {
-        this.grouping = false;
-        this.render();
-
-        return;
-      }
-
-      this.close();
-
-      return;
-    }
-
-    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' '].includes(k)) return;
-    e.preventDefault();
-
-    if (k === 'Enter' || k === ' ') {
-      if (this.area === 'controls') this.press(CONTROLS[this.ctrl]);
-      else if (this.area === 'speakers' && this.grouping) {
-        const pl = this.players[this.spk];
-
-        if (this.spk === this.active) this.grouping = false;
-        else if (pl) this.toggleGroup(pl.entity);
-      } else if (this.area === 'speakers') {
-        this.active = this.spk;
-        void this.loadCats();
-      } else if (this.area === 'cats') {
-        const c = this.cats[this.cat];
-
-        if (c) void this.openFolder(c);
+        if (i === this.active) this.stopGrouping();
+        else {
+          this.toggleGroup(pl.entity);
+          this.render();
+        }
       } else {
-        const level = this.levels.at(-1);
-        const it = level?.items?.[level.focus];
-
-        if (it?.canExpand && !it.playAll) void this.openFolder(it);
-        else if (it?.canPlay) this.playItem(it);
-
-        return;
+        this.active = i;
+        void this.loadCats();
+        this.render();
       }
+    } else if (kind === 'library') {
+      const c = this.cats[i];
 
-      this.render();
+      if (c && !this.grouping) void this.openFolder(c);
+    } else if (kind === 'card') {
+      const it = this.levels.at(-1)?.items?.[i];
 
-      return;
+      if (it?.canExpand && !it.playAll) void this.openFolder(it);
+      else if (it?.canPlay) this.playItem(it);
     }
+  }
 
-    if (this.area === 'controls') {
-      if (k === 'ArrowLeft') this.ctrl = Math.max(0, this.ctrl - 1);
-
-      if (k === 'ArrowRight') {
-        if (this.ctrl < CONTROLS.length - 1) this.ctrl++;
-        else this.area = this.levels.length ? 'browse' : 'speakers';
-      }
-    } else if (this.area === 'speakers') {
-      // Two columns of speakers.
-      if (k === 'ArrowUp') this.spk = Math.max(this.spk % 2, this.spk - 2);
-
-      if (k === 'ArrowDown') {
-        if (this.spk + 2 < this.players.length) this.spk += 2;
-        else if (this.cats.length && !this.grouping) {
-          this.area = 'cats';
-          this.cat = this.spk % 2 === 0 ? 0 : Math.max(0, this.cats.length - 1);
-        }
-      }
-
-      if (k === 'ArrowRight' && this.spk % 2 === 0 && this.spk + 1 < this.players.length) this.spk++;
-
-      if (k === 'ArrowLeft') {
-        if (this.spk % 2 === 1) this.spk--;
-        else if (!this.grouping) this.area = 'controls';
-      }
-    } else if (this.area === 'cats') {
-      // One row of buttons.
-      if (k === 'ArrowRight' && this.cat + 1 < this.cats.length) this.cat++;
-
-      if (k === 'ArrowLeft') {
-        if (this.cat > 0) this.cat--;
-        else this.area = 'controls';
-      }
-
-      if (k === 'ArrowUp') {
-        this.area = 'speakers';
-        const lastRow = this.players.length - (this.players.length % 2 === 0 ? 2 : 1);
-        this.spk = Math.min(this.players.length - 1, lastRow + (this.cat >= this.cats.length / 2 ? 1 : 0));
-      }
-    } else {
-      // The browser: a grid that scrolls up and down.
-      const level = this.levels.at(-1);
-      const n = level?.items?.length ?? 0;
-
-      if (level && n) {
-        const col = level.focus % GRID_COLS;
-
-        if (k === 'ArrowRight' && col < GRID_COLS - 1 && level.focus + 1 < n) level.focus++;
-
-        if (k === 'ArrowLeft') {
-          if (col > 0) level.focus--;
-          else this.area = 'controls';
-        }
-
-        if (k === 'ArrowDown') level.focus = Math.min(n - 1, level.focus + GRID_COLS);
-
-        if (k === 'ArrowUp' && level.focus >= GRID_COLS) level.focus -= GRID_COLS;
-      } else if (k === 'ArrowLeft') this.area = 'controls';
-    }
-
-    this.render();
+  handleKey(e: KeyboardEvent): void {
+    this.nav.handleKey(e);
   }
 }
 

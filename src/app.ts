@@ -20,7 +20,12 @@ import { applyStates, WEATHER } from './home-data';
 import { conditionLabel } from './sections/weather-section';
 import { MusicPanel } from './sections/music-panel';
 import { DoorbellWindow, doorbellEnabled, doorbellLook, doorbellRinging } from './doorbell';
-import { screenOrder, type ScreenName } from './config';
+import { screenOrder, dashboardMode, type ScreenName } from './config';
+import { DashboardBar, DASHBOARD_BAR_H } from './dashboard-bar';
+import { hint } from './hints';
+
+/** A finger moved at least this far (CSS pixels) counts as a swipe, not a tap. */
+const SWIPE_MIN = 60;
 
 
 /** An element of the page's own markup (index.html). */
@@ -46,6 +51,8 @@ export class CalmTv {
   private music!: MusicPanel;
   private appsSection!: AppsSection;
   private hintHtml?: string;
+  /** Dashboard mode's tab bar (null on the TV). */
+  private bar: DashboardBar | null = null;
 
   start(): void {
     // The picker offers videos while video backgrounds are on (Settings → Performance), photos otherwise.
@@ -78,7 +85,8 @@ export class CalmTv {
     );
 
     this.detail = new ZoneDetail(qs('#stage'), () => this.home.refresh());
-    this.doorbell = new DoorbellWindow(qs('#stage'), 'Back to dismiss');
+    this.doorbell = new DoorbellWindow(qs('#stage'), hint('doorbellClose'));
+    this.doorbell.el.addEventListener('click', () => this.doorbell.hide());
     this.home = new SmartHomeSection(at('smarthome'), (z) => this.detail.openZone(z), () => ha.signIn());
 
     // Cards come and go as the calendar loads: keep focus valid while it's on screen. (A `let`, as
@@ -97,6 +105,16 @@ export class CalmTv {
 
     this.track = qs('#sectionsTrack');
     this.sections.forEach((s) => this.track.appendChild(s.el));
+
+    if (dashboardMode) {
+      document.documentElement.classList.add('dashboard');
+      this.bar = new DashboardBar(qs('#frame'), order, {
+        // A screen's tab always shows that screen, so it first closes any panel open on top (Music, a room…).
+        onScreen: (i) => { this.closePanels(); this.goTo(i); },
+        onMusic: () => { this.closePanels(); this.music.show(); },
+        onSettings: () => { this.closePanels(); this.settings.show(); },
+      });
+    }
 
     this.wireInput();
     this.paintInitial();
@@ -191,10 +209,17 @@ export class CalmTv {
       this.cols[this.secIndex] = Math.max(0, Math.min(this.cols[this.secIndex], n - 1));
       s.focus(this.cols[this.secIndex]);
     }
+
+    this.bar?.setActive(this.secIndex);
   }
 
   private moveV(d: number): void {
-    const ni = Math.max(0, Math.min(this.secIndex + d, this.sections.length - 1));
+    this.goTo(this.secIndex + d);
+  }
+
+  /** Shows screen i (from ↑/↓, a swipe, or a dashboard tab). */
+  private goTo(i: number): void {
+    const ni = Math.max(0, Math.min(i, this.sections.length - 1));
 
     if (ni === this.secIndex) return;
     this.secIndex = ni;
@@ -488,6 +513,20 @@ export class CalmTv {
       if (e.target === e.currentTarget) this.closeLaunch();
     });
 
+    // Touch: swipe up or down for the next or previous screen. Sideways, the rows scroll by
+    // themselves like any touch list (see row-scroll.ts), which ends this gesture (pointercancel).
+    let start: { x: number; y: number } | null = null;
+    sections.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') start = { x: e.clientX, y: e.clientY }; });
+    sections.addEventListener('pointerup', (e) => {
+      if (!start || e.pointerType !== 'touch') return;
+      const dx = e.clientX - start.x;
+      const dy = e.clientY - start.y;
+      start = null;
+
+      if (Math.abs(dy) >= SWIPE_MIN && Math.abs(dy) > Math.abs(dx)) this.moveV(dy < 0 ? 1 : -1);
+    });
+    sections.addEventListener('pointercancel', () => { start = null; });
+
     // From the TV app: Home pressed (back to the app dock), and returning from another app.
     window.addEventListener('ct-home', () => this.goHome());
 
@@ -504,8 +543,8 @@ export class CalmTv {
     });
   }
 
-  /** Home button: close anything open and return to the app dock. */
-  private goHome(): void {
+  /** Closes whatever panel is open: the background picker, Settings, a room, Music, arranging. */
+  private closePanels(): void {
     if (this.picker.isOpen()) this.picker.close();
 
     if (this.settings.isOpen()) this.settings.close();
@@ -520,6 +559,11 @@ export class CalmTv {
     }
 
     this.closeLaunch();
+  }
+
+  /** Home button: close anything open and return to the app dock. */
+  private goHome(): void {
+    this.closePanels();
 
     if (this.secIndex !== 0) {
       this.secIndex = 0;
@@ -563,10 +607,14 @@ export class CalmTv {
   private fit(): void {
     // Demo mode's on-screen remote (demo-remote.ts) takes the right edge of a phone held sideways.
     const side = document.documentElement.classList.contains('with-remote') && window.innerWidth > window.innerHeight && window.innerHeight < 600 ? 190 : 0;
+    // Dashboard mode: the screens sit above the tab bar.
+    const bottom = this.bar ? DASHBOARD_BAR_H : 0;
     const width = window.innerWidth - side;
-    const s = Math.min(width / 1920, window.innerHeight / 1080);
+    const height = window.innerHeight - bottom;
+    const s = Math.min(width / 1920, height / 1080);
     const stage = qs('#stage');
     stage.style.left = side ? `${width / 2}px` : '';
+    stage.style.top = bottom ? `${height / 2}px` : '';
     stage.style.transform = `translate(-50%, -50%) scale(${s})`;
   }
 }

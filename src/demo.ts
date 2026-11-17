@@ -2,7 +2,7 @@ import type { HassEntities, HassEntity, MessageBase } from 'home-assistant-js-we
 import * as v from 'valibot';
 import exampleConfig from '../config/calm-tv.example.json?raw';
 import doorbellView from './demo-media/doorbell-camera.mp4?url';
-import { decodeConfig, settings } from './config';
+import { decodeConfig, settings, dashboardMode } from './config';
 import { ha, type HaLink } from './ha';
 import { demoCameras } from './camera-stream';
 import type { BrowseNode, CalendarEvent, CalendarResponse, ForecastEntry, ForecastMessage } from './ha-data';
@@ -565,7 +565,8 @@ export function startDemo(): void {
 
   ha.useDemo(home.link, (fn) => home.subscribe(fn));
 
-  showRemote();
+  // Dashboard mode is made for touch, so it needs no on-screen remote.
+  if (!dashboardMode) showRemote();
 
   window.ctDemo = {
     caption,

@@ -10,6 +10,8 @@ import {
 } from '../ha-data';
 import { ma, maConfigured, type MaQueueItem } from '../music-assistant';
 import { native } from '../native';
+import { FocusGroup } from '../focus';
+import { hint } from '../hints';
 
 // The Music panel: Music Assistant (or any media players) through Home Assistant. Opened from the
 // dock's Music tile. Left: what the chosen speaker is playing, with its controls. Right: the
@@ -176,16 +178,13 @@ interface Level {
   type: string;
   items: LibraryItem[] | null;
   msg: string;
-  focus: number;
+  /** What was focused before this folder opened, to go back to. */
+  cameFrom: string | null;
 }
 
-type Area = 'controls' | 'speakers' | 'cats' | 'browse' | 'queue';
 /** Queue items asked of Music Assistant at a time, and at most in all. */
 const QUEUE_PAGE = 100;
-/** While grouping, the "Play everywhere" tile beside Done (top right of the speakers). */
-const EVERYWHERE = -2;
 const QUEUE_MAX = 500;
-const CAT_COLS = 4;
 /** The two rows of controls under the art: playback, then volume and grouping. */
 const CONTROL_ROWS = [['shuffle', 'prev', 'playpause', 'next', 'queue'], ['volDown', 'volUp']] as const;
 type Control = (typeof CONTROL_ROWS)[number][number];
@@ -195,7 +194,6 @@ const MAX_ITEMS = 500;
 
 /** The library buttons, in order, when calm-tv.json's "library" doesn't name its own: Music Assistant's folders. */
 const DEFAULT_LIBRARY = ['Artists', 'Albums', 'Tracks', 'Playlists', 'Radio', 'Podcasts', 'Audiobooks'];
-const GRID_COLS = 5;
 const VOLUME_STEP = 0.05;
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -225,9 +223,12 @@ function speaker(entity: string): { state: string; a: MediaPlayerAttributes } | 
 export class MusicPanel {
   private el: HTMLElement;
   private open = false;
-  private area: Area = 'speakers';
-  private ctrl = 2;
-  private ctrlRow = 0;
+  /**
+   * Remote, touch and mouse (see focus.ts). Ids: "control-playpause", "speaker-2", "speaker-group"
+   * (Group speakers, or Done while grouping), "speaker-everywhere", "library-1", "card-4" (in the
+   * open folder) and "queue-3". OK and a tap both click the item; onClick says what that does.
+   */
+  private nav: FocusGroup;
   /** The queue (what's playing and what's next) shows in place of the speakers and library. */
   private queueOpen = false;
   private queue: MusicQueue | null = null;
@@ -240,9 +241,6 @@ export class MusicPanel {
   /** The queue position of maItems[0]. */
   private maStart = 0;
   private maLoading = false;
-  private qFocus = 0;
-  private spk = 0;
-  private cat = 0;
   /** The browser's folders, outermost first; empty when the speakers and categories show. */
   private levels: Level[] = [];
   private active = 0;
@@ -255,6 +253,8 @@ export class MusicPanel {
   private heldVolume = new Map<string, { value: number; until: number }>();
   /** OK on a speaker turns its card into a volume slider: ←/→ change it, OK or Back when done. */
   private slider = false;
+  /** The speaker the slider is on (its index). */
+  private sliderAt = -1;
   /** The speakers' states as last drawn (see the constructor). */
   private lastSig = '';
   /** The album art now shown, so a redraw only swaps the picture when it really changes. */
@@ -280,13 +280,13 @@ export class MusicPanel {
           <div class="music-progress"><i></i></div>
           <div class="music-times"><span class="t-pos"></span><span class="t-dur"></span></div>
           <div class="music-controls">
-            ${CONTROL_ROWS[0].map((c) => `<button class="mbtn" data-c="${c}"></button>`).join('')}
+            ${CONTROL_ROWS[0].map((c) => `<button class="mbtn" data-c="${c}" data-focus="control-${c}"></button>`).join('')}
           </div>
           <div class="music-controls music-controls-2">
-            <button class="mbtn" data-c="volDown"></button>
+            <button class="mbtn" data-c="volDown" data-focus="control-volDown"></button>
             <div class="music-volbar"><i></i></div>
             <span class="music-vol"></span>
-            <button class="mbtn" data-c="volUp"></button>
+            <button class="mbtn" data-c="volUp" data-focus="control-volUp"></button>
           </div>
         </div>
         <div class="music-side">
@@ -306,8 +306,19 @@ export class MusicPanel {
           </div>
         </div>
       </div>
-      <div class="music-hint">Back to close</div>`;
+      <button class="music-hint">${hint('musicClose')}</button>`;
     mount.appendChild(this.el);
+    this.nav = new FocusGroup(this.el, {
+      onBack: () => this.back(),
+      onKey: (e) => this.sliderKey(e),
+      onFocus: (id) => {
+        // The focused speaker's group lights up, and a long name scrolls (see render).
+        if (id.startsWith('speaker-')) this.render();
+        // Near the end of what's loaded of the queue: load more.
+        if (id.startsWith('queue-') && Number(id.slice(6)) > this.maItems.length - 10) void this.moreQueue();
+      },
+    });
+    this.el.addEventListener('click', (e) => this.onClick(e));
     // Every state change in the house arrives here; redraw only when one of the speakers changed.
     ha.onStatus(() => this.render());
     ha.onEntities(() => {
@@ -333,8 +344,7 @@ export class MusicPanel {
     this.open = true;
     // Start on the speaker that's playing, if any.
     const playing = this.players.findIndex((p) => ha.entities[p.entity]?.state === 'playing');
-    this.active = this.spk = Math.max(0, playing);
-    this.area = 'speakers';
+    this.active = Math.max(0, playing);
     this.grouping = false;
     this.slider = false;
     this.queueOpen = false;
@@ -342,6 +352,7 @@ export class MusicPanel {
     this.lastSig = this.playersSignature();
     this.el.classList.add('open');
     this.render();
+    this.nav.focus(`speaker-${this.active}`);
     void this.loadCats();
     this.tick = window.setInterval(() => this.renderProgress(), 1000);
   }
@@ -349,6 +360,7 @@ export class MusicPanel {
   close(): void {
     this.open = false;
     this.grouping = false;
+    this.slider = false;
     clearInterval(this.tick);
     this.el.classList.remove('open');
   }
@@ -408,8 +420,8 @@ export class MusicPanel {
       this.catsMsg = 'Couldn’t load the library';
     }
 
-    this.cat = Math.min(this.cat, Math.max(0, this.cats.length - 1));
     this.renderCats();
+    this.nav.paint();
   }
 
   /** Opens a folder in the browser (a category, an artist, an album…). */
@@ -417,9 +429,8 @@ export class MusicPanel {
     const p = this.player;
 
     if (!p) return;
-    const level: Level = { title: item.title, id: item.id, type: item.type, items: null, msg: 'Loading…', focus: 0 };
+    const level: Level = { title: item.title, id: item.id, type: item.type, items: null, msg: 'Loading…', cameFrom: this.nav.id };
     this.levels.push(level);
-    this.area = 'browse';
     this.renderBrowse();
 
     try {
@@ -436,14 +447,15 @@ export class MusicPanel {
       level.msg = 'Couldn’t load this';
     }
 
-    if (this.levels.at(-1) === level) this.renderBrowse();
+    if (this.levels.at(-1) !== level) return;
+    this.renderBrowse();
+    this.nav.focus('card-0');
   }
 
   private closeFolder(): void {
-    this.levels.pop();
-
-    if (!this.levels.length) this.area = 'cats';
+    const level = this.levels.pop();
     this.render();
+    this.nav.focus(level?.cameFrom ?? null);
   }
 
   private act(service: string, data: ServiceData = {}): void {
@@ -545,8 +557,14 @@ export class MusicPanel {
     if (this.players.length < 2) return;
     this.grouping = true;
     this.queueOpen = false;
-    this.area = 'speakers';
-    this.spk = this.active === 0 ? 1 : 0;
+    this.render();
+    this.nav.focus(`speaker-${this.active === 0 ? 1 : 0}`);
+  }
+
+  private stopGrouping(): void {
+    this.grouping = false;
+    this.render();
+    this.nav.focus('speaker-group');
   }
 
   /** The grid's last tile while grouping: every speaker at once, or back to just the chosen one. */
@@ -627,7 +645,6 @@ export class MusicPanel {
       this.maQueueId = id;
       this.maStart = start;
       this.maItems = items;
-      this.qFocus = Math.min(this.qFocus, Math.max(0, items.length - 1));
     } catch (e) {
       console.warn('Music Assistant queue', e);
       this.maItems = [];
@@ -665,7 +682,7 @@ export class MusicPanel {
     if (this.queueOpen) {
       this.queue = null;
       this.maItems = [];
-      this.qFocus = 0;
+      this.maQueueId = '';
       void this.loadQueue();
     }
   }
@@ -699,7 +716,7 @@ export class MusicPanel {
     this.act('play_media', { media_content_id: item.id, media_content_type: item.type });
     const grid = child(this.el, '.music-grid');
     grid.querySelector('.mcard.started')?.classList.remove('started');
-    grid.querySelector('.mcard.focus')?.classList.add('started');
+    grid.querySelector(`[data-focus="${this.nav.id}"]`)?.classList.add('started');
   }
 
   // ---------- drawing ----------
@@ -728,13 +745,10 @@ export class MusicPanel {
     const others = this.players.filter((pl) => pl.entity !== p?.entity && group.has(pl.entity)).map((pl) => pl.name);
     child(this.el, '.music-group').innerHTML = others.length ? `${ICON.group}<span>Also on ${esc(others.join(', '))}</span>` : '';
     child(this.el, '.music-spk-h').textContent = this.grouping ? `Play on ${p?.name ?? ''} and…` : 'Speakers';
-    child(this.el, '.music-note').textContent = this.grouping
-      ? 'OK on a speaker to add or take it out · Done or Back when finished'
-      : 'OK on the active speaker to change its volume · OK on an idle speaker to play music there';
+    child(this.el, '.music-note').textContent = hint(this.grouping ? 'groupSpeakers' : 'musicSpeakers');
     this.el.classList.toggle('grouping', this.grouping);
     this.el.classList.toggle('sliding', this.slider);
 
-    const focused = this.area === 'controls' ? CONTROL_ROWS[this.ctrlRow][this.ctrl] : null;
     this.el.querySelectorAll<HTMLElement>('.mbtn').forEach((b) => {
       const c = ALL_CONTROLS.find((x) => x === b.dataset.c);
 
@@ -742,18 +756,19 @@ export class MusicPanel {
       b.innerHTML = c === 'playpause' ? (s?.state === 'playing' ? ICON.pause : ICON.play) : ICON[c];
       b.classList.toggle('big', c === 'playpause');
       b.classList.toggle('on', (c === 'shuffle' && a.shuffle === true) || (c === 'queue' && this.queueOpen));
-      b.classList.toggle('focus', c === focused);
+      // While grouping, only the speakers can be chosen.
+      b.setAttribute('aria-disabled', String(this.grouping));
     });
     const vol = this.volume();
     child(this.el, '.music-vol').textContent = vol === undefined ? '' : `${Math.round(vol * 100)}%`;
     child(this.el, '.music-volbar i').style.width = `${Math.round((vol ?? 0) * 100)}%`;
 
-    const at = (i: number) => (this.area === 'speakers' && this.spk === i ? ' focus' : '');
     const groupTile = this.players.length < 2 ? '' : this.grouping
-      ? `<div class="mspk top${at(-1)}"><span class="mspk-ico">${ICON.check}</span><div class="mspk-text"><div class="mspk-name"><span>Done grouping</span></div><div class="mspk-status"><span>${others.length ? `${others.length + 1} speakers together` : 'Just one speaker'}</span></div></div></div>`
-        + `<div class="mspk top${at(EVERYWHERE)}"><span class="mspk-ico">${ICON.everywhere}</span><div class="mspk-text"><div class="mspk-name"><span>${this.allGrouped() ? 'Just this speaker' : 'Play everywhere'}</span></div><div class="mspk-status"><span>${this.allGrouped() ? 'Take the others out' : 'Every speaker plays along'}</span></div></div></div>`
-      : `<div class="mspk wide${this.area === 'speakers' && this.spk === -1 ? ' focus' : ''}"><span class="mspk-ico">${ICON.group}</span><div class="mspk-text"><div class="mspk-name"><span>Group speakers</span></div><div class="mspk-status"><span>${others.length ? `${esc(p?.name ?? '')} with ${esc(others.join(', '))}` : `Play what ${esc(p?.name ?? 'this speaker')} is playing in more rooms`}</span></div></div></div>`;
-    const focusPl = this.area === 'speakers' && !this.grouping && !offline ? this.players[this.spk] : undefined;
+      ? `<div class="mspk top" data-focus="speaker-group"><span class="mspk-ico">${ICON.check}</span><div class="mspk-text"><div class="mspk-name"><span>Done grouping</span></div><div class="mspk-status"><span>${others.length ? `${others.length + 1} speakers together` : 'Just one speaker'}</span></div></div></div>`
+        + `<div class="mspk top" data-focus="speaker-everywhere"><span class="mspk-ico">${ICON.everywhere}</span><div class="mspk-text"><div class="mspk-name"><span>${this.allGrouped() ? 'Just this speaker' : 'Play everywhere'}</span></div><div class="mspk-status"><span>${this.allGrouped() ? 'Take the others out' : 'Every speaker plays along'}</span></div></div></div>`
+      : `<div class="mspk wide" data-focus="speaker-group"><span class="mspk-ico">${ICON.group}</span><div class="mspk-text"><div class="mspk-name"><span>Group speakers</span></div><div class="mspk-status"><span>${others.length ? `${esc(p?.name ?? '')} with ${esc(others.join(', '))}` : `Play what ${esc(p?.name ?? 'this speaker')} is playing in more rooms`}</span></div></div></div>`;
+    const spk = this.nav.id?.startsWith('speaker-') ? Number(this.nav.id.slice(8)) : NaN;
+    const focusPl = !this.grouping && !offline ? this.players[spk] : undefined;
     const focusHost = focusPl ? this.leaderOf(focusPl.entity) ?? focusPl.entity : undefined;
     child(this.el, '.music-speakers').innerHTML = groupTile + this.players
       .map((pl, i) => {
@@ -776,12 +791,12 @@ export class MusicPanel {
         const live = !offline && !!e && playing(host);
         const marked = live || !!lead || leads;
         // The focused speaker's group lights up softly, so it's clear which speakers play together.
-        const mate = !!focusHost && i !== this.spk && host === focusHost && (marked || leads);
-        const cls = ['mspk', i === this.active ? 'active' : '', inGroup ? 'grouped' : '', live ? 'live' : '', mate ? 'mate' : '', this.area === 'speakers' && this.spk === i ? 'focus' : ''].join(' ');
-        if (this.slider && this.area === 'speakers' && this.spk === i) {
+        const mate = !!focusHost && i !== spk && host === focusHost && (marked || leads);
+        const cls = ['mspk', i === this.active ? 'active' : '', inGroup ? 'grouped' : '', live ? 'live' : '', mate ? 'mate' : ''].join(' ');
+        if (this.slider && this.sliderAt === i) {
           const v = this.volumeOf(pl.entity) ?? 0;
 
-          return `<div class="${cls} sliding"><span class="mspk-ico">${ICON.volUp}</span><div class="mspk-text"><div class="mspk-name"><span>${esc(pl.name)}</span></div>`
+          return `<div class="${cls} sliding" data-focus="speaker-${i}"><span class="mspk-ico">${ICON.volUp}</span><div class="mspk-text"><div class="mspk-name"><span>${esc(pl.name)}</span></div>`
             + `<div class="mspk-slider"><div class="mspk-bar"><i style="width:${Math.round(v * 100)}%"></i></div><span class="mspk-pct">${Math.round(v * 100)}%</span></div></div></div>`;
         }
         // While grouping: the chosen speaker's square, a link on the ones playing along, an empty square on the rest.
@@ -789,18 +804,16 @@ export class MusicPanel {
         const mark = this.grouping ? (i === this.active ? this.cover(chosen, false) : inGroup ? this.cover(chosen, true) : '<span class="mspk-cover still"></span>')
           : marked ? this.cover(host, !!lead) : '<span class="mspk-dot"></span>';
 
-        return `<div class="${cls}">${mark}<div class="mspk-text"><div class="mspk-name"><span>${esc(pl.name)}</span></div><div class="mspk-status"><span>${esc(status)}</span></div></div></div>`;
+        return `<div class="${cls}" data-focus="speaker-${i}">${mark}<div class="mspk-text"><div class="mspk-name"><span>${esc(pl.name)}</span></div><div class="mspk-status"><span>${esc(status)}</span></div></div></div>`;
       })
       .join('');
-    // With many speakers the sheet scrolls: keep the focused one in view.
-    this.el.querySelector<HTMLElement>('.music-speakers .mspk.focus')?.scrollIntoView({ block: 'nearest' });
-    this.speakerTrack();
-    this.marquee();
-
     this.renderProgress();
     this.renderCats();
     this.renderBrowse();
     this.renderQueue();
+    this.nav.paint();
+    this.speakerTrack();
+    this.marquee();
   }
 
   /** The thin track beside the speakers, shown only when there are more than fit. */
@@ -864,7 +877,7 @@ export class MusicPanel {
         const img = ma.image(it);
         const artists = (m?.artists ?? []).map((x) => x.name).filter(Boolean).join(', ');
 
-        return `<div class="mql${this.area === 'queue' && this.qFocus === i ? ' focus' : ''}">`
+        return `<div class="mql" data-focus="queue-${i}">`
           + `<div class="mql-art">${img ? `<img loading="lazy" src="${esc(img)}" alt="" onerror="this.remove()">` : ''}${ICON.note}</div>`
           + `<div class="mql-text"><div class="mql-name">${esc(m?.name ?? it.name ?? '')}</div><div class="mql-sub">${esc(artists)}</div></div>`
           + `<div class="mq-time">${it.duration ? mmss(it.duration) : ''}</div></div>`;
@@ -873,7 +886,6 @@ export class MusicPanel {
         + row('Now playing', q.current_item)
         + `<div class="mq-h">Up next${facts ? ` · ${esc(facts)}` : ''}</div>`
         + `<div class="mq-list">${list}</div>`;
-      box.querySelector<HTMLElement>('.mql.focus')?.scrollIntoView({ block: 'nearest' });
 
       return;
     }
@@ -895,7 +907,7 @@ export class MusicPanel {
     }
 
     box.innerHTML = this.cats
-      .map((c, i) => `<div class="mcat${this.area === 'cats' && this.cat === i ? ' focus' : ''}">${folderIcon(c.title)}<span>${esc(norm(c.title) === 'radio' ? 'Radio' : c.title)}</span></div>`)
+      .map((c, i) => `<div class="mcat" data-focus="library-${i}" aria-disabled="${this.grouping}">${folderIcon(c.title)}<span>${esc(norm(c.title) === 'radio' ? 'Radio' : c.title)}</span></div>`)
       .join('');
   }
 
@@ -905,7 +917,7 @@ export class MusicPanel {
   private renderBrowse(): void {
     const level = this.levels.at(-1);
     this.el.classList.toggle('browsing', !!level);
-    child(this.el, '.music-hint').textContent = level ? 'Back to go back' : this.slider ? '← → volume · OK when done' : this.grouping ? 'Back when done' : this.queueOpen ? 'Back to close the queue' : 'Back to close';
+    child(this.el, '.music-hint').textContent = hint(level ? 'musicUp' : this.slider ? 'musicVolume' : this.grouping ? 'musicDone' : this.queueOpen ? 'musicQueue' : 'musicClose');
 
     if (!level) {
       this.drawnLevel = null;
@@ -924,19 +936,10 @@ export class MusicPanel {
       grid.innerHTML = !level.items?.length
         ? `<div class="music-lib-msg">${esc(level.msg)}</div>`
         : level.items
-          .map((it) => `<div class="mcard${it.playAll ? ' playall' : ''}">
+          .map((it, i) => `<div class="mcard${it.playAll ? ' playall' : ''}" data-focus="card-${i}">
               <div class="mcard-art">${it.playAll ? ICON.playAll : it.thumb ? `<img loading="lazy" src="${esc(it.thumb)}" alt="">` : it.canExpand ? folderIcon(this.levels[0]?.title ?? '') : ICON.note}</div>
               <div class="mcard-name">${esc(it.title)}</div></div>`)
           .join('');
-    }
-
-    const cards = grid.children;
-    grid.querySelector('.mcard.focus')?.classList.remove('focus');
-    const focused = this.area === 'browse' ? cards[level.focus] : undefined;
-
-    if (focused?.classList.contains('mcard')) {
-      focused.classList.add('focus');
-      focused.scrollIntoView({ block: 'nearest' });
     }
   }
 
@@ -957,238 +960,125 @@ export class MusicPanel {
     child(this.el, '.t-dur').textContent = dur ? mmss(dur) : '';
   }
 
-  // ---------- remote ----------
+  // ---------- remote, touch and mouse (see focus.ts) ----------
+
+  /** Back: up a folder, off the volume slider, out of grouping or the queue, or closed. */
+  private back(): void {
+    if (this.levels.length) this.closeFolder();
+    else if (this.slider) this.stopSlider();
+    else if (this.grouping) this.stopGrouping();
+    else if (this.queueOpen) {
+      this.queueOpen = false;
+      this.render();
+      this.nav.focus('control-queue');
+    } else this.close();
+  }
+
+  /** While a speaker's volume slider is open, ←/→ change its volume; any other key closes it. */
+  private sliderKey(e: KeyboardEvent): boolean {
+    if (!this.slider || e.key === 'Escape' || e.key === 'Backspace') return false;
+    e.preventDefault();
+    const pl = this.players[this.sliderAt];
+
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && pl) {
+      this.stepVolume(pl.entity, e.key === 'ArrowRight');
+      this.render();
+    } else this.stopSlider();
+
+    return true;
+  }
+
+  private stopSlider(): void {
+    this.slider = false;
+    this.render();
+  }
+
+  /**
+   * What choosing an item does, whether by OK on the remote (which clicks the focused item), a tap
+   * or a mouse click. The bottom hint is the Back button for touch and mouse.
+   */
+  private onClick(e: MouseEvent): void {
+    const target = e.target instanceof Element ? e.target : null;
+
+    if (target?.closest('.music-hint')) {
+      this.back();
+
+      return;
+    }
+
+    // On a touch screen the open slider's bar sets the volume where it's tapped.
+    const bar = target?.closest<HTMLElement>('.mspk-bar');
+    const pl = this.players[this.sliderAt];
+
+    if (bar && this.slider && pl) {
+      const r = bar.getBoundingClientRect();
+      const value = Math.round(Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * 20) / 20;
+      this.heldVolume.set(pl.entity, { value, until: Date.now() + 4000 });
+      void ha.call('media_player', 'volume_set', { entity_id: pl.entity, volume_level: value });
+      this.render();
+
+      return;
+    }
+
+    const id = target?.closest<HTMLElement>('[data-focus]')?.dataset.focus ?? '';
+    const [kind, which = ''] = id.split('-');
+    const i = Number(which);
+
+    if (kind === 'control') {
+      const c = ALL_CONTROLS.find((x) => x === which);
+
+      if (c && !this.grouping) this.press(c);
+    } else if (kind === 'queue') {
+      const it = this.maItems[i];
+
+      if (it && this.maQueueId) {
+        void ma.playIndex(this.maQueueId, it.queue_item_id).catch((err) => console.warn('Music Assistant play', err));
+        // The list starts after the new song once Home Assistant reports it.
+        this.nav.focus('control-playpause');
+      }
+    } else if (id === 'speaker-group') {
+      if (this.grouping) this.stopGrouping();
+      else this.startGrouping();
+    } else if (id === 'speaker-everywhere') {
+      this.everywhere();
+      this.render();
+    } else if (kind === 'speaker') {
+      const sp = this.players[i];
+
+      if (!sp) return;
+
+      if (this.slider) this.stopSlider();
+      else if (this.grouping) {
+        if (i === this.active) this.stopGrouping();
+        else {
+          this.toggleGroup(sp.entity);
+          this.render();
+        }
+      } else if (i === this.active || this.group().has(sp.entity)) {
+        // OK on the chosen speaker (or one playing along with it) opens its volume slider.
+        this.slider = ha.entities[sp.entity]?.state !== 'unavailable' && this.volumeOf(sp.entity) !== undefined;
+        this.sliderAt = i;
+        this.render();
+      } else {
+        // OK on any other speaker chooses it, to play something else there.
+        this.active = i;
+        void this.loadCats();
+        this.render();
+      }
+    } else if (kind === 'library') {
+      const c = this.cats[i];
+
+      if (c && !this.grouping) void this.openFolder(c);
+    } else if (kind === 'card') {
+      const it = this.levels.at(-1)?.items?.[i];
+
+      if (it?.canExpand && !it.playAll) void this.openFolder(it);
+      else if (it?.canPlay) this.playItem(it);
+    }
+  }
 
   handleKey(e: KeyboardEvent): void {
-    const k = e.key;
-
-    if (k === 'Escape' || k === 'Backspace') {
-      e.preventDefault();
-
-      if (this.levels.length) {
-        this.closeFolder();
-
-        return;
-      }
-
-      if (this.slider) {
-        this.slider = false;
-        this.render();
-
-        return;
-      }
-
-      if (this.grouping) {
-        this.grouping = false;
-        this.render();
-
-        return;
-      }
-
-      if (this.queueOpen) {
-        this.queueOpen = false;
-        if (this.area === 'queue') this.area = 'controls';
-        this.render();
-
-        return;
-      }
-
-      this.close();
-
-      return;
-    }
-
-    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' '].includes(k)) return;
-    e.preventDefault();
-    const spkCount = this.players.length;
-
-    if (this.slider) {
-      const pl = this.players[this.spk];
-
-      if ((k === 'ArrowLeft' || k === 'ArrowRight') && pl) this.stepVolume(pl.entity, k === 'ArrowRight');
-      else this.slider = false;
-      this.render();
-
-      return;
-    }
-
-    if (k === 'Enter' || k === ' ') {
-      if (this.area === 'controls') this.press(CONTROL_ROWS[this.ctrlRow][this.ctrl]);
-      else if (this.area === 'queue') {
-        const it = this.maItems[this.qFocus];
-
-        if (it && this.maQueueId) {
-          void ma.playIndex(this.maQueueId, it.queue_item_id).catch((err) => console.warn('Music Assistant play', err));
-          // The list starts after the new song once Home Assistant reports it.
-          this.qFocus = 0;
-          this.area = 'controls';
-        }
-      }
-      else if (this.area === 'speakers' && this.spk === -1) {
-        if (this.grouping) this.grouping = false;
-        else this.startGrouping();
-      } else if (this.area === 'speakers' && this.grouping) {
-        const pl = this.players[this.spk];
-
-        if (this.spk === EVERYWHERE) this.everywhere();
-        else if (this.spk === this.active) this.grouping = false;
-        else if (pl) this.toggleGroup(pl.entity);
-      } else if (this.area === 'speakers') {
-        const pl = this.players[this.spk];
-
-        // OK on the chosen speaker (or one playing along with it) opens its volume slider;
-        // OK on any other speaker chooses it, to play something else there.
-        if (pl && (this.spk === this.active || this.group().has(pl.entity))) {
-          this.slider = ha.entities[pl.entity]?.state !== 'unavailable' && this.volumeOf(pl.entity) !== undefined;
-        } else {
-          this.active = this.spk;
-          void this.loadCats();
-        }
-      } else if (this.area === 'cats') {
-        const c = this.cats[this.cat];
-
-        if (c) void this.openFolder(c);
-      } else {
-        const level = this.levels.at(-1);
-        const it = level?.items?.[level.focus];
-
-        if (it?.canExpand && !it.playAll) void this.openFolder(it);
-        else if (it?.canPlay) this.playItem(it);
-
-        return;
-      }
-
-      this.render();
-
-      return;
-    }
-
-    // What's on the right: the browser, the queue (nothing to focus), or speakers and library.
-    const right = (): Area | null => (this.levels.length ? 'browse' : this.queueOpen ? (this.maItems.length ? 'queue' : null) : 'speakers');
-
-    if (this.area === 'controls') {
-      const row = CONTROL_ROWS[this.ctrlRow];
-
-      if (k === 'ArrowLeft') this.ctrl = Math.max(0, this.ctrl - 1);
-
-      if (k === 'ArrowRight') {
-        if (this.ctrl < row.length - 1) this.ctrl++;
-        else if (right() === 'speakers' && this.cats.length && !this.grouping) {
-          // The library sits level with the controls: right goes straight across to the same row.
-          this.area = 'cats';
-          this.cat = Math.min(this.ctrlRow * CAT_COLS, Math.floor((this.cats.length - 1) / CAT_COLS) * CAT_COLS);
-        } else if (right()) this.area = right()!;
-      }
-      if (k === 'ArrowDown') {
-        if (this.ctrlRow === 0) {
-          this.ctrlRow = 1;
-          this.ctrl = this.ctrl <= 2 ? 0 : 1;
-        }
-      }
-      if (k === 'ArrowUp') {
-        if (this.ctrlRow === 1) {
-          this.ctrlRow = 0;
-          this.ctrl = this.ctrl === 0 ? 1 : 3;
-        } else if (right() === 'browse') this.area = 'browse';
-        else if (right() === 'queue') this.area = 'queue';
-        else if (right() === 'speakers') {
-          // Up from the controls goes to the library (or the speakers if there's no library).
-          if (this.cats.length && !this.grouping) {
-            this.area = 'cats';
-            this.cat = Math.floor((this.cats.length - 1) / CAT_COLS) * CAT_COLS;
-          } else {
-            this.area = 'speakers';
-            this.spk = Math.max(0, spkCount - 1);
-          }
-        }
-      }
-    } else if (this.area === 'queue') {
-      if (k === 'ArrowLeft') this.area = 'controls';
-      if (k === 'ArrowUp') this.qFocus = Math.max(0, this.qFocus - 1);
-      if (k === 'ArrowDown') this.qFocus = Math.min(this.maItems.length - 1, this.qFocus + 1);
-      if (this.qFocus > this.maItems.length - 10) void this.moreQueue();
-    } else if (this.area === 'speakers') {
-      // Two columns of speakers, under the Group tile (-1; while grouping, Done at -1 and
-      // Play everywhere at EVERYWHERE side by side).
-      if (k === 'ArrowUp' && this.spk >= 0) {
-        if (this.spk >= 2) this.spk -= 2;
-        else if (this.players.length > 1) this.spk = this.grouping && this.spk === 1 ? EVERYWHERE : -1;
-      }
-      if (k === 'ArrowDown') {
-        if (this.spk === -1) this.spk = 0;
-        else if (this.spk === EVERYWHERE) this.spk = Math.min(1, spkCount - 1);
-        else if (this.spk + 2 < spkCount) this.spk += 2;
-        else if (this.spk % 2 === 0 && this.spk + 1 < spkCount && Math.floor(this.spk / 2) < Math.floor((spkCount - 1) / 2)) this.spk = spkCount - 1;
-        else if (this.cats.length && !this.grouping) {
-          this.area = 'cats';
-          this.cat = this.spk % 2 === 0 ? 0 : Math.min(CAT_COLS - 1, this.cats.length - 1);
-        }
-      }
-      if (k === 'ArrowRight') {
-        if (this.spk === -1 && this.grouping) this.spk = EVERYWHERE;
-        else if (this.spk >= 0 && this.spk % 2 === 0 && this.spk + 1 < spkCount) this.spk++;
-      }
-      if (k === 'ArrowLeft') {
-        if (this.spk === EVERYWHERE) this.spk = -1;
-        else if (this.spk >= 0 && this.spk % 2 === 1) this.spk--;
-        else {
-          // Left out of the speakers goes to the controls; while grouping, that also finishes it.
-          this.grouping = false;
-          this.area = 'controls';
-        }
-      }
-    } else if (this.area === 'cats') {
-      // A grid of library buttons, CAT_COLS across.
-      const col = this.cat % CAT_COLS;
-
-      if (k === 'ArrowRight' && col < CAT_COLS - 1 && this.cat + 1 < this.cats.length) this.cat++;
-      if (k === 'ArrowLeft') {
-        if (col > 0) this.cat--;
-        else this.area = 'controls';
-      }
-      if (k === 'ArrowDown') {
-        if (this.cat + CAT_COLS < this.cats.length) this.cat += CAT_COLS;
-        else if (Math.floor(this.cat / CAT_COLS) < Math.floor((this.cats.length - 1) / CAT_COLS)) this.cat = this.cats.length - 1;
-        else {
-          this.area = 'controls';
-          this.ctrlRow = 0;
-        }
-      }
-      if (k === 'ArrowUp') {
-        if (this.cat >= CAT_COLS) {
-          // A short last row is centred, so Up goes to the button straight above.
-          const lastRow = Math.floor((this.cats.length - 1) / CAT_COLS) * CAT_COLS;
-          const shift = this.cat >= lastRow ? Math.floor((CAT_COLS - (this.cats.length - lastRow)) / 2) : 0;
-          this.cat -= CAT_COLS - shift;
-        }
-        else {
-          this.area = 'speakers';
-          const lastRow = this.players.length - (this.players.length % 2 === 0 ? 2 : 1);
-          this.spk = Math.min(this.players.length - 1, lastRow + (col >= CAT_COLS / 2 ? 1 : 0));
-        }
-      }
-    } else {
-      // The browser: a grid that scrolls up and down.
-      const level = this.levels.at(-1);
-      const n = level?.items?.length ?? 0;
-
-      if (level && n) {
-        const col = level.focus % GRID_COLS;
-
-        if (k === 'ArrowRight' && col < GRID_COLS - 1 && level.focus + 1 < n) level.focus++;
-
-        if (k === 'ArrowLeft') {
-          if (col > 0) level.focus--;
-          else this.area = 'controls';
-        }
-
-        if (k === 'ArrowDown') level.focus = Math.min(n - 1, level.focus + GRID_COLS);
-
-        if (k === 'ArrowUp' && level.focus >= GRID_COLS) level.focus -= GRID_COLS;
-      } else if (k === 'ArrowLeft') this.area = 'controls';
-    }
-
-    this.render();
+    this.nav.handleKey(e);
   }
 }
 

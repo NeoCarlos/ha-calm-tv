@@ -1,11 +1,14 @@
 import { native } from '../native';
 import { ha, lastSignedOut } from '../ha';
-import { settings } from '../config';
+import { settings, dashboardMode } from '../config';
 import { zones } from '../home-data';
 import { showSetup } from '../setup';
 import { showMaSetup } from '../ma-setup';
 import { ma, maSettings } from '../music-assistant';
 import { child } from '../dom';
+import { FocusGroup } from '../focus';
+import { hint } from '../hints';
+import { isHeld } from '../keys';
 import { apps, hasDockOrder, resetDockOrder } from '../apps';
 import {
   glass, glassSource, hasOverrides, resetToConfig, setGlass, setShowFps,
@@ -70,6 +73,7 @@ export class SettingsPanel {
   private readonly el: HTMLElement;
   private readonly listEl: HTMLElement;
   private readonly hintEl: HTMLElement;
+  private readonly closeEl: HTMLElement;
   private readonly titleEl: HTMLElement;
   private readonly root: Menu;
   /** The open menus, top level first; each remembers its focused row. */
@@ -82,6 +86,8 @@ export class SettingsPanel {
   private confirmTimer = 0;
   /** OK presses right after opening belong to the press that opened the panel. */
   private openedAt = 0;
+  /** Remote, touch and mouse (see focus.ts): the rows, and the round button ("close"). */
+  private nav!: FocusGroup;
 
   constructor(mount: HTMLElement, private bg: BackgroundControls, private arrangeDock: () => void) {
     const onTv = !!native;
@@ -136,8 +142,8 @@ export class SettingsPanel {
           icon: ICONS.ha,
           name: 'Connection',
           status: () =>
-            ha.status === 'signed-out' ? `Not signed in${lastSignedOut() ? ` (${lastSignedOut()})` : ''} · OK to sign in`
-            : this.confirmSignOut ? 'Press OK again to sign out'
+            ha.status === 'signed-out' ? `Not signed in${lastSignedOut() ? ` (${lastSignedOut()})` : ''} · ${hint('signInRow')}`
+            : this.confirmSignOut ? hint('signOutAgain')
             : connection(),
           run: () => {
             if (ha.status === 'signed-out') {
@@ -216,7 +222,7 @@ export class SettingsPanel {
         {
           icon: ICONS.wallpaper,
           name: 'Background',
-          status: () => `${this.bg.name()} · ${this.bg.mode() === 'video' ? 'video' : 'photo'} · OK to choose`,
+          status: () => `${this.bg.name()} · ${this.bg.mode() === 'video' ? 'video' : 'photo'}${hint('chooseBackgroundRow')}`,
           run: () => {
             this.close();
             this.bg.openPicker();
@@ -280,6 +286,9 @@ export class SettingsPanel {
       ],
     };
 
+    // The dashboard has no dock, Google TV home or TV settings.
+    if (dashboardMode) this.root.rows = this.root.rows.filter((r) => !['Arrange dock', 'Google TV home', 'TV settings'].includes(r.name));
+
     this.el = document.createElement('div');
     this.el.className = 'detail settings';
     this.el.innerHTML = `
@@ -287,15 +296,44 @@ export class SettingsPanel {
       <div class="detail-panel">
         <div class="detail-head">
           <div class="detail-title"></div>
-          <div class="detail-hint">Back to close</div>
+          <div class="detail-hint"></div>
+          <button class="detail-close" data-focus="close" aria-label="Close">${ICONS.close}</button>
         </div>
         <div class="dcol-list"></div>
       </div>`;
     mount.appendChild(this.el);
     this.listEl = child(this.el, '.dcol-list');
     this.hintEl = child(this.el, '.detail-hint');
+    this.closeEl = child(this.el, '.detail-close');
     this.titleEl = child(this.el, '.detail-title');
+    // In a sub-menu the round button shows a back arrow, so it goes back a level, like Back does.
+    this.closeEl.addEventListener('click', () => this.back());
     child(this.el, '.detail-scrim').addEventListener('click', () => this.close());
+
+    this.nav = new FocusGroup(this.el, {
+      onBack: () => this.back(),
+      // Up from the first row goes to the last, and Down from the last to the first (like the dock).
+      wrap: true,
+      onKey: (e) => {
+        // OK right after opening is the end (or a double) of the press that opened the panel or
+        // menu. Any other key in between means the next OK is a new press.
+        if (e.key === 'Enter' || e.key === ' ') {
+          if (isHeld(e) || Date.now() - this.openedAt < 400) {
+            e.preventDefault();
+
+            return true;
+          }
+        } else this.openedAt = 0;
+
+        if (this.confirmSignOut && e.key.startsWith('Arrow')) {
+          this.confirmSignOut = false;
+          this.paint();
+        }
+
+        return false;
+      },
+      onFocus: (id) => { this.level.focus = id === 'close' ? -1 : Number(id.slice(4)); },
+    });
   }
 
   isOpen(): boolean {
@@ -307,8 +345,9 @@ export class SettingsPanel {
     this.confirmSignOut = false;
     this.openedAt = Date.now();
     this.open = true;
-    this.build();
+    // Visible first, so the rows can take the focus as they're built.
     this.el.classList.add('open');
+    this.build();
   }
 
   /** Opens Settings on a sub-menu, with the focus on one of its rows (by name). */
@@ -369,41 +408,7 @@ export class SettingsPanel {
   }
 
   handleKey(e: KeyboardEvent): void {
-    const k = e.key;
-
-    if (k === 'Escape' || k === 'Backspace') {
-      e.preventDefault();
-      this.back();
-
-      return;
-    }
-
-    if (k === 'Enter' || k === ' ') {
-      e.preventDefault();
-
-      if (e.repeat || Date.now() - this.openedAt < 400) return;
-
-      this.activate(this.level.focus);
-
-      return;
-    }
-
-    if (this.confirmSignOut && k.startsWith('Arrow')) {
-      this.confirmSignOut = false;
-      this.paint();
-    }
-
-    // Up from the first row goes to the last, and Down from the last to the first (like the dock),
-    // but not while the button is held, so holding it stops at the end.
-    const n = this.level.menu.rows.length;
-
-    if (k === 'ArrowUp' || k === 'ArrowDown') {
-      e.preventDefault();
-      const next = this.level.focus + (k === 'ArrowUp' ? -1 : 1);
-      this.level.focus = e.repeat ? Math.max(0, Math.min(next, n - 1)) : (next + n) % n;
-      this.render();
-    }
-    else if (k.startsWith('Arrow')) e.preventDefault();
+    this.nav.handleKey(e);
   }
 
   /** Builds the rows of the current menu. */
@@ -411,24 +416,22 @@ export class SettingsPanel {
     const sub = this.stack.length > 1;
     this.titleEl.textContent = this.level.menu.title;
     // Back goes up a level in a sub-menu, and closes Settings at the top.
+    // The remote reads it (the TV); a finger taps the round button instead (the dashboard, see style.css).
     this.hintEl.textContent = sub ? 'Back to go back' : 'Back to close';
+    this.closeEl.innerHTML = sub ? ICONS.back : ICONS.close;
+    this.closeEl.setAttribute('aria-label', sub ? 'Back' : 'Close');
     this.listEl.textContent = '';
     this.rowEls = this.level.menu.rows.map((r, i) => {
       const row = document.createElement('button');
       row.className = 'drow';
-      row.addEventListener('mouseenter', () => {
-        this.level.focus = i;
-        this.render();
-      });
-      row.addEventListener('click', () => {
-        this.level.focus = i;
-        this.activate(i);
-      });
+      row.dataset.focus = `row-${i}`;
+      row.addEventListener('click', () => this.activate(i));
       this.listEl.appendChild(row);
 
       return row;
     });
     this.paint();
+    this.nav.focus(this.level.focus < 0 ? 'close' : `row-${this.level.focus}`);
   }
 
   private paint(): void {
@@ -442,6 +445,6 @@ export class SettingsPanel {
   }
 
   private render(): void {
-    this.rowEls.forEach((el, i) => el.classList.toggle('focus', i === this.level.focus));
+    this.nav.paint();
   }
 }

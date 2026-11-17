@@ -103,6 +103,29 @@ function loadTokens(): AuthData | null {
   }
 }
 
+/** The page around this one, when it's Home Assistant's own app (see frameAuth). */
+interface HaFrontend {
+  hassConnection?: Promise<{ auth: Auth }>;
+}
+
+/**
+ * Inside a Home Assistant dashboard (Calm TV in an iframe on Home Assistant's own site, as on a
+ * tablet): Home Assistant's app around it is already signed in, and shares its sign-in with pages
+ * from the same site. Using it means no second sign-in, which HA's login page doesn't allow in a
+ * frame anyway. Null anywhere else (a page from another site can't be read at all).
+ */
+async function frameAuth(): Promise<Auth | null> {
+  try {
+    if (window.parent === window) return null;
+    // SAFETY: same-site parent (reading it throws otherwise, caught below); `hassConnection` is checked before use.
+    const host = window.parent as Window & HaFrontend;
+
+    return host.hassConnection ? (await host.hassConnection).auth : null;
+  } catch {
+    return null;
+  }
+}
+
 function saveTokens(data: AuthData | null): void {
   try {
     if (data) localStorage.setItem(TOKENS_KEY, JSON.stringify(data));
@@ -125,6 +148,8 @@ class HomeAssistant {
   /** What the screens use: the connection's messages, or demo mode's stand-in. */
   private link: HaLink | null = null;
   private auth: Auth | null = null;
+  /** True when the sign-in is Home Assistant's own (see frameAuth): it's never revoked from here. */
+  private borrowed = false;
   private retryTimer = 0;
   private retryDelay = 5000;
   private statusListeners: Listener[] = [];
@@ -174,6 +199,16 @@ class HomeAssistant {
       }
     }
 
+    const framed = await frameAuth();
+
+    if (framed) {
+      this.auth = framed;
+      this.borrowed = true;
+      await this.connect();
+
+      return;
+    }
+
     const callback = new URLSearchParams(location.search).has('auth_callback');
 
     if (!haUrl() || (!callback && !loadTokens())) {
@@ -189,6 +224,18 @@ class HomeAssistant {
   async signIn(): Promise<void> {
     // Demo mode never leaves for a sign-in page (the hosted demo has no Home Assistant).
     if (this.demo) return;
+
+    // In a Home Assistant dashboard, signing in again means using HA's own sign-in again.
+    const framed = await frameAuth();
+
+    if (framed) {
+      this.auth = framed;
+      this.borrowed = true;
+      await this.connect();
+
+      return;
+    }
+
     saveTokens(null);
 
     if (!haUrl()) return;
@@ -202,6 +249,9 @@ class HomeAssistant {
     this.teardown();
     saveTokens(null);
     this.setStatus('signed-out');
+
+    // Home Assistant's own sign-in (in a dashboard) stays: revoking it would sign out the HA app too.
+    if (this.borrowed) return;
 
     try { await auth?.revoke(); } catch { /* offline: the tokens are forgotten here anyway */ }
   }
@@ -233,8 +283,15 @@ class HomeAssistant {
     try {
       this.auth ??= await getAuth({ hassUrl: haUrl(), limitHassInstance: true, saveTokens, loadTokens: async () => loadTokens() });
 
-      // Drop ?auth_callback=1&code=... from the address so a reload doesn't reuse the code.
-      if (location.search.includes('auth_callback')) history.replaceState(null, '', location.pathname);
+      // Drop auth_callback, code and state from the address so a reload doesn't reuse the code
+      // (keeping the rest, such as ?dash).
+      if (location.search.includes('auth_callback')) {
+        const q = new URLSearchParams(location.search);
+
+        ['auth_callback', 'code', 'state'].forEach((k) => q.delete(k));
+        history.replaceState(null, '', `${location.pathname}${q.size ? `?${q.toString().replace(/=(?=&|$)/g, '')}` : ''}`);
+      }
+
       const conn = await createConnection({ auth: this.auth });
       this.conn = conn;
       this.link = conn;

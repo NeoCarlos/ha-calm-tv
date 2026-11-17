@@ -3,6 +3,8 @@ import type { Zone } from '../types';
 import { zones, summarize, primaryClimate } from '../home-data';
 import { ha } from '../ha';
 import { child } from '../dom';
+import { hint } from '../hints';
+import { slideRow } from '../row-scroll';
 
 const ZW = 340;
 const ZPITCH = 364;
@@ -121,7 +123,7 @@ export class SmartHomeSection implements Section {
 
     if (this.signedOut) {
       this.cards[0].className = 'zone z-active' + (this.cards[0].classList.contains('is-focus') ? ' is-focus' : '');
-      this.statusEls[0].textContent = 'Press OK to sign in';
+      this.statusEls[0].textContent = hint('signIn');
 
       return;
     }
@@ -170,7 +172,7 @@ export class SmartHomeSection implements Section {
       else if (canRight) this.shelf.classList.add('fade-r');
     }
 
-    this.track.style.transform = `translateX(${tx}px)`;
+    slideRow(this.shelf, this.track, tx, this.cards[i]);
     this.cards[i]?.classList.add('is-focus');
   }
 

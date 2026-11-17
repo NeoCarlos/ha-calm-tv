@@ -24,8 +24,9 @@ photo to keep them small; the video backgrounds are at the top and under
 
 ### Your home at a glance
 
-Each room shows what's on, and turns amber when something needs you: a door left unlocked, the
-garage open, a vacuum out of water. Open a room to switch and dim its lights with the remote; the
+Your Home Assistant Areas become the rooms, with no setup (or list your own). Each room shows
+what's on, and turns amber when something needs you: a door left unlocked, the garage open, a
+vacuum out of water. Open a room to switch and dim its lights with the remote; the
 change goes straight to Home Assistant.
 
 ![Moving across the rooms on the Smart Home screen, opening the living room and brightening the ceiling light step by step; the room then reads "3 lights on"](docs/images/demo-smart-home.webp)

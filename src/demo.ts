@@ -124,6 +124,12 @@ function initialStates() {
     ['select.office_scene', ['unknown', { options: ['Focus', 'Bright', 'Relax', 'Nightlight'] }]],
     ['light.office_desk', light(false)],
     ['light.office_ceiling', light(false)],
+    // Scenes, for rooms from Areas (?demo&areas): a scene's state is when it was last turned on.
+    ['scene.office_focus', just('2026-11-14T08:00:00+00:00')],
+    ['scene.office_relax', just('2026-11-14T17:30:00+00:00')],
+    ['scene.office_nightlight', just('2026-11-13T22:00:00+00:00')],
+    ['scene.bedroom_read', just('2026-11-13T21:00:00+00:00')],
+    ['scene.bedroom_sunrise', just('2026-11-14T07:00:00+00:00')],
     // Bedroom
     ['select.bedroom_scene', ['unknown', { options: ['Relax', 'Read', 'Nightlight', 'Sunrise'] }]],
     ['light.bedroom_ceiling', light(false)],
@@ -208,6 +214,44 @@ function browseReply(id: string | undefined): BrowseNode {
       return { title: kind, can_play: kind !== 'tracks', children: DEMO_TRACKS.map((t, i) => demoNode(t.title, `track/${i}`, 'track', i)) };
     case 'artist': return { title: DEMO_ARTISTS[Number(n)] ?? '', children: DEMO_ALBUMS.map((a, i) => demoNode(a.name, `album/${i}`, 'album', a.art, true, true)) };
     default: return { title: kind, children: [] };
+  }
+}
+
+// ---------- Home Assistant's registries, for rooms from Areas (?demo&areas) ----------
+
+/** The example rooms as Areas on three floors, plus a few entities that must stay out of the rooms. */
+function demoRegistry(type: string): unknown {
+  const rooms = decodeConfig(exampleConfig).rooms ?? [];
+  const areaId = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  const floorOf: Record<string, string> = { living_room: 'downstairs', kitchen: 'downstairs', office: 'upstairs', bedroom: 'upstairs', hallways: 'upstairs', outside: 'outside' };
+
+  switch (type) {
+    case 'config/floor_registry/list':
+      return [{ floor_id: 'upstairs', name: 'Upstairs', level: 1 }, { floor_id: 'downstairs', name: 'Downstairs', level: 0 }, { floor_id: 'outside', name: 'Outside', level: 2 }];
+    case 'config/area_registry/list':
+      return rooms.map((r) => ({ area_id: areaId(r.name), name: r.name, floor_id: floorOf[areaId(r.name)], icon: null }));
+    case 'config/device_registry/list':
+      return [{ id: 'hidden_lamp', area_id: 'living_room', labels: ['hide_in_calm_tv'], disabled_by: null }];
+    case 'config/entity_registry/list_for_display': {
+      const entities: object[] = rooms.flatMap((r) => r.groups.flatMap((g) => g.devices)
+        .filter((d) => !d.entity.startsWith('select.'))
+        .map((d) => ({ ei: d.entity, ai: areaId(rooms.find((x) => x.groups.some((g) => g.devices.includes(d)))?.name ?? '') })));
+      entities.push(
+        { ei: 'scene.office_focus', ai: 'office', en: 'Focus' }, { ei: 'scene.office_relax', ai: 'office', en: 'Relax' },
+        { ei: 'scene.office_nightlight', ai: 'office', en: 'Nightlight' },
+        { ei: 'scene.bedroom_read', ai: 'bedroom', en: 'Read' }, { ei: 'scene.bedroom_sunrise', ai: 'bedroom', en: 'Sunrise' },
+        // A lamp's feature, not a lamp: stays out.
+        { ei: 'switch.living_room_floor_lamp_music_mode', ai: 'living_room', en: 'Music mode' },
+        // Labelled "Hide in Calm TV" (on its device): stays out.
+        { ei: 'light.hidden_lamp', di: 'hidden_lamp' },
+        // The garage door's opener: a cover that's a door, so it stays out of the room.
+        { ei: 'cover.garage_door', ai: 'outside' },
+      );
+
+      return { entity_categories: { 0: 'config', 1: 'diagnostic' }, entities };
+    }
+
+    default: return undefined;
   }
 }
 
@@ -392,6 +436,14 @@ class DemoHome {
         return Promise.resolve(browseReply(browse.output.media_content_id) as Result);
       }
 
+      // Rooms from Areas (?demo&areas): Home Assistant's area, floor, device and entity lists.
+      const registry = demoRegistry(m.type);
+
+      if (registry !== undefined) {
+        // SAFETY: areas.ts decodes each list with its schema, as it does Home Assistant's own answer.
+        return Promise.resolve(registry as Result);
+      }
+
       const call = v.safeParse(ServiceCallSchema, m);
       const reply: DemoReply = call.success ? this.callService(call.output) : { done: true };
 
@@ -533,6 +585,10 @@ class DemoHome {
         if (s.state === 'opening' || s.state === 'closing') this.set(id, 'open');
         break;
 
+      case 'scene.turn_on':
+        this.set(id, new Date().toISOString());
+        break;
+
       case 'select.select_option':
         if (data.option) this.set(id, data.option);
         break;
@@ -611,6 +667,9 @@ export function startDemo(): void {
   // The example home, with the doorbell window on (for ctDemo.ring) and no backgrounds from Home Assistant.
   const config = decodeConfig(exampleConfig);
   settings.config = { ...config, doorbell: { ...config.doorbell, window: true }, backgrounds: undefined };
+
+  // ?demo&areas: no "rooms", so they're built from the demo's Areas (see demoRegistry).
+  if (new URLSearchParams(location.search).has('areas')) settings.config = { ...settings.config, rooms: undefined };
   settings.source = 'demo';
   settings.error = '';
   settings.haUrl = 'http://homeassistant.local:8123';

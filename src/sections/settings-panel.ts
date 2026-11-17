@@ -1,7 +1,7 @@
 import { native } from '../native';
 import { ha, lastSignedOut } from '../ha';
 import { settings, dashboardMode, MUSIC_BACKGROUNDS, type MusicBackground } from '../config';
-import { zones } from '../home-data';
+import { zones, roomsFrom } from '../home-data';
 import { showSetup } from '../setup';
 import { showMaSetup } from '../ma-setup';
 import { ma, maSettings } from '../music-assistant';
@@ -231,7 +231,7 @@ export class SettingsPanel {
           icon: ICONS.file,
           name: 'Home setup (calm-tv.json)',
           status: () => {
-            const rooms = `${zones.length} room${zones.length === 1 ? '' : 's'}`;
+            const rooms = `${zones.length} room${zones.length === 1 ? '' : 's'}${roomsFrom === 'areas' ? ' from Home Assistant’s areas' : ''}`;
 
             if (!settings.source) return `Not found${settings.error ? ` (${settings.error})` : ''} · OK to look again`;
             const from = settings.source === 'last saved copy' ? 'Using the last saved copy' : `From ${settings.source}`;

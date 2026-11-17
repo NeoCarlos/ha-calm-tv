@@ -1,6 +1,7 @@
 import { ha } from './ha';
 import { haPath, settings } from './config';
-import { zones, applyStates, WEATHER, cap } from './home-data';
+import { zones, applyStates, WEATHER, cap, onZonesChange } from './home-data';
+import { watchAreaRooms } from './areas';
 import { attributes, CameraAttributes, ClimateAttributes, MediaPlayerAttributes, WeatherAttributes } from './ha-data';
 import { conditionIcon } from './sections/weather-section';
 import { DOOR_ICON } from './doors';
@@ -453,6 +454,13 @@ export function startSidePanel(): void {
       built = true;
       panel.build();
     } else if (built) panel.render();
+  });
+  // Rooms from Home Assistant's Areas arrive after connecting: rebuild the panel with them.
+  watchAreaRooms();
+  onZonesChange(() => {
+    if (!built) return;
+    applyStates(ha.entities);
+    panel.build();
   });
   window.setInterval(() => { if (built) panel.render(); }, 10000);
   ha.start();

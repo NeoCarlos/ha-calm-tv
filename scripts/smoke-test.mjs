@@ -325,6 +325,38 @@ try {
   await key('Escape');
   check(!(await has('.music.open')) && await has('#secMusic.is-active'), 'Back closes the panel, back on the Music screen');
 
+  // ---------- rooms from Home Assistant's Areas (no "rooms" in calm-tv.json) ----------
+  await open('demo&areas', 1920, 1080);
+  await key('ArrowDown');
+  await sleep(600);
+  const roomNames = await page("return [...document.querySelectorAll('#secHome .zone .zname')].map((e) => e.textContent.trim()).join(', ');");
+  check(roomNames === 'Living room, Kitchen, Office, Bedroom, Hallways, Outside', `rooms from Areas, in floor order (${roomNames})`);
+  /** The open room panel: its group titles and device names. */
+  const roomPanel = async (i) => {
+    await page(`document.querySelector('#secHome [data-item="${i}"]').click();`);
+    await sleep(400);
+    const r = await page("const rows = [...document.querySelectorAll('.detail.open .drow')]; return { groups: [...document.querySelectorAll('.detail.open .dcol-title')].map((e) => e.textContent.trim()), names: rows.map((e) => e.querySelector('.dname')?.textContent.trim() ?? ''), statuses: rows.map((e) => e.querySelector('.dstatus')?.textContent.trim() ?? '') };");
+    return r;
+  };
+  const living = await roomPanel(0);
+  check(living.groups.join(',') === 'Lights,Plugs,Curtains & blinds,Locks' && !living.names.some((n) => /music|hidden/i.test(n)),
+    `Living room: lamps, curtains and the lock; a lamp's feature and a labelled device stay out (${living.groups.join(' / ')}: ${living.names.join(', ')})`);
+  await key('Escape');
+  const office = await roomPanel(2);
+  const sceneAt = office.names.indexOf('Scene');
+  check(sceneAt >= 0 && office.statuses[sceneAt] === 'Relax', `Office: a scene picker from the Area's scenes, showing the latest one (${office.statuses[sceneAt]})`);
+  // Pick "Focus" in the scene list: it turns that scene on, and becomes the room's scene.
+  await page(`document.querySelectorAll('.detail.open .drow')[${sceneAt}].click();`);
+  await sleep(300);
+  await page("[...document.querySelectorAll('.scene-opt')].find((e) => e.textContent.trim() === 'Focus')?.click();");
+  await sleep(500);
+  check((await page(`return document.querySelectorAll('.detail.open .drow')[${sceneAt}].querySelector('.dstatus')?.textContent.trim();`)) === 'Focus', 'picking a scene turns it on, and it becomes the room\u2019s scene');
+  await key('Escape');
+  const outside = await roomPanel(5);
+  check(outside.groups.includes('Doors & windows') && outside.names.includes('Garage door') && !outside.groups.includes('Curtains & blinds'),
+    `Outside: the garage door's sensor, but not its opener (a cover that's a door) (${outside.groups.join(' / ')})`);
+  await key('Escape');
+
   // ---------- the ★ side panel: a garage door moves only on a deliberate second OK ----------
   await open('demo&panel', 684, 1080);
   const garage = () => page("const f = document.querySelector('.sp-item.focus'); return f ? f.textContent : '';");

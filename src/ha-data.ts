@@ -131,6 +131,63 @@ export const WeatherAttributes = v.object({
   temperature: maybeNumber,
 });
 
+/** Light: a group of lights (HA's light groups, Hue rooms) lists its members; a lamp doesn't. */
+export const LightGroupAttributes = v.object({
+  entity_id: maybeStrings,
+  is_hue_group: v.fallback(v.optional(v.boolean()), undefined),
+});
+
+// ---------- registries: Home Assistant's areas, floors, devices and entities ----------
+// For rooms built from Areas (areas.ts). Only the fields used here; an entry that doesn't match is
+// dropped, not fatal.
+
+export const AreaSchema = v.object({
+  area_id: v.string(),
+  name: v.string(),
+  floor_id: v.fallback(v.nullish(v.string()), undefined),
+  icon: v.fallback(v.nullish(v.string()), undefined),
+});
+export type Area = v.InferOutput<typeof AreaSchema>;
+
+export const FloorSchema = v.object({
+  floor_id: v.string(),
+  name: v.string(),
+  level: v.fallback(v.nullish(v.number()), undefined),
+});
+export type Floor = v.InferOutput<typeof FloorSchema>;
+
+export const DeviceRegistrySchema = v.object({
+  id: v.string(),
+  area_id: v.fallback(v.nullish(v.string()), undefined),
+  labels: v.fallback(v.array(v.string()), []),
+  disabled_by: v.fallback(v.nullish(v.string()), undefined),
+});
+export type DeviceEntry = v.InferOutput<typeof DeviceRegistrySchema>;
+
+/** config/entity_registry/list_for_display: short keys, to keep the answer small. */
+export const EntityDisplaySchema = v.object({
+  /** Entity id. */
+  ei: v.string(),
+  /** Area (the entity's own; else its device's). */
+  ai: v.fallback(v.nullish(v.string()), undefined),
+  /** Device id. */
+  di: v.fallback(v.nullish(v.string()), undefined),
+  /** Hidden ("Visible" off in HA). */
+  hb: v.fallback(v.optional(v.boolean()), undefined),
+  /** Entity category (config, diagnostic): set means it isn't a main control. */
+  ec: v.fallback(v.optional(v.number()), undefined),
+  /** The entity's own name; null/absent for a device's main entity ("Music mode", "Segment 1"… otherwise). */
+  en: v.fallback(v.nullish(v.string()), undefined),
+  /** Labels. */
+  lb: v.fallback(v.array(v.string()), []),
+});
+export type EntityDisplay = v.InferOutput<typeof EntityDisplaySchema>;
+
+/** A list where an entry that doesn't decode is skipped. */
+export function decodeList<T>(raw: unknown, schema: v.GenericSchema<unknown, T>): T[] {
+  return Array.isArray(raw) ? raw.flatMap((x) => { const r = v.safeParse(schema, x); return r.success ? [r.output] : []; }) : [];
+}
+
 /** An entity's attributes, decoded with `schema`. */
 export function attributes<T>(entity: HassEntity, schema: v.GenericSchema<unknown, T>): T {
   return v.parse(schema, entity.attributes);

@@ -344,7 +344,12 @@ export class ZoneDetail {
     if (!d || !option) return;
     d.picked = option;
     d.status = option;
-    ha.call('select', 'select_option', { entity_id: d.entity, option });
+
+    // A room built from an Area: its scenes are scene entities, turned on directly.
+    if (d.scenes?.[i]) {
+      d.holdUntil = Date.now() + HOLD_MS;
+      ha.call('scene', 'turn_on', { entity_id: d.scenes[i] });
+    } else ha.call('select', 'select_option', { entity_id: d.entity, option });
     this.closeControl();
   }
 

@@ -219,6 +219,25 @@ Home button accessibility service (Settings → Accessibility → Calm TV), like
 
 ### `rooms`: the Smart Home bar, in order
 
+**You can leave `rooms` out.** Then each of your Home Assistant **Areas** becomes a room, in floor
+order (and Home Assistant's own order within a floor), and rooms update when you change Areas in
+Home Assistant. A room holds what's useful from the couch:
+
+- **Lights, Plugs, Curtains & blinds, Climate, Locks, Cameras:** each device's main control (its
+  lamp, not a lamp's "Music mode" or "Segment 3"). Light groups are left out, since they repeat the
+  lamps in them. Garage doors and gates are left out too: a room panel moves a cover on one press
+  (the ★ panel's `control` asks for two).
+- **Doors & windows:** door, garage-door, window and opening sensors, as open or closed.
+- **Scenes:** the Area's scenes, as one scene picker. OK turns a scene on; the picker shows the one
+  turned on most recently.
+
+Tidy it in Home Assistant rather than here: move a device by changing its Area, rename it there,
+and leave something out by turning its entity's **Visible** switch off, or by giving the entity
+or its device the label **Hide in Calm TV**. An Area with nothing to show isn't a room.
+
+To choose the rooms yourself instead (combine Areas, pick devices, add a vacuum, an alert or a
+maintenance sensor), list them:
+
 ```jsonc
 {
   "name": "Living room",

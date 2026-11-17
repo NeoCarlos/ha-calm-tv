@@ -41,6 +41,7 @@ const ICONS = {
   counter: line('<path d="M4 18h16M6 15l3-4 3 2 5-6"/>'),
   arrange: line('<rect x="3" y="8" width="5" height="8" rx="1.5"/><rect x="10" y="8" width="5" height="8" rx="1.5"/><path d="M18 12h4M20 10l2 2-2 2"/>'),
   apps: line('<rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><path d="M17 14v6M14 17h6"/>'),
+  edit: line('<path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>'),
   reset: line('<path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/>'),
 };
 
@@ -221,6 +222,17 @@ export class SettingsPanel {
     const setupRows: Row[] = [
         { icon: ICONS.file, name: 'In use', status: () => `${setupFrom()} · OK to load it again`, run: () => location.reload() },
         {
+          icon: ICONS.edit,
+          name: 'Edit',
+          status: () => (ha.isAdmin && ha.status === 'connected'
+            ? 'The setup as text, checked as you type; saving keeps it in Home Assistant · OK to open'
+            : 'The setup as text · saving needs a Home Assistant admin · OK to open'),
+          run: () => {
+            this.close();
+            void import('../setup-editor').then((m) => m.showSetupEditor());
+          },
+        },
+        {
           icon: ICONS.ha,
           name: 'Keep it in Home Assistant',
           status: () => storeStatus('Copies calm-tv.json into Home Assistant, where only signed-in users can read it · OK to copy'),
@@ -258,7 +270,14 @@ export class SettingsPanel {
       title: 'Home setup',
       rows: [],
       // Only the rows that make sense now.
-      fill: () => setupRows.filter((r) => r.name === 'In use' || (r.name === 'Keep it in Home Assistant') !== settings.stored),
+      fill: () => setupRows.filter((r) => {
+        // Editing needs a keyboard: the dashboard or a browser, not the TV.
+        if (r.name === 'Edit') return !native;
+
+        if (r.name === 'In use') return true;
+
+        return (r.name === 'Keep it in Home Assistant') !== settings.stored;
+      }),
     };
 
     const homeAssistant: Menu = {

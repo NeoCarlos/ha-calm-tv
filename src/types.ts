@@ -50,6 +50,8 @@ export interface Device {
    * select entity: picking turns that scene on. `options` are their names, in the same order.
    */
   scenes?: string[];
+  /** The room it's in: scene names are shown without it ("Office Bright" → "Bright"). */
+  room?: string;
   /** Sensor: an occupancy sensor (Someone there / Clear) rather than a door. */
   occupancy?: boolean;
   picked?: string;

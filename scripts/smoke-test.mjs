@@ -535,13 +535,38 @@ try {
 
   // The setup kept in Home Assistant comes before calm-tv.json (config.ts, config-store.ts).
   mode = 'setup in HA';
-  await open('demo', 1920, 1080);
+  // Rooms from the demo's areas, so "My own list" starts from them.
+  await open('demo&areas', 1920, 1080);
   await key('ArrowLeft'); await key('Enter'); await sleep(500);
   const pick = async (name) => { await page(`[...document.querySelectorAll('.detail.open .drow')].find((r) => r.querySelector('.dname')?.textContent.trim() === ${JSON.stringify(name)})?.click();`); await sleep(500); };
   await pick('Home Assistant');
   await pick('Home setup');
   const setupRows = await page("return [...document.querySelectorAll('.detail.open .drow')].map((r) => r.querySelector('.dname').textContent + ': ' + r.querySelector('.dstatus').textContent);");
-  check(setupRows.length === 2 && setupRows[1].startsWith('Keep it in Home Assistant: Needs'), `Home setup offers to keep it in Home Assistant, for admins (${setupRows.join(' | ')})`);
+  check(setupRows.length === 3 && setupRows[1].startsWith('Edit:') && setupRows[2].startsWith('Keep it in Home Assistant: Needs'), `Home setup offers to keep it in Home Assistant, for admins (${setupRows.join(' | ')})`);
+  // Home setup → Edit: the setup as text and as Screens & rooms (setup-editor.ts, setup-visual.ts).
+  await pick('Edit');
+  await sleep(1500);
+  check(await has('.cfgedit.tab-visual'), 'Edit opens on Screens & rooms');
+  const editText = () => page("return document.querySelector('.cfgedit-text').value;");
+  await tap('.vs-screens [data-screen="0"]');
+  check(JSON.parse(await editText()).screens?.[1] !== 'smarthome', 'unticking a screen changes the text');
+  await tap('.vs-rooms [data-rooms="own"]');
+  await sleep(300);
+  const ownRooms = JSON.parse(await editText()).rooms ?? [];
+  check(ownRooms.length > 0 && ownRooms.some((r) => r.groups.some((g) => g.devices.some((d) => d.scenes?.length))), `"My own list" starts from the areas, scene pickers included (${ownRooms.length} rooms)`);
+  await tap('.vs-rooms [data-room-down="0"]');
+  check((JSON.parse(await editText()).rooms ?? [])[1]?.name === ownRooms[0]?.name, '↓ moves a room down');
+  await tap('.vs-rooms [data-rooms="areas"]');
+  check(!('rooms' in JSON.parse(await editText())), '"From my areas" takes the list out');
+  await tap('.cfgedit [data-tab="text"]');
+  await page("const a = document.querySelector('.cfgedit-text'); a.value = '{ \"rooms\": 3 }'; a.dispatchEvent(new Event('input'));");
+  await sleep(500);
+  check((await text('.cfgedit-msg')).startsWith('rooms:') && (await page("return document.querySelector('[data-act=save]').disabled;")), 'a mistake is named, and Save waits');
+  await tap('.cfgedit [data-tab="visual"]');
+  check(!(await has('.cfgedit.tab-visual')), 'Screens & rooms waits until the text is fixed');
+  await key('Escape'); await key('Escape');
+  check(!(await has('.cfgedit')), 'Esc twice closes without saving');
+
   const errorsBefore = errors.length;
   const stored = await call('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('ct.configStored', '{"screens":["weather"]}');` });
   await open('x', 1920, 1080);

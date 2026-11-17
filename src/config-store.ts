@@ -99,6 +99,12 @@ export async function copyFileToHa(): Promise<void> {
   await save({ config: JSON.parse(file.text), saved: new Date().toISOString(), by: ha.userName });
 }
 
+/** Saves edited setup text as the copy in Home Assistant (admins only). Throws with a short reason. */
+export async function saveConfigText(text: string): Promise<void> {
+  decodeConfig(text);
+  await save({ config: JSON.parse(text), saved: new Date().toISOString(), by: ha.userName });
+}
+
 /** Stops using the copy in Home Assistant (admins only): back to calm-tv.json. */
 export async function removeStoredConfig(): Promise<void> {
   await save(null);

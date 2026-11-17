@@ -197,9 +197,23 @@ try {
   await key('Escape');
   check(!(await has('.bgpick.open')), 'Back closes the picker');
 
-  await key('ArrowLeft');
+  check(!(await page("return [...document.querySelectorAll('#secApps .tile')].some((t) => /music/i.test(t.getAttribute('aria-label') ?? ''));")), 'the dock has no Music tile');
+
+  // The Music screen: the art and the main controls; More opens the Music panel.
+  await key('ArrowDown');
+  await key('ArrowDown');
+  check(await has('#secMusic.is-active') && await has('#secMusic .mx-art img'), 'the Music screen shows the album art');
+  const playLabel = () => page("return document.querySelector('#secMusic .mxb.is-focus')?.getAttribute('aria-label');");
+  const wasLabel = await playLabel();
   await key('Enter');
-  check(await has('.music.open'), 'OK on Music opens the Music panel');
+  check(wasLabel === 'Pause' && (await playLabel()) === 'Play', `OK on play/pause pauses (${wasLabel} → ${await playLabel()})`);
+  await key('Enter');
+  await page("document.querySelector('#secMusic').classList.add('calm');");
+  await key('Enter');
+  check(!(await has('#secMusic.calm')) && (await playLabel()) === 'Pause', 'when the bar has faded, OK only brings it back');
+  for (let i = 0; i < 4; i++) await key('ArrowRight');
+  await key('Enter');
+  check(await has('.music.open'), 'More opens the Music panel');
   await allReachable('.music.open', 'Music');
   await key('ArrowDown');
   await key('ArrowDown');
@@ -213,16 +227,17 @@ try {
   await key('Escape');
   check(!(await has('.music.browsing')), 'Back leaves the folder');
   await key('Escape');
-  check(!(await has('.music.open')), 'Back closes Music');
+  check(!(await has('.music.open')) && await has('#secMusic.is-active'), 'Back closes the panel, back on the Music screen');
 
   // ---------- the Home Assistant dashboard: taps only ----------
   mode = 'touch';
   await open('demo&dash', 1280, 800, true);
   check(await has('#dashboardBar') && await has('#secHome.is-active'), 'starts on Home, with the tab bar');
-  await tap('#dashboardBar .tb-tab:nth-child(2)');
+  await tap('#dashboardBar .tb-tab:nth-child(3)');
   check(await has('#secCalendar.is-active'), 'the Calendar tab shows Calendar');
   await swipe(640, 300, 0, 200);
-  check(await has('#secHome.is-active'), 'swiping down goes back to Home');
+  check(await has('#secMusic.is-active'), 'swiping down goes back a screen (Music)');
+  await tap('#dashboardBar .tb-tab:nth-child(1)');
 
   await tap('#secHome [data-item="0"]');
   check(await has('.detail.open:not(.settings)'), 'tapping a room opens it');
@@ -271,18 +286,20 @@ try {
     check(Math.abs((await rowLeft()) - dragged) < 200, `tapping a card doesn’t snap the row back (${dragged} → ${await rowLeft()}px)`);
   }
   await swipe(row.x, row.y, 0, -200);
-  check(await has('#secCalendar.is-active'), 'swiping up on the rooms still changes screens');
+  check(await has('#secMusic.is-active'), 'swiping up on the rooms still changes screens');
   await tap('#dashboardBar .tb-tab:nth-child(1)');
 
-  await tap('#dashboardBar .tb-music');
-  check(await has('.music.open'), 'the Music tab opens Music');
+  await tap('#dashboardBar .tb-tab:nth-child(2)');
+  check(await has('#secMusic.is-active'), 'the Music tab shows the Music screen');
+  await tap('#secMusic .mxb.more');
+  check(await has('.music.open'), 'tapping More opens the Music panel');
   await tap('.music .mcat:nth-child(4)');
   await sleep(300);
   check(await has('.music.browsing .mcard'), 'tapping a library button opens it');
   await tap('.music-grid .mcard');
   await sleep(300);
   check(await has('.music.browsing .mcard'), 'tapping a playlist opens it');
-  await tap('#dashboardBar .tb-tab:nth-child(3)');
+  await tap('#dashboardBar .tb-tab:nth-child(4)');
   check(!(await has('.music.open')) && await has('#secWeather.is-active'), 'a screen tab closes Music and shows that screen');
   await tap('#secWeather [data-item="0"]');
   await tap('#dashboardBar .tb-tab:nth-child(1)');
@@ -290,7 +307,8 @@ try {
   await tap('#secHome [data-item="0"]');
   await tap('#dashboardBar .tb-tab:nth-child(1)');
   check(!(await has('.detail.open')), 'the tab of the screen on show closes a room on top of it');
-  await tap('#dashboardBar .tb-music');
+  await tap('#dashboardBar .tb-tab:nth-child(2)');
+  await tap('#secMusic .mxb.more');
   await tap('.music .mcat:nth-child(4)');
   await sleep(300);
   await tap('.music-grid .mcard');

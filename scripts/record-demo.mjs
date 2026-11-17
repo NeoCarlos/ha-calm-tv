@@ -80,7 +80,7 @@ const SCENES = {
   },
   calendar: {
     background: 'Stylized Forest Brook',
-    setup: [['ArrowDown', 600], ['ArrowDown', 2500]],
+    setup: [['ArrowDown', 600], ['ArrowDown', 600], ['ArrowDown', 2500]],
     steps: [
       [null, 1500],
       ['ArrowRight', 900], ['ArrowRight', 900], ['ArrowRight', 900], ['ArrowRight', 900],
@@ -89,19 +89,21 @@ const SCENES = {
   },
   weather: {
     background: 'Mountain Lake Sunset',
-    setup: [['ArrowDown', 600], ['ArrowDown', 600], ['ArrowDown', 2500]],
+    setup: [['ArrowDown', 600], ['ArrowDown', 600], ['ArrowDown', 600], ['ArrowDown', 2500]],
     steps: [
       [null, 1500],
       ['ArrowRight', 1100], ['ArrowRight', 1100], ['ArrowRight', 1100], ['ArrowRight', 1100], ['ArrowRight', 1800],
     ],
   },
-  // The dock's Music tile (just left of Settings) → a playlist → Play all, then a second speaker
+  // The Music screen (the art and the bar), More → a playlist → Play all, then a second speaker
   // joins the group.
   music: {
     background: 'Stylized Forest Brook',
-    setup: [['ArrowRight', 200], ['ArrowRight', 200], ['ArrowRight', 200], ['ArrowRight', 200], ['ArrowRight', 200], ['ArrowRight', 200], ['ArrowRight', 1500]],
+    setup: [['ArrowDown', 600], ['ArrowDown', 1500]],
     steps: [
-      [null, 800],
+      [null, 2500],
+      // Along the bar to More.
+      ['ArrowRight', 400], ['ArrowRight', 400], ['ArrowRight', 400], ['ArrowRight', 900],
       ['Enter', 1800],
       // Down the speakers to the library, then Playlists (second row).
       ['ArrowDown', 500], ['ArrowDown', 500], ['ArrowDown', 700], ['ArrowDown', 900],

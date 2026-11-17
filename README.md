@@ -62,9 +62,10 @@ of rain.
 
 ### Music
 
-An optional Music tile in the dock opens what's playing, with play/pause, skip and volume, and your
-speakers. Browse your library by artist, album or playlist and play it on any speaker, or group
-speakers to play together. Made for [Music Assistant](https://music-assistant.io), through Home
+An optional Music screen shows what's playing as just the album art over your background, with
+play/pause, skip and volume on a frosted bar that fades away when you're not using it. **More**
+opens your speakers and library: browse by artist, album or playlist and play it on any speaker, or
+group speakers to play together. Made for [Music Assistant](https://music-assistant.io), through Home
 Assistant's own media players. Contributed by [autokey-git](https://github.com/autokey-git); see
 [doorbell-and-music.md](docs/doorbell-and-music.md) to set it up.
 

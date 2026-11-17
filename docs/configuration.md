@@ -82,11 +82,12 @@ default app dock.
 "screens": ["apps", "smarthome", "weather"]
 ```
 
-- The four screens are `apps`, `smarthome`, `calendar` and `weather`. ↓ moves through them in the
-  order listed. This example has no Calendar.
+- The screens are `apps`, `smarthome`, `music`, `calendar` and `weather`. ↓ moves through them in
+  the order listed. This example has no Music or Calendar.
+- `music` shows only with a `music` section (below).
 - `apps` is always shown, and always first: it holds Settings. If you leave it out, it's added back.
 - A screen you leave out isn't loaded at all (no calendar or forecast requests).
-- Leave `screens` out for all four, in the order above.
+- Leave `screens` out for all of them, in the order above.
 
 ### `weather`
 
@@ -137,7 +138,7 @@ never connects, the quick picture stays.
 While the window is over another app, **Back** closes it (and doesn't reach the app underneath).
 It also closes by itself when `ringing` turns off.
 
-### `music`: the Music panel
+### `music`: the Music screen
 
 ```json
 {
@@ -148,9 +149,10 @@ It also closes by itself when `ringing` turns off.
 }
 ```
 
-With `music` in the file, a **Music** tile appears at the end of the dock, next to Settings (or wherever an `apps` entry
-`{ "name": "Music", "open": "music" }` puts it). It opens a panel with what the chosen speaker is
-playing (art, title, progress), play/pause, previous/next, volume and grouping, the speakers, and
+With `music` in the file, a **Music** screen comes after Smart Home (see `screens`): the album art
+alone, and a frosted bar with the song, previous / play-pause / next and volume, which fades away
+after a few seconds without a key press. **More** opens the Music panel: what the chosen speaker is
+playing (art, title, progress), the controls and grouping, the speakers, and
 a row of library buttons (Artists, Albums, Tracks, Playlists, Radio, Podcasts, Audiobooks). Each button opens a grid you can browse
 into (an artist's albums, an album's tracks, with "Play all") and play from, on the chosen speaker. Made for **Music Assistant**, but it only uses Home
 Assistant's media player services and media browser, so other players work too.

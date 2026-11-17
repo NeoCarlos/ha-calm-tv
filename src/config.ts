@@ -33,7 +33,7 @@ const DeviceSchema = v.object({
 });
 
 /** The screens, in their default order (↓ moves through them). */
-export const SCREENS = ['apps', 'smarthome', 'calendar', 'weather'] as const;
+export const SCREENS = ['apps', 'smarthome', 'music', 'calendar', 'weather'] as const;
 
 export type ScreenName = (typeof SCREENS)[number];
 
@@ -65,9 +65,8 @@ const ConfigSchema = v.object({
     v.array(
       v.object({
         name: v.string(),
-        /** The Android TV app to open. Or leave it out and set `open: "music"` for Calm TV's Music panel. */
+        /** The Android TV app to open. */
         package: v.optional(v.string()),
-        open: v.optional(v.picklist(['music'], 'should be "music"')),
         icon: v.optional(v.string()),
       }),
     ),
@@ -337,7 +336,8 @@ export async function loadConfig(): Promise<void> {
  */
 export function screenOrder(): ScreenName[] {
   const listed = settings.config.screens ?? SCREENS;
-  const rest = [...new Set(listed.filter((s) => s !== 'apps'))];
+  // The Music screen needs "music" in calm-tv.json (its speakers).
+  const rest = [...new Set(listed.filter((s) => s !== 'apps' && (s !== 'music' || !!settings.config.music)))];
 
   if (dashboardMode) return rest.length ? rest : ['smarthome'];
 

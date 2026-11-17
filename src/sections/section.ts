@@ -13,4 +13,11 @@ export interface Section {
   activate(i: number): void;
   /** Optional: called when this section becomes the active one. */
   onEnter?(): void;
+  /** Optional: the item focused when the screen is first shown (default 0). */
+  readonly defaultItem?: number;
+  /**
+   * Optional: a key pressed on this screen, before anything else. True when the screen used it (to
+   * wake itself, say) and nothing more should happen.
+   */
+  wakeKey?(key: string): boolean;
 }

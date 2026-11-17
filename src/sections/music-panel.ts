@@ -22,7 +22,7 @@ import { hint } from '../hints';
 const wrap = (inner: string) =>
   `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none">${inner}</svg>`;
 
-const ICON = {
+export const ICON = {
   prev: wrap('<path d="M6 5h2v14H6zM20 5.5v13a.5.5 0 0 1-.78.42L9.5 12.4a.5.5 0 0 1 0-.8l9.72-6.52a.5.5 0 0 1 .78.42z"/>'),
   next: wrap('<path d="M16 5h2v14h-2zM4 5.5v13a.5.5 0 0 0 .78.42l9.72-6.52a.5.5 0 0 0 0-.8L4.78 5.08A.5.5 0 0 0 4 5.5z"/>'),
   play: wrap('<path d="M7 4.6v14.8a.6.6 0 0 0 .92.5l11.2-7.4a.6.6 0 0 0 0-1L7.92 4.1A.6.6 0 0 0 7 4.6z"/>'),
@@ -94,7 +94,7 @@ function vivid(r: number, g: number, b: number): string {
   return [r1, g1, b1].map((v) => Math.round((v + m) * 255)).join(', ');
 }
 
-function artTint(url: string): Promise<string | null> {
+export function artTint(url: string): Promise<string | null> {
   if (!url) return Promise.resolve(null);
   // On the TV, Home Assistant's picture comes through the app, so its pixels can be read.
   const readable = native && new URL(url, location.href).origin !== location.origin ? `/calmtv-art?u=${encodeURIComponent(url)}` : url;
@@ -186,7 +186,7 @@ const QUEUE_PAGE = 100;
 const QUEUE_MAX = 500;
 /** The two rows of controls under the art: playback, then volume and grouping. */
 const CONTROL_ROWS = [['shuffle', 'prev', 'playpause', 'next', 'queue'], ['volDown', 'volUp']] as const;
-type Control = (typeof CONTROL_ROWS)[number][number];
+export type Control = (typeof CONTROL_ROWS)[number][number];
 const ALL_CONTROLS: readonly Control[] = CONTROL_ROWS.flat();
 /** A folder's items drawn at most (Music Assistant can list thousands of tracks). */
 const MAX_ITEMS = 500;
@@ -213,7 +213,7 @@ export function musicPlayers(): Player[] {
 const NO_ATTRIBUTES = v.parse(MediaPlayerAttributes, {});
 
 /** A speaker's state and attributes, decoded; undefined when HA doesn't list it. */
-function speaker(entity: string): { state: string; a: MediaPlayerAttributes } | undefined {
+export function speaker(entity: string): { state: string; a: MediaPlayerAttributes } | undefined {
   const e = ha.entities[entity];
 
   return e ? { state: e.state, a: attributes(e, MediaPlayerAttributes) } : undefined;
@@ -339,11 +339,9 @@ export class MusicPanel {
   }
 
   show(): void {
-    this.players = musicPlayers();
+    // Start on the speaker the Music screen shows (the one playing, if any).
+    this.current();
     this.open = true;
-    // Start on the speaker that's playing, if any.
-    const playing = this.players.findIndex((p) => ha.entities[p.entity]?.state === 'playing');
-    this.active = Math.max(0, playing);
     this.grouping = false;
     this.slider = false;
     this.queueOpen = false;
@@ -374,6 +372,40 @@ export class MusicPanel {
 
   private get player(): Player | undefined {
     return this.players[this.active];
+  }
+
+  /**
+   * The speaker the Music screen shows and controls: the one chosen here, unless (while the panel
+   * is closed) it's quiet and another speaker is playing, which then becomes the chosen one.
+   */
+  current(): Player | undefined {
+    if (!this.open) {
+      this.players = musicPlayers();
+      const busy = (p?: Player) => ['playing', 'paused'].includes(p ? ha.entities[p.entity]?.state ?? '' : '');
+
+      if (!busy(this.player)) {
+        const playing = this.players.findIndex((p) => ha.entities[p.entity]?.state === 'playing');
+
+        if (playing >= 0) this.active = playing;
+      }
+
+      this.active = Math.min(this.active, Math.max(0, this.players.length - 1));
+    }
+
+    return this.player;
+  }
+
+  /** The Music screen's buttons: the same as the panel's own. */
+  control(c: Control): void {
+    this.current();
+    this.press(c);
+  }
+
+  /** The volume the volume buttons set (the group's average), 0–1. */
+  level(): number | undefined {
+    this.current();
+
+    return this.volume();
   }
 
   // ---------- Home Assistant ----------

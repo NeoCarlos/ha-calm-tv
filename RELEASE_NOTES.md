@@ -22,13 +22,16 @@
   Music panel) connects the TV to Music Assistant with its address and a token, kept on the TV only.
   Optional: it adds the whole queue (Home Assistant only passes what's playing and what's next),
   where OK jumps to a song. A token can also be given with `adb … --es maToken <token>`.
-- **Music Assistant logo** for the dock's Music tile.
 - **Music panel:** shuffle and queue buttons; a Group speakers button above the speakers, with
   Play everywhere; OK on the chosen speaker opens its own volume slider; the volume buttons turn
   every grouped speaker; speakers and library on frosted sheets like the dock, fixed-size speaker
   cards with scrolling names, bigger library buttons (3 across) and podcast icon; everything else
   fades back while grouping; Up from the controls reaches the library.
-- **Music panel:** a Music tile in the dock (with `"music"` in calm-tv.json) opens now playing,
+- **Music screen** (with `"music"` in calm-tv.json, after Smart Home): just the album art, with the
+  song and the main controls on a frosted bar that fades after a few seconds without a key press
+  (the first OK, ← or → only wakes it). Nothing playing, nothing shown. A glow from the album's
+  colour is being tried (`?glow=halo|wash|tint|off`). On the dashboard, Music is a tab.
+- **Music panel**, under More on the Music screen: now playing,
   controls, speakers and library buttons (Artists, Albums, Playlists, Radio…) that open a browsable grid, through Home Assistant (made for Music Assistant). In demo mode too.
   The group button picks speakers to play along with the chosen one (media_player.join / unjoin).
 - **Arrange dock:** Settings → Arrange dock moves tiles with the remote (OK picks up, ←/→ moves, OK puts down). The order is kept on the TV; "Back to the original order" resets it.

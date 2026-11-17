@@ -5,7 +5,7 @@ import { musicPlayers } from './sections/music-panel';
 import { child } from './dom';
 
 // Dashboard mode's bar under the screens (see dashboardMode in config.ts): the time on the left, a tab per
-// screen in the middle, and on the right what's playing, Music and Settings. It sits below the
+// screen in the middle (Music among them), and on the right what's playing and Settings. It sits below the
 // 1920×1080 stage, in the room a 16:10 screen has left over, so the screens themselves don't change.
 
 /** The bar's height in CSS pixels; app.ts fits the stage into the space above it. */
@@ -14,7 +14,7 @@ export const DASHBOARD_BAR_H = 76;
 const line = (d: string) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 
-const ICONS: Record<ScreenName | 'music' | 'settings', string> = {
+const ICONS: Record<ScreenName | 'settings', string> = {
   apps: line('<rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/>'),
   smarthome: line('<path d="M4 11l8-6 8 6v8a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z"/>'),
   calendar: line('<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>'),
@@ -23,7 +23,7 @@ const ICONS: Record<ScreenName | 'music' | 'settings', string> = {
   settings: line('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
 };
 
-const LABELS: Record<ScreenName, string> = { apps: 'Apps', smarthome: 'Home', calendar: 'Calendar', weather: 'Weather' };
+const LABELS: Record<ScreenName, string> = { apps: 'Apps', smarthome: 'Home', music: 'Music', calendar: 'Calendar', weather: 'Weather' };
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -34,6 +34,7 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 export interface DashboardBarActions {
   /** A screen's tab: show screen `i` (its place in the screens' order). */
   onScreen(i: number): void;
+  /** What's playing: show the Music screen. */
   onMusic(): void;
   onSettings(): void;
 }
@@ -49,9 +50,7 @@ export class DashboardBar {
     this.el = document.createElement('nav');
     this.el.id = 'dashboardBar';
 
-    const music = settings.config.music
-      ? `<button class="tb-now" hidden></button><button class="tb-btn tb-music" aria-label="Music">${ICONS.music}<span>Music</span></button>`
-      : '';
+    const music = settings.config.music ? '<button class="tb-now" hidden></button>' : '';
 
     this.el.innerHTML = `
       <div class="tb-time"><span class="tb-clock"></span><span class="tb-date"></span></div>
@@ -64,7 +63,6 @@ export class DashboardBar {
     this.nowEl = this.el.querySelector<HTMLElement>('.tb-now') ?? document.createElement('button');
     this.tabs = [...this.el.querySelectorAll<HTMLElement>('.tb-tab')];
     this.tabs.forEach((t, i) => t.addEventListener('click', () => actions.onScreen(i)));
-    this.el.querySelector('.tb-music')?.addEventListener('click', () => actions.onMusic());
     this.nowEl.addEventListener('click', () => actions.onMusic());
     child(this.el, '.tb-icon').addEventListener('click', () => actions.onSettings());
 
@@ -89,7 +87,7 @@ export class DashboardBar {
     this.dateEl.textContent = `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
   }
 
-  /** What the first playing speaker plays, as a small button that opens Music; hidden when nothing plays. */
+  /** What the first playing speaker plays, as a small button to the Music screen; hidden when nothing plays. */
   private paintNowPlaying(): void {
     const playing = musicPlayers().find((p) => ha.entities[p.entity]?.state === 'playing');
     const e = playing ? ha.entities[playing.entity] : undefined;

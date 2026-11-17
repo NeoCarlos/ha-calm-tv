@@ -669,6 +669,59 @@ html.glass-tint .mq-list { -webkit-backdrop-filter: none; backdrop-filter: none;
 /* Buttons only a touch screen needs: hidden on the TV, shown in dashboard mode (below). */
 .ctl-step, .bgpick-done { display: none; }
 
+/* ---------- Music screen (music-section.ts) ----------
+   The album art alone above the frosted bar; after a while without a key press the bar fades and only
+   the art stays. Nothing playing: no art either, just the background. */
+#secMusic .mx-art {
+  position: absolute; left: 50%; top: 150px; width: 580px; height: 580px; transform: translateX(-50%);
+  border-radius: 32px; overflow: hidden; box-shadow: 0 50px 120px -30px rgba(0, 0, 0, 0.75);
+  transition: opacity 0.6s ease;
+}
+#secMusic .mx-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#secMusic.idle .mx-art, #secMusic .mx-art:empty { opacity: 0; }
+#mxbar { left: 208px; top: 864px; width: 1504px; height: 128px; transition: opacity 0.35s ease, transform 0.35s ease; }
+#mxbar .gb-img { left: -208px; top: -864px; }
+#secMusic.calm #mxbar { opacity: 0; transform: translateY(18px); transition: opacity 1.4s ease, transform 1.4s ease; }
+.mx-row { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 24px; padding: 0 28px 0 44px; }
+.mx-song { min-width: 0; }
+.mx-title, .mx-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mx-title { font-size: 28px; font-weight: 600; letter-spacing: -0.4px; color: var(--ink); }
+.mx-sub { margin-top: 4px; font-size: 20px; color: var(--ink-dim); }
+.mx-mid, .mx-end { display: flex; align-items: center; gap: 10px; }
+.mx-end { justify-content: flex-end; }
+.mx-vol { min-width: 72px; text-align: center; font-size: 20px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.mxb {
+  width: 88px; height: 88px; flex: 0 0 auto; border-radius: 28px; border: 0; background: transparent; color: var(--ink); opacity: 0.86;
+  display: flex; align-items: center; justify-content: center; gap: 12px; font: inherit;
+  transition: background 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+.mxb svg { width: 40px; height: 40px; flex: 0 0 auto; }
+.mxb.big svg { width: 54px; height: 54px; }
+.mxb.more { width: auto; padding: 0 26px; margin-left: 14px; font-size: 22px; font-weight: 600; }
+.mxb.more svg { width: 30px; height: 30px; }
+.mxb.is-focus { opacity: 1; background: var(--plate); box-shadow: var(--plate-edge); }
+.mx-progress { position: absolute; left: 48px; right: 48px; top: 0; height: 3px; background: rgba(255, 255, 255, 0.1); }
+.mx-progress i { display: block; height: 100%; width: 0; background: rgba(255, 255, 255, 0.6); transition: width 1s linear; }
+#secMusic.idle .mx-progress { opacity: 0; }
+
+/* The album's colour over the background, while trying them out (?glow=halo|wash|tint|off):
+   halo, a soft light behind the art; wash, the whole screen washed in it, strongest behind the art;
+   tint, the background itself shifted to the album's hue. It fades in once the colour is read. */
+#secMusic .mx-glow { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 1.6s ease, background 1.6s ease; }
+#secMusic.tinted:not(.idle) .mx-glow { opacity: 1; }
+#secMusic[data-glow='halo'] .mx-glow {
+  background: radial-gradient(circle 620px at 50% 41%, rgba(var(--art-tint), 0.55), rgba(var(--art-tint), 0.2) 55%, rgba(var(--art-tint), 0) 100%);
+}
+#secMusic[data-glow='wash'] .mx-glow {
+  background:
+    radial-gradient(ellipse 70% 80% at 50% 40%, rgba(var(--art-tint), 0.42), rgba(var(--art-tint), 0) 75%),
+    linear-gradient(rgba(var(--art-tint), 0.16), rgba(var(--art-tint), 0.16));
+}
+#secMusic[data-glow='tint'] .mx-glow { background: rgb(var(--art-tint)); mix-blend-mode: color; }
+#secMusic[data-glow='tint'].tinted:not(.idle) .mx-glow { opacity: 0.55; }
+#secMusic[data-glow='off'] .mx-glow { display: none; }
+html.dashboard .mxb { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+
 /* ---------- Dashboard mode (index.html?dash; dashboard-bar.ts) ----------
    The 1920×1080 screens sit above a tab bar; the remote's hints give way to things to tap. */
 html.dashboard #hint { display: none; }

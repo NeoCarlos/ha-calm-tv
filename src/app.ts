@@ -19,6 +19,7 @@ import { child, find, itemAt } from './dom';
 import { applyStates, WEATHER } from './home-data';
 import { conditionLabel } from './sections/weather-section';
 import { MusicPanel } from './sections/music-panel';
+import { MusicSection } from './sections/music-section';
 import { DoorbellWindow, doorbellEnabled, doorbellLook, doorbellRinging } from './doorbell';
 import { screenOrder, dashboardMode, type ScreenName } from './config';
 import { DashboardBar, DASHBOARD_BAR_H } from './dashboard-bar';
@@ -81,7 +82,7 @@ export class CalmTv {
     this.music = new MusicPanel(qs('#stage'));
 
     const appsSection = this.appsSection = new AppsSection(at('apps'), (a) =>
-      a.kind === 'settings' ? this.settings.show() : a.kind === 'music' ? this.music.show() : this.openLaunch(a),
+      a.kind === 'settings' ? this.settings.show() : this.openLaunch(a),
     );
 
     this.detail = new ZoneDetail(qs('#stage'), () => this.home.refresh());
@@ -98,10 +99,11 @@ export class CalmTv {
     }
 
     const weather = order.includes('weather') ? new WeatherSection(at('weather')) : null;
-    const built = { apps: appsSection, smarthome: this.home, calendar, weather };
+    const music = order.includes('music') ? new MusicSection(at('music'), this.music) : null;
+    const built = { apps: appsSection, smarthome: this.home, calendar, weather, music };
     this.sections = order.flatMap((name) => built[name] ?? []);
     this.connectHomeAssistant(weather);
-    this.cols = this.sections.map(() => 0);
+    this.cols = this.sections.map((s) => s.defaultItem ?? 0);
 
     this.track = qs('#sectionsTrack');
     this.sections.forEach((s) => this.track.appendChild(s.el));
@@ -111,7 +113,13 @@ export class CalmTv {
       this.bar = new DashboardBar(qs('#frame'), order, {
         // A screen's tab always shows that screen, so it first closes any panel open on top (Music, a room…).
         onScreen: (i) => { this.closePanels(); this.goTo(i); },
-        onMusic: () => { this.closePanels(); this.music.show(); },
+        // What's playing opens the Music screen (or, if calm-tv.json leaves it out, the Music panel).
+        onMusic: () => {
+          this.closePanels();
+
+          if (order.includes('music')) this.goTo(order.indexOf('music'));
+          else this.music.show();
+        },
         onSettings: () => { this.closePanels(); this.settings.show(); },
       });
     }
@@ -472,6 +480,13 @@ export class CalmTv {
           e.preventDefault();
           this.closeLaunch();
         } else if (k.startsWith('Arrow')) e.preventDefault();
+
+        return;
+      }
+
+      // A screen that rests (the Music screen's bar fades) may take the first key just to wake up.
+      if (this.sections[this.secIndex].wakeKey?.(k)) {
+        e.preventDefault();
 
         return;
       }

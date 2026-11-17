@@ -178,6 +178,10 @@ after `leftOpen` seconds (default 10), it comes back with a red **!** and "Left 
 until the door closes. Several doors stack. A door closing never pops up, and a sensor that
 flickers as the door shuts is ignored.
 
+Two limits: if a door's sensor drops out (unavailable) while "Left open" is up, the pop-up goes
+and only comes back the next time the door opens; and over other apps, "Left open" is taken down
+after 30 minutes, even if the door is still open, so a pop-up can never be stuck on screen.
+
 - `entities`: open/closed sensors (`on` = open). Doors only: windows would pop up all day.
 - `leftOpen`: seconds before "Left open" (at least 5).
 - `popup`: `false` turns the pop-ups off but keeps the doors in the ★ side panel.
@@ -190,13 +194,17 @@ panel on the right, over whatever is playing. The show keeps playing. It lists, 
 - **Climate**: every `climate` device. OK on one, then ↑ ↓ change the set point. A thermostat
   holding a range (heat/cool) shows both: ← → pick Heat or Cool, OK opens it, ↑ ↓ change it.
 - **Doors**: the `doors` entities, open or closed.
-- **Each room's other open/closed sensors** (e.g. the garage doors). A sensor with `control` opens
-  or closes that cover: OK, then OK again within 4 seconds, so a bumped remote never moves a door.
+- **Each room's other open/closed sensors** (e.g. the garage doors). A sensor with `control` (a
+  `cover.*`) opens or closes that cover, never by accident: OK, then OK again on the same door, at
+  least half a second later and within 4 seconds, with no other key between. While the door is
+  moving, the same two presses stop it. If its state can't be read, it doesn't move, and if Home
+  Assistant refuses, the row says so.
 - **Music**: what's playing on the `music` speakers, with play/pause.
 - **Cameras**: snapshots every few seconds; OK shows one big and live.
 
 While it's open the arrows, OK and Back go to the panel; volume and play/pause still reach the
-show. **Back** or **★** closes it, and it closes by itself after a minute untouched. Needs the
+show. **Back**, **★** or **Home** closes it, and it closes by itself after a minute untouched. Calm
+TV only takes over ★ once it has your Home Assistant's address; until then ★ opens Google's panel. Needs the
 Home button accessibility service (Settings → Accessibility → Calm TV), like the doorbell window.
 
 ### `rooms`: the Smart Home bar, in order

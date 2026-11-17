@@ -103,14 +103,14 @@ const SCENES = {
     steps: [
       [null, 800],
       ['Enter', 1800],
-      ['ArrowDown', 600], ['ArrowDown', 900],
-      ['ArrowRight', 500], ['ArrowRight', 500], ['ArrowRight', 900],
+      // Down the speakers to the library, then Playlists (second row).
+      ['ArrowDown', 500], ['ArrowDown', 500], ['ArrowDown', 700], ['ArrowDown', 900],
       ['Enter', 1600],
       ['Enter', 1600],
       ['Enter', 2200],
       ['Escape', 900], ['Escape', 1000],
-      ['ArrowUp', 600], ['ArrowLeft', 800],
-      ['ArrowRight', 400], ['ArrowRight', 400], ['ArrowRight', 400], ['ArrowRight', 900],
+      // Up to the Group speakers button above the speakers, then add the kitchen.
+      ['ArrowUp', 400], ['ArrowUp', 400], ['ArrowUp', 400], ['ArrowUp', 400], ['ArrowUp', 900],
       ['Enter', 1300],
       ['Enter', 2200],
       ['Escape', 1800],

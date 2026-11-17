@@ -1,8 +1,10 @@
 import { native } from '../native';
-import { ha } from '../ha';
+import { ha, lastSignedOut } from '../ha';
 import { settings, dashboardMode } from '../config';
 import { zones } from '../home-data';
 import { showSetup } from '../setup';
+import { showMaSetup } from '../ma-setup';
+import { ma, maSettings } from '../music-assistant';
 import { child } from '../dom';
 import { FocusGroup } from '../focus';
 import { hint } from '../hints';
@@ -25,6 +27,7 @@ const ICONS = {
   chevron: line('<path d="M9 5l7 7-7 7"/>'),
   ha: line('<path d="M3 11l9-7 9 7"/><path d="M5 9.5V20h14V9.5"/><circle cx="12" cy="14" r="2"/><path d="M12 16v4"/>'),
   link: line('<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>'),
+  music: line('<path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>'),
   file: line('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>'),
   gauge: line('<path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/><circle cx="12" cy="16" r="1.2"/>'),
   video: line('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/>'),
@@ -68,6 +71,7 @@ const onOff = (on: boolean) => (on ? 'On' : 'Off');
 export class SettingsPanel {
   private readonly el: HTMLElement;
   private readonly listEl: HTMLElement;
+  private readonly hintEl: HTMLElement;
   private readonly closeEl: HTMLElement;
   private readonly titleEl: HTMLElement;
   private readonly root: Menu;
@@ -76,6 +80,8 @@ export class SettingsPanel {
   private rowEls: HTMLElement[] = [];
   private open = false;
   private confirmSignOut = false;
+  /** When the first sign-out press came: the second must come a moment later, not straight after. */
+  private confirmAt = 0;
   private confirmTimer = 0;
   /** OK presses right after opening belong to the press that opened the panel. */
   private openedAt = 0;
@@ -135,7 +141,7 @@ export class SettingsPanel {
           icon: ICONS.ha,
           name: 'Connection',
           status: () =>
-            ha.status === 'signed-out' ? hint('signInRow')
+            ha.status === 'signed-out' ? `Not signed in${lastSignedOut() ? ` (${lastSignedOut()})` : ''} · ${hint('signInRow')}`
             : this.confirmSignOut ? hint('signOutAgain')
             : connection(),
           run: () => {
@@ -147,8 +153,13 @@ export class SettingsPanel {
             }
 
             // Signing out takes two presses, so a stray OK can't do it.
+            // A remote that doubles presses (or a held OK) mustn't sign out: the second press only
+            // counts after a short pause.
+            if (this.confirmSignOut && Date.now() - this.confirmAt < 1000) return;
+
             if (!this.confirmSignOut) {
               this.confirmSignOut = true;
+              this.confirmAt = Date.now();
               clearTimeout(this.confirmTimer);
               this.confirmTimer = window.setTimeout(() => {
                 this.confirmSignOut = false;
@@ -182,8 +193,27 @@ export class SettingsPanel {
           },
           run: () => location.reload(),
         },
+        {
+          icon: ICONS.music,
+          name: 'Music Assistant',
+          status: () => {
+            const { url } = maSettings();
+
+            if (!url) return 'Optional · for the Music panel’s full queue · OK to set up';
+
+            return `${url} · ${ma.problem || (ma.connected ? 'Connected' : 'Set up')} · OK to change`;
+          },
+          run: () => {
+            this.close();
+            // When the setup closes, come back here (Settings → Home Assistant → Music Assistant).
+            showMaSetup(() => this.reopen(homeAssistant, 'Music Assistant'));
+          },
+        },
       ],
     };
+
+    // Without "music" in calm-tv.json there's no Music panel, so nothing to connect Music Assistant to.
+    if (!settings.config.music) homeAssistant.rows = homeAssistant.rows.filter((r) => r.name !== 'Music Assistant');
 
     this.root = {
       title: 'Settings',
@@ -265,12 +295,14 @@ export class SettingsPanel {
       <div class="detail-panel">
         <div class="detail-head">
           <div class="detail-title"></div>
+          <div class="detail-hint"></div>
           <button class="detail-close" data-focus="close" aria-label="Close">${ICONS.close}</button>
         </div>
         <div class="dcol-list"></div>
       </div>`;
     mount.appendChild(this.el);
     this.listEl = child(this.el, '.dcol-list');
+    this.hintEl = child(this.el, '.detail-hint');
     this.closeEl = child(this.el, '.detail-close');
     this.titleEl = child(this.el, '.detail-title');
     // In a sub-menu the round button shows a back arrow, so it goes back a level, like Back does.
@@ -279,13 +311,18 @@ export class SettingsPanel {
 
     this.nav = new FocusGroup(this.el, {
       onBack: () => this.back(),
+      // Up from the first row goes to the last, and Down from the last to the first (like the dock).
+      wrap: true,
       onKey: (e) => {
-        // OK right after opening is the end of the press that opened the panel.
-        if ((e.key === 'Enter' || e.key === ' ') && (e.repeat || Date.now() - this.openedAt < 400)) {
-          e.preventDefault();
+        // OK right after opening is the end (or a double) of the press that opened the panel or
+        // menu. Any other key in between means the next OK is a new press.
+        if (e.key === 'Enter' || e.key === ' ') {
+          if (e.repeat || Date.now() - this.openedAt < 400) {
+            e.preventDefault();
 
-          return true;
-        }
+            return true;
+          }
+        } else this.openedAt = 0;
 
         if (this.confirmSignOut && e.key.startsWith('Arrow')) {
           this.confirmSignOut = false;
@@ -312,6 +349,17 @@ export class SettingsPanel {
     this.build();
   }
 
+  /** Opens Settings on a sub-menu, with the focus on one of its rows (by name). */
+  private reopen(menu: Menu, rowName: string): void {
+    this.show();
+    const i = this.root.rows.findIndex((r) => r.menu === menu);
+
+    if (i < 0) return;
+    this.level.focus = i;
+    this.stack.push({ menu, focus: Math.max(0, menu.rows.findIndex((r) => r.name === rowName)) });
+    this.build();
+  }
+
   close(): void {
     this.open = false;
     this.el.classList.remove('open');
@@ -335,6 +383,8 @@ export class SettingsPanel {
     if (row.menu) {
       this.stack.push({ menu: row.menu, focus: 0 });
       this.confirmSignOut = false;
+      // The OK that opened this menu can arrive twice; the second mustn't press its first row.
+      this.openedAt = Date.now();
       this.build();
 
       return;
@@ -364,7 +414,9 @@ export class SettingsPanel {
   private build(): void {
     const sub = this.stack.length > 1;
     this.titleEl.textContent = this.level.menu.title;
-    // In a sub-menu the round button goes back a level; at the top it closes.
+    // Back goes up a level in a sub-menu, and closes Settings at the top.
+    // The remote reads it (the TV); a finger taps the round button instead (the dashboard, see style.css).
+    this.hintEl.textContent = sub ? 'Back to go back' : 'Back to close';
     this.closeEl.innerHTML = sub ? ICONS.back : ICONS.close;
     this.closeEl.setAttribute('aria-label', sub ? 'Back' : 'Close');
     this.listEl.textContent = '';

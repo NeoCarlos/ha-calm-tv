@@ -16,7 +16,18 @@
 - After signing in with Home Assistant's login page, the address keeps its other settings (it used
   to drop all of them).
 - Settings: the round button in a sub-menu now goes back a level when clicked, as Back does.
-
+- **Faster Settings:** moving up and down the Settings menu (and room panels) no longer repaints
+  the frosted panel: the highlight is its own layer that only fades, like the dock's.
+- **Music Assistant in Settings:** Settings → Home Assistant → Music Assistant (or the gear in the
+  Music panel) connects the TV to Music Assistant with its address and a token, kept on the TV only.
+  Optional: it adds the whole queue (Home Assistant only passes what's playing and what's next),
+  where OK jumps to a song. A token can also be given with `adb … --es maToken <token>`.
+- **Music Assistant logo** for the dock's Music tile.
+- **Music panel:** shuffle and queue buttons; a Group speakers button above the speakers, with
+  Play everywhere; OK on the chosen speaker opens its own volume slider; the volume buttons turn
+  every grouped speaker; speakers and library on frosted sheets like the dock, fixed-size speaker
+  cards with scrolling names, bigger library buttons (3 across) and podcast icon; everything else
+  fades back while grouping; Up from the controls reaches the library.
 - **Music panel:** a Music tile in the dock (with `"music"` in calm-tv.json) opens now playing,
   controls, speakers and library buttons (Artists, Albums, Playlists, Radio…) that open a browsable grid, through Home Assistant (made for Music Assistant). In demo mode too.
   The group button picks speakers to play along with the chosen one (media_player.join / unjoin).

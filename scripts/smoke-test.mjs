@@ -63,9 +63,10 @@ try {
     return m.result?.result?.value;
   }
 
-  const key = async (k) => {
+  /** A press on the remote; `held` sends it as the repeat of a held key. */
+  const key = async (k, held = false) => {
     const p = { key: k, code: k, windowsVirtualKeyCode: KEYS[k] };
-    await call('Input.dispatchKeyEvent', { type: 'keyDown', ...p });
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', autoRepeat: held, ...p });
     await call('Input.dispatchKeyEvent', { type: 'keyUp', ...p });
     await sleep(120);
   };
@@ -178,7 +179,8 @@ try {
   await key('Escape');
 
   await key('ArrowUp');
-  for (let i = 0; i < 14; i++) await key('ArrowRight');
+  // Held, → stops at the end of the dock (pressed one at a time it wraps round): the gear.
+  for (let i = 0; i < 14; i++) await key('ArrowRight', true);
   await key('Enter');
   await sleep(500);
   check(await has('.settings.open'), 'OK on the gear opens Settings');

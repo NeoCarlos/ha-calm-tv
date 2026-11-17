@@ -26,6 +26,11 @@ export interface FocusOptions {
   onFocus?(id: string, el: HTMLElement): void;
   /** false when the panel brings the focused item into view itself (default true: the browser does). */
   scrollIntoView?: boolean;
+  /**
+   * At an edge, an arrow goes round to the far end of the same row or column (like the dock). Not
+   * while the key is held, so holding it stops at the end.
+   */
+  wrap?: boolean;
 }
 
 const ARROWS = new Map<string, Direction>([['ArrowUp', 'up'], ['ArrowDown', 'down'], ['ArrowLeft', 'left'], ['ArrowRight', 'right']]);
@@ -109,11 +114,11 @@ export class FocusGroup {
 
     if (!dir) return;
     e.preventDefault();
-    this.move(dir);
+    this.move(dir, e.repeat);
   }
 
-  /** Moves the focus one step `dir`, to the nearest item that way; stays put at an edge. */
-  move(dir: Direction): void {
+  /** Moves the focus one step `dir`, to the nearest item that way; at an edge it stays put, or wraps (see `wrap`). */
+  move(dir: Direction, held = false): void {
     const from = this.current();
 
     if (!from) {
@@ -124,7 +129,7 @@ export class FocusGroup {
 
     const others = this.items().filter((i) => i !== from);
     const back = this.lastMove && this.lastMove.dir === OPPOSITE[dir] ? others.find((i) => i.dataset.focus === this.lastMove?.from) : undefined;
-    const next = back ?? nearest(from, others, dir);
+    const next = back ?? nearest(from, others, dir) ?? (this.opts.wrap && !held ? farthest(from, others, OPPOSITE[dir]) : null);
 
     if (!next) return;
     const fromId = this.focused;
@@ -162,6 +167,15 @@ export class FocusGroup {
 
     return el && this.root.contains(el) && this.items().includes(el) ? el : null;
   }
+}
+
+/** The item furthest from `from` towards `dir` in the same row or column (for wrapping round). */
+function farthest(from: HTMLElement, items: HTMLElement[], dir: Direction): HTMLElement | null {
+  let best: HTMLElement | null = null;
+
+  for (let next = nearest(from, items, dir), at = from; next; at = next, next = nearest(at, items.filter((i) => i !== at), dir)) best = next;
+
+  return best;
 }
 
 /**

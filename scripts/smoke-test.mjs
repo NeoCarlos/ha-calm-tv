@@ -237,6 +237,11 @@ try {
   await key('Enter');
   check(await has('.music.open'), 'More opens the Music panel');
   await allReachable('.music.open', 'Music');
+  // → along a row of buttons goes to the next one, not diagonally to a closer one on the staggered row below.
+  await page("document.querySelector('.music [data-focus=\"library-0\"]').dispatchEvent(new PointerEvent('pointerover', { pointerType: 'mouse', bubbles: true }));");
+  await key('ArrowRight');
+  check((await page("return document.querySelector('.music .focus')?.dataset.focus;")) === 'library-1', 'Music library: → from Artists goes to Albums, the next one in its row');
+  await page("document.querySelector('.music [data-focus=\"speaker-0\"]').dispatchEvent(new PointerEvent('pointerover', { pointerType: 'mouse', bubbles: true }));");
   await key('ArrowDown');
   await key('ArrowDown');
   await key('ArrowRight');

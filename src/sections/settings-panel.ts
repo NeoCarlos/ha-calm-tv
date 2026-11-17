@@ -30,7 +30,6 @@ const ICONS = {
   link: line('<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>'),
   music: line('<path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>'),
   file: line('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>'),
-  gauge: line('<path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/><circle cx="12" cy="16" r="1.2"/>'),
   video: line('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/>'),
   glass: line('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 15l7-7M12 16l4-4"/>'),
   fade: line('<rect x="3" y="6" width="11" height="12" rx="2"/><path d="M17 8v8M20 10v4"/>'),
@@ -72,7 +71,7 @@ const MUSIC_BACKGROUND_NAMES: Record<MusicBackground, string> = {
 /**
  * Calm TV's own settings, opened from the gear tile at the end of the app dock.
  * Reuses the room panel's look (.detail, .drow), as a single narrower column. Rows can open a
- * sub-menu (Performance, Home Assistant) in place of the list; Back returns to the list above.
+ * sub-menu (Appearance, Home Assistant) in place of the list; Back returns to the list above.
  */
 export class SettingsPanel {
   private readonly el: HTMLElement;
@@ -103,9 +102,27 @@ export class SettingsPanel {
       : ha.status === 'offline' ? 'Can’t reach Home Assistant'
       : `Connected${ha.userName ? ` as ${ha.userName}` : ''}`;
 
-    const performance: Menu = {
-      title: 'Performance',
+    // Everything about how Calm TV looks, in one place: the background, the Music screen's, and the
+    // choices that trade looks for smoothness on slower TVs.
+    const appearance: Menu = {
+      title: 'Appearance',
       rows: [
+        {
+          icon: ICONS.wallpaper,
+          name: 'Background',
+          status: () => `${this.bg.name()} · ${this.bg.mode() === 'video' ? 'video' : 'photo'}${hint('chooseBackgroundRow')}`,
+          run: () => {
+            this.close();
+            this.bg.openPicker();
+          },
+        },
+        {
+          icon: ICONS.music,
+          name: 'Music background',
+          status: () => `${MUSIC_BACKGROUND_NAMES[musicBackground()]} · ${musicBackgroundSource()}`,
+          // OK steps through the choices.
+          run: () => setMusicBackground(MUSIC_BACKGROUNDS[(MUSIC_BACKGROUNDS.indexOf(musicBackground()) + 1) % MUSIC_BACKGROUNDS.length]),
+        },
         {
           icon: ICONS.video,
           name: 'Video backgrounds',
@@ -134,7 +151,7 @@ export class SettingsPanel {
         {
           icon: ICONS.reset,
           name: 'Reset to calm-tv.json',
-          status: () => (hasOverrides() ? 'Undo this TV’s changes above' : 'Nothing changed on this TV'),
+          status: () => (hasOverrides() ? 'Undo this TV’s changes above (the background stays)' : 'Nothing changed on this TV'),
           run: () => resetToConfig(),
         },
       ],
@@ -222,26 +239,10 @@ export class SettingsPanel {
       rows: [
         {
           icon: ICONS.wallpaper,
-          name: 'Background',
-          status: () => `${this.bg.name()} · ${this.bg.mode() === 'video' ? 'video' : 'photo'}${hint('chooseBackgroundRow')}`,
-          run: () => {
-            this.close();
-            this.bg.openPicker();
-          },
-        },
-        {
-          icon: ICONS.gauge,
-          name: 'Performance',
+          name: 'Appearance',
           status: () =>
-            `Video ${videosOn() ? 'on' : 'off'} · ${glass() === 'blur' ? 'frosted' : 'tinted'} glass · ${transitions() === 'fade' ? 'fade' : 'instant'}`,
-          menu: performance,
-        },
-        {
-          icon: ICONS.music,
-          name: 'Music background',
-          status: () => `${MUSIC_BACKGROUND_NAMES[musicBackground()]} · ${musicBackgroundSource()}`,
-          // OK steps through the choices.
-          run: () => setMusicBackground(MUSIC_BACKGROUNDS[(MUSIC_BACKGROUNDS.indexOf(musicBackground()) + 1) % MUSIC_BACKGROUNDS.length]),
+            `${this.bg.name()} · ${this.bg.mode() === 'video' ? 'video' : 'photo'} · ${glass() === 'blur' ? 'frosted' : 'tinted'} glass`,
+          menu: appearance,
         },
         {
           icon: ICONS.arrange,
@@ -295,7 +296,7 @@ export class SettingsPanel {
     };
 
     // Without "music" in calm-tv.json there's no Music screen to choose a background for.
-    if (!settings.config.music) this.root.rows = this.root.rows.filter((r) => r.name !== 'Music background');
+    if (!settings.config.music) appearance.rows = appearance.rows.filter((r) => r.name !== 'Music background');
 
     // The dashboard has no dock, Google TV home or TV settings.
     if (dashboardMode) this.root.rows = this.root.rows.filter((r) => !['Arrange dock', 'Google TV home', 'TV settings'].includes(r.name));

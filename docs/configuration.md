@@ -164,7 +164,7 @@ Assistant's media player services and media browser, so other players work too.
 - `background`: how the album's colour shows behind the Music screen. `"glow"` (the default) lights
   the background around the cover, `"wash"` washes the whole screen in its colour, `"solid"` puts
   the colour in place of your photo (like the Music panel), and `"none"` leaves the photo as it is.
-  Each TV can change it in **Settings → Music background**.
+  Each TV can change it in **Settings → Appearance → Music background**.
 
 ### `rooms`: the Smart Home bar, in order
 
@@ -222,7 +222,7 @@ services → Entities.
 { "glass": "blur", "videos": true, "transitions": "fade" }
 ```
 
-These are **defaults for every TV**. Each TV can override any of them in **Settings → Performance**,
+These are **defaults for every TV**. Each TV can override any of them in **Settings → Appearance**,
 whose rows say whether a value is the default, from calm-tv.json, or set on this TV. *Reset to calm-tv.json* there undoes a
 TV's own changes.
 
@@ -231,7 +231,7 @@ TV's own changes.
     free, because the blur is pre-computed. Over a video it's a live blur, which costs a few frames per
     second while switching screens on a TV.
   - `"tint"`: plain dark glass with no blur. The lightest option, and the same darkness as the frosted bars.
-- `videos`: `true` (the default) shows a looping video background, and Settings → Background offers
+- `videos`: `true` (the default) shows a looping video background, and Settings → Appearance → Background offers
   videos; `false` shows a photo, and the picker offers photos. Each kind remembers its own choice,
   so turning videos off and on again returns to the same clip.
 - `transitions`: how screens change. `"fade"` (the default) cross-fades; `"instant"` switches with no
@@ -247,7 +247,7 @@ TV's own changes.
 ```
 
 Paths starting with `/` are on Home Assistant (its `www` folder is `/local/`). Full `http(s)://`
-addresses also work. They're added after the built-in backgrounds in Settings → Background.
+addresses also work. They're added after the built-in backgrounds in Settings → Appearance → Background.
 
 - **Photos:** about 2560 px wide and landscape.
 - **Videos:** 1080p H.264 MP4, no audio, ideally under 20 MB, made with the `ffmpeg` command in

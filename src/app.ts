@@ -56,7 +56,7 @@ export class CalmTv {
   private bar: DashboardBar | null = null;
 
   start(): void {
-    // The picker offers videos while video backgrounds are on (Settings → Performance), photos otherwise.
+    // The picker offers videos while video backgrounds are on (Settings → Appearance), photos otherwise.
     this.picker = new BackgroundPicker(
       qs('#stage'),
       () =>
@@ -290,7 +290,7 @@ export class CalmTv {
     onLookChange(() => this.applyLook());
   }
 
-  /** Applies Settings → Performance (or calm-tv.json's defaults): glass, transitions, video, fps. */
+  /** Applies Settings → Appearance (or calm-tv.json's defaults): glass, transitions, video, fps. */
   private applyLook(): void {
     const root = document.documentElement;
     root.classList.toggle('glass-tint', glass() === 'tint');

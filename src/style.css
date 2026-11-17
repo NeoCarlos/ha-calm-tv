@@ -423,14 +423,14 @@ html.dbell-only .dbell { --u: 1vw; position: fixed; inset: 0; width: auto; right
 .setup-msg { min-height: 34px; margin-top: 18px; font-size: 24px; color: var(--warm); }
 .setup-hint { margin-top: 8px; font-size: 21px; color: var(--ink-faint); }
 
-/* Settings → Performance → Screen transitions: Instant switches screens with no animation. */
+/* Settings → Appearance → Screen transitions: Instant switches screens with no animation. */
 html.instant .section { transition: none !important; }
 
 /* A row that opens a sub-menu. */
 .dmore { margin-left: auto; padding-left: 16px; color: var(--ink-faint); display: flex; align-items: center; }
 .dmore svg { width: 26px; height: 26px; }
 
-/* Settings → Performance → Show frame rate. */
+/* Settings → Appearance → Show frame rate. */
 .fps { position: absolute; top: 28px; right: 36px; z-index: 90; padding: 8px 14px; border-radius: 12px; background: rgba(0, 0, 0, 0.55); color: #9fe7a8; font: 600 22px/1 'Manrope', system-ui, sans-serif; font-variant-numeric: tabular-nums; pointer-events: none; }
 .fps.slow { color: #ffb36b; }
 

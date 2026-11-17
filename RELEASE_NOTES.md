@@ -33,6 +33,9 @@
   Nothing playing, nothing shown. The album's colour glows around the cover; `"background"` under
   `music` (or **Settings → Music background**) picks glow, wash, solid or none. On the dashboard,
   Music is a tab.
+- **Settings → Appearance** gathers everything about how Calm TV looks: Background, Music
+  background, video backgrounds, frosted glass, screen transitions and the frame-rate counter (it
+  replaces Performance, and Background moves into it).
 - **Music panel**, under More on the Music screen: now playing,
   controls, speakers and library buttons (Artists, Albums, Playlists, Radio…) that open a browsable grid, through Home Assistant (made for Music Assistant). In demo mode too.
   The group button picks speakers to play along with the chosen one (media_player.join / unjoin).

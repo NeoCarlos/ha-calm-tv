@@ -185,18 +185,20 @@ try {
   await sleep(500);
   check(await has('.settings.open'), 'OK on the gear opens Settings');
   await allReachable('.settings.open', 'Settings');
-  await key('ArrowDown');
+  // Appearance: the background, the Music background and the look choices, in one sub-menu.
   await key('Enter');
-  check((await text('.settings .detail-title')) === 'Performance', 'OK opens a Settings sub-menu');
+  check((await text('.settings .detail-title')) === 'Appearance', 'OK opens a Settings sub-menu (Appearance)');
+  await allReachable('.settings.open', 'Appearance');
   await key('Escape');
   check((await text('.settings .detail-title')) === 'Settings', 'Back returns to Settings');
+  await key('Enter');
   // Music background: OK steps to the next choice, and the Music screen follows.
   const mbRow = await page("return [...document.querySelectorAll('.settings .drow')].findIndex((r) => r.querySelector('.dname')?.textContent === 'Music background');");
   await page(`document.querySelectorAll('.settings .drow')[${mbRow}].click();`);
-  check((await page("return document.querySelector('#secMusic').dataset.glow;")) === 'wash', 'Settings → Music background steps from Glow to Wash');
+  check((await page("return document.querySelector('#secMusic').dataset.glow;")) === 'wash', 'Settings → Appearance → Music background steps from Glow to Wash');
   await page(`document.querySelectorAll('.settings .drow')[${mbRow}].click(); document.querySelectorAll('.settings .drow')[${mbRow}].click(); document.querySelectorAll('.settings .drow')[${mbRow}].click();`);
   check((await page("return document.querySelector('#secMusic').dataset.glow;")) === 'glow', '…and round again to Glow');
-  await key('ArrowUp');
+  // Up to Background, the first row.
   await key('ArrowUp');
   await key('Enter');
   check(await has('.bgpick.open'), 'Background opens the picker');
@@ -328,6 +330,8 @@ try {
   await tap('#dashboardBar .tb-icon');
   check(await has('.settings.open'), 'the gear opens Settings');
   check(!(await page("return [...document.querySelectorAll('.settings .dname')].some((e) => e.textContent === 'TV settings');")), 'Settings leaves out the TV-only rows');
+  await tap('.settings .drow');
+  check((await text('.settings .detail-title')) === 'Appearance', 'tapping Appearance opens it');
   await tap('.settings .drow');
   check(await has('.bgpick.open'), 'tapping Background opens the picker');
   await tap('.bgpick-done');

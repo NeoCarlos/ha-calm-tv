@@ -95,8 +95,8 @@ const SCENES = {
       ['ArrowRight', 1100], ['ArrowRight', 1100], ['ArrowRight', 1100], ['ArrowRight', 1100], ['ArrowRight', 1800],
     ],
   },
-  // The Music screen (the art and the bar), More → Playlists → a playlist → Play all, then the
-  // kitchen speaker joins the group, and back to the Music screen.
+  // The Music screen (the art and the bar), More → the kitchen speaker joins the group, and back
+  // to the Music screen.
   music: {
     background: 'Stylized Forest Brook',
     setup: [['ArrowDown', 600], ['ArrowDown', 1500]],
@@ -104,21 +104,14 @@ const SCENES = {
       [null, 2500],
       // Along the bar to More.
       ['ArrowRight', 400], ['ArrowRight', 400], ['ArrowRight', 400], ['ArrowRight', 900],
-      ['Enter', 1800],
-      // Down the speakers to the library, then across to Playlists.
-      ['ArrowDown', 500], ['ArrowDown', 500], ['ArrowDown', 700],
-      ['ArrowRight', 400], ['ArrowRight', 400], ['ArrowRight', 900],
-      ['Enter', 1600],
-      ['Enter', 1600],
       ['Enter', 2200],
-      ['Escape', 900], ['Escape', 1000],
       // Up to the Group speakers button above the speakers, then add the kitchen.
-      ['ArrowUp', 400], ['ArrowUp', 400], ['ArrowUp', 400], ['ArrowUp', 900],
+      ['ArrowUp', 1000],
       ['Enter', 1300],
       ['Enter', 2200],
       ['Escape', 1500],
       // Back to the Music screen.
-      ['Escape', 2500],
+      ['Escape', 3000],
     ],
   },
   backgrounds: {

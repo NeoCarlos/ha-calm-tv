@@ -69,7 +69,7 @@ group speakers to play together. Made for [Music Assistant](https://music-assist
 Assistant's own media players. Contributed by [autokey-git](https://github.com/autokey-git); see
 [doorbell-and-music.md](docs/doorbell-and-music.md) to set it up.
 
-![The Music screen with an album cover and its controls, then More: playing the Sunday Morning playlist on the living room speaker, adding the kitchen speaker to play along, and back to the Music screen](docs/images/demo-music.webp)
+![The Music screen with an album cover and its controls, then More: adding the kitchen speaker to play along with the living room, and back to the Music screen](docs/images/demo-music.webp)
 
 ### Make it yours
 

@@ -55,7 +55,10 @@ To check the TV's page, open `chrome://inspect` with adb connected (debug builds
 
 - **Never commit or embed secrets.** No HA tokens, passwords or long-lived tokens in code, config or docs.
   The TV signs in through HA's own login page.
-- **Locks, garage doors and vacuums stay status only** unless the user explicitly asks otherwise.
+- **Locks, garage doors and vacuums may be controlled, but never by accident.** A single press, a
+  bumped remote or a repeating key must not unlock a lock or move a door: ask for a deliberate second
+  press on the same item, never act on a state that's unknown, stop (not reverse) a door that's
+  moving, and say so when Home Assistant refuses.
 - **Keep the WebView locked down.** `MainActivity` may only navigate to the page and the configured HA.
   Don't widen it, and never expose `CalmTvNative` to other sites.
 - **Controls act on the real house.** When testing with the user's HA, avoid toggling things they

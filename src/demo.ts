@@ -10,7 +10,7 @@ import { videos } from './videos';
 import { wallpapers } from './wallpapers';
 import { showRemote } from './demo-remote';
 import { ma } from './music-assistant';
-import artA from './wallpapers/00-mountain-lake-sunset.jpg?url';
+import artA from './demo-media/album-echoes.jpg?url';
 import artB from './wallpapers/01-stylized-forest-brook.jpg?url';
 
 /**
@@ -152,12 +152,18 @@ function initialStates() {
   ]);
 }
 
-/** Made-up music: a few albums, with the project's own photos as album art. */
+/**
+ * Made-up music, with covers made for the project: "Echoes of the Distant" by The Soundtracks
+ * (src/demo-media/album-echoes.jpg) on the even tracks, and the forest background on the odd one.
+ */
 const DEMO_TRACKS = [
-  { title: 'Slow Tide', artist: 'Harbor Lights', album: 'Evening Water', duration: 247 },
+  { title: 'Slow Tide', artist: 'The Soundtracks', album: 'Echoes of the Distant', duration: 247 },
   { title: 'Paper Lanterns', artist: 'The Quiet Hours', album: 'Small Rooms', duration: 213 },
-  { title: 'Northern Window', artist: 'Ada Lune', album: 'Winterlight', duration: 198 },
+  { title: 'Northern Window', artist: 'The Soundtracks', album: 'Echoes of the Distant', duration: 198 },
 ];
+
+/** The albums above, once each, with the cover of their first track. */
+const DEMO_ALBUMS = DEMO_TRACKS.flatMap((t, i) => (DEMO_TRACKS.findIndex((x) => x.album === t.album) === i ? [{ name: t.album, art: i }] : []));
 
 // Full addresses, so they aren't taken as paths on Home Assistant.
 const demoArt = (i: number) => new URL(i % 2 ? artB : artA, location.href).href;
@@ -175,7 +181,7 @@ function speaker(state: string, track: number, volume: number): [string, DemoAtt
 /** media_player/browse_media: a root with Playlists, and a few playlists in it. */
 const DEMO_PLAYLISTS = ['Sunday Morning', 'Dinner Jazz', 'Focus', 'Road Trip', 'Rainy Day', 'Kids Mix', 'Evening Piano'];
 
-const DEMO_ARTISTS = ['Harbor Lights', 'The Quiet Hours', 'Juniper Lane', 'Northbound', 'Ada Moss', 'Field Notes'];
+const DEMO_ARTISTS = ['The Soundtracks', 'The Quiet Hours', 'Juniper Lane', 'Northbound', 'Ada Moss', 'Field Notes'];
 
 const demoNode = (title: string, id: string, type: string, art: number, play = true, expand = false) =>
   ({ title, media_content_id: id, media_content_type: type, can_play: play, can_expand: expand, thumbnail: demoArt(art) });
@@ -189,12 +195,12 @@ function browseReply(id: string | undefined): BrowseNode {
   switch (kind) {
     case 'playlists': return { title: 'Playlists', children: DEMO_PLAYLISTS.map((name, i) => demoNode(name, `playlist/${i}`, 'playlist', i + 1, true, true)) };
     case 'artists': return { title: 'Artists', children: DEMO_ARTISTS.map((name, i) => demoNode(name, `artist/${i}`, 'artist', i, false, true)) };
-    case 'albums': return { title: 'Albums', children: DEMO_TRACKS.map((t, i) => demoNode(t.album, `album/${i}`, 'album', i, true, true)) };
+    case 'albums': return { title: 'Albums', children: DEMO_ALBUMS.map((a, i) => demoNode(a.name, `album/${i}`, 'album', a.art, true, true)) };
     case 'tracks':
     case 'playlist':
     case 'album':
       return { title: kind, can_play: kind !== 'tracks', children: DEMO_TRACKS.map((t, i) => demoNode(t.title, `track/${i}`, 'track', i)) };
-    case 'artist': return { title: DEMO_ARTISTS[Number(n)] ?? '', children: DEMO_TRACKS.slice(0, 3).map((t, i) => demoNode(t.album, `album/${i}`, 'album', i, true, true)) };
+    case 'artist': return { title: DEMO_ARTISTS[Number(n)] ?? '', children: DEMO_ALBUMS.map((a, i) => demoNode(a.name, `album/${i}`, 'album', a.art, true, true)) };
     default: return { title: kind, children: [] };
   }
 }

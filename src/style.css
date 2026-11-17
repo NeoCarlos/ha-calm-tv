@@ -714,6 +714,22 @@ html.glass-tint .mq-list { -webkit-backdrop-filter: none; backdrop-filter: none;
 .mxb.more svg { width: 30px; height: 30px; }
 .mxb.is-focus { opacity: 1; background: var(--plate); box-shadow: var(--plate-edge); }
 
+/* The wave under the time (music-section.ts): the played part lit; drifts while playing, lies flat
+   when paused. One pre-drawn path moved by a transform, so it costs the TV next to nothing. */
+.mx-wave { position: relative; width: 320px; height: 24px; margin: 14px auto 0; overflow: hidden; }
+#secMusic[data-wave='off'] .mx-wave { display: none; }
+.w-amp { position: absolute; inset: 0; transition: transform 0.9s ease; }
+#secMusic:not(.playing) .w-amp { transform: scaleY(0.12); }
+.mx-wave svg { position: absolute; left: 0; top: 0; width: 400px; height: 24px; overflow: visible; animation: mx-drift 5s linear infinite; animation-play-state: paused; }
+#secMusic.playing .mx-wave svg { animation-play-state: running; }
+.mx-wave path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.mx-wave > .w-amp > svg { color: rgba(255, 255, 255, 0.24); }
+.w-done { position: absolute; left: 0; top: 0; height: 100%; width: 0; overflow: hidden; color: rgba(255, 255, 255, 0.8); transition: width 1s linear; }
+@keyframes mx-drift { to { transform: translateX(-40px); } }
+/* Still when screens change instantly, or the device asks for less motion. */
+html.instant .mx-wave svg { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .mx-wave svg { animation: none !important; } }
+
 /* The album's colour behind the Music screen (Settings, or "background" under "music"):
    glow, a soft light behind and around the art; wash, the whole screen washed in it, strongest behind the art;
    solid, the Music panel's colour in place of the background. It fades in once the colour is read. */

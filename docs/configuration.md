@@ -165,6 +165,10 @@ Assistant's media player services and media browser, so other players work too.
   your photo as it is, `"glow"` lights the background around the cover, `"wash"` washes the whole
   screen in its colour, and `"solid"` puts the colour in place of your photo (like the Music panel).
   Each TV can change it in **Settings → Appearance → Music background**.
+- `wave`: the thin wave under the time, with the part already played lit. It drifts while music
+  plays and lies flat when paused (it shows the song's progress, not the sound: the music never goes
+  through the TV). `true` by default; `false` hides it. Each TV can change it in
+  **Settings → Appearance → Music wave**.
 
 ### `rooms`: the Smart Home bar, in order
 

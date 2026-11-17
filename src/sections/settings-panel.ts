@@ -12,7 +12,7 @@ import { apps, hasDockOrder, resetDockOrder } from '../apps';
 import {
   glass, glassSource, hasOverrides, resetToConfig, setGlass, setShowFps,
   setTransitions, setVideos, showFps, transitions, transitionsSource, videosOn, videosSource,
-  musicBackground, musicBackgroundSource, setMusicBackground,
+  musicBackground, musicBackgroundSource, setMusicBackground, musicWave, musicWaveSource, setMusicWave,
 } from '../look';
 
 // Line icons, matching the room panels' style.
@@ -28,6 +28,7 @@ const ICONS = {
   chevron: line('<path d="M9 5l7 7-7 7"/>'),
   ha: line('<path d="M3 11l9-7 9 7"/><path d="M5 9.5V20h14V9.5"/><circle cx="12" cy="14" r="2"/><path d="M12 16v4"/>'),
   link: line('<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>'),
+  wave: line('<path d="M2 12c2.5-4 4.5-4 7 0s4.5 4 7 0 4.5-4 6 0"/>'),
   music: line('<path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>'),
   file: line('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>'),
   video: line('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/>'),
@@ -122,6 +123,12 @@ export class SettingsPanel {
           status: () => `${MUSIC_BACKGROUND_NAMES[musicBackground()]} · ${musicBackgroundSource()}`,
           // OK steps through the choices.
           run: () => setMusicBackground(MUSIC_BACKGROUNDS[(MUSIC_BACKGROUNDS.indexOf(musicBackground()) + 1) % MUSIC_BACKGROUNDS.length]),
+        },
+        {
+          icon: ICONS.wave,
+          name: 'Music wave',
+          status: () => `${onOff(musicWave())} · under the song, how far it's played · ${musicWaveSource()}`,
+          run: () => setMusicWave(!musicWave()),
         },
         {
           icon: ICONS.video,
@@ -296,7 +303,7 @@ export class SettingsPanel {
     };
 
     // Without "music" in calm-tv.json there's no Music screen to choose a background for.
-    if (!settings.config.music) appearance.rows = appearance.rows.filter((r) => r.name !== 'Music background');
+    if (!settings.config.music) appearance.rows = appearance.rows.filter((r) => !r.name.startsWith('Music '));
 
     // The dashboard has no dock, Google TV home or TV settings.
     if (dashboardMode) this.root.rows = this.root.rows.filter((r) => !['Arrange dock', 'Google TV home', 'TV settings'].includes(r.name));

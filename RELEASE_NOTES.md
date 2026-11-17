@@ -32,7 +32,8 @@
   key press the bar fades and the art settles to the middle (the first OK, ← or → only wakes it).
   Nothing playing, nothing shown. The album's colour can show behind it: `"background"` under
   `music` (or **Settings → Appearance → Music background**) picks none (the default), glow, wash or
-  solid. On the dashboard,
+  solid. A thin wave under the time lights up as the song plays and drifts while it does (**Music
+  wave**, on by default). On the dashboard,
   Music is a tab.
 - **Settings → Appearance** gathers everything about how Calm TV looks: Background, Music
   background, video backgrounds, frosted glass, screen transitions and the frame-rate counter (it

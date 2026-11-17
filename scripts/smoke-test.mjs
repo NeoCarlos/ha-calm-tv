@@ -198,7 +198,14 @@ try {
   check((await page("return document.querySelector('#secMusic').dataset.glow;")) === 'glow', 'Settings → Appearance → Music background steps from None to Glow');
   await page(`document.querySelectorAll('.settings .drow')[${mbRow}].click(); document.querySelectorAll('.settings .drow')[${mbRow}].click(); document.querySelectorAll('.settings .drow')[${mbRow}].click();`);
   check((await page("return document.querySelector('#secMusic').dataset.glow;")) === 'none', '…and round again to None');
-  // Up to Background, the first row.
+  const waveRow = await page("return [...document.querySelectorAll('.settings .drow')].findIndex((r) => r.querySelector('.dname')?.textContent === 'Music wave');");
+  const waveOn = await page("return document.querySelector('#secMusic').dataset.wave;");
+  await page(`document.querySelectorAll('.settings .drow')[${waveRow}].click();`);
+  const waveOff = await page("return document.querySelector('#secMusic').dataset.wave;");
+  await page(`document.querySelectorAll('.settings .drow')[${waveRow}].click();`);
+  check(waveOn === 'on' && waveOff === 'off' && (await page("return document.querySelector('#secMusic').dataset.wave;")) === 'on', 'Music wave is on by default, and OK turns it off and on');
+  // Up from Music wave to Background, the first row.
+  await key('ArrowUp');
   await key('ArrowUp');
   await key('Enter');
   check(await has('.bgpick.open'), 'Background opens the picker');

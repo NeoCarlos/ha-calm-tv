@@ -91,6 +91,8 @@ const ConfigSchema = v.object({
       players: v.optional(v.array(v.object({ name: v.string(), entity: EntityId }))),
       library: v.optional(v.array(v.string())),
       background: v.optional(v.picklist(MUSIC_BACKGROUNDS, `should be one of ${MUSIC_BACKGROUNDS.join(', ')}`)),
+      /** The wave under the time on the Music screen (default true). */
+      wave: v.optional(v.boolean()),
     }),
   ),
   /** Weather entity for the Weather screen and the Smart Home "Outside" line. */

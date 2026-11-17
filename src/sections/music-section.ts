@@ -1,6 +1,6 @@
 import { ha } from '../ha';
 import { haPath, dashboardMode } from '../config';
-import { musicBackground, onLookChange } from '../look';
+import { musicBackground, musicWave, onLookChange } from '../look';
 import { child } from '../dom';
 import { artTint, ICON, speaker, type Control, type MusicPanel } from './music-panel';
 import type { Section } from './section';
@@ -19,6 +19,16 @@ const MORE = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12
 /** The bar's buttons, left to right. */
 const BUTTONS = ['prev', 'playpause', 'next', 'volDown', 'volUp', 'more'] as const;
 type Button = (typeof BUTTONS)[number];
+
+/**
+ * A thin wave under the time, with the part already played lit: it drifts while music plays and lies
+ * flat when it's paused. It doesn't hear the music (that goes straight to the speakers, never through
+ * the TV): it shows how far into the song, and that the screen is alive, not the sound itself.
+ * Settings → Appearance → Music wave, or "wave" under "music", turns it off.
+ */
+/** The wave's path: a gentle sine, wider than its box by two wavelengths so it can drift and loop. */
+const WAVE_PATH = `M0 12 Q10 6 20 12${' T'.concat(Array.from({ length: 19 }, (_, i) => `${40 + i * 20} 12`).join(' T'))}`;
+const waveSvg = `<svg viewBox="0 0 400 24" preserveAspectRatio="none"><path d="${WAVE_PATH}"/></svg>`;
 
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -41,11 +51,16 @@ export class MusicSection implements Section {
     this.el.id = 'secMusic';
     // How the album's colour shows behind it (Settings, or "background" under "music"; see style.css).
     this.el.dataset.glow = musicBackground();
-    onLookChange(() => { this.el.dataset.glow = musicBackground(); });
+    this.el.dataset.wave = musicWave() ? 'on' : 'off';
+    onLookChange(() => {
+      this.el.dataset.glow = musicBackground();
+      this.el.dataset.wave = musicWave() ? 'on' : 'off';
+    });
     this.el.innerHTML = `
       <div class="mx-glow"></div>
       <div class="mx-art"></div>
-      <div class="mx-caption"><div class="mx-title"></div><div class="mx-artist"></div><div class="mx-time"></div></div>
+      <div class="mx-caption"><div class="mx-title"></div><div class="mx-artist"></div><div class="mx-time"></div>
+        <div class="mx-wave"><div class="w-amp">${waveSvg}<div class="w-done">${waveSvg}</div></div></div></div>
       <div class="gb" id="mxbar">
         <div class="gb-mat"><div class="gb-img"></div><div class="gb-veil"></div></div>
         <div class="gb-edge"></div>
@@ -155,6 +170,7 @@ export class MusicSection implements Section {
 
     // Nothing playing: no art, no words, just the background (and the bar, until it fades).
     this.el.classList.toggle('idle', !on);
+    this.el.classList.toggle('playing', s?.state === 'playing');
     const pic = on && a?.entity_picture ? haPath(a.entity_picture) : '';
 
     if (pic !== this.artUrl) {
@@ -188,6 +204,8 @@ export class MusicSection implements Section {
 
     if (s?.state === 'playing' && a?.media_position_updated_at) pos += (Date.now() - Date.parse(a.media_position_updated_at)) / 1000;
     child(this.el, '.mx-time').textContent = dur ? `${mmss(Math.min(pos, dur))} / ${mmss(dur)}` : '';
+    // The lit part of the wave is how far into the song (a stream with no length: all of it).
+    child(this.el, '.w-done').style.width = `${dur ? Math.min(100, (pos / dur) * 100) : 100}%`;
   }
 }
 

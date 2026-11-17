@@ -77,7 +77,7 @@ export function transitions(): Transitions {
 }
 
 export function musicBackground(): MusicBackground {
-  return overrides.musicBackground ?? settings.config.music?.background ?? 'glow';
+  return overrides.musicBackground ?? settings.config.music?.background ?? 'none';
 }
 
 export function showFps(): boolean {

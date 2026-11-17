@@ -195,9 +195,9 @@ try {
   // Music background: OK steps to the next choice, and the Music screen follows.
   const mbRow = await page("return [...document.querySelectorAll('.settings .drow')].findIndex((r) => r.querySelector('.dname')?.textContent === 'Music background');");
   await page(`document.querySelectorAll('.settings .drow')[${mbRow}].click();`);
-  check((await page("return document.querySelector('#secMusic').dataset.glow;")) === 'wash', 'Settings → Appearance → Music background steps from Glow to Wash');
+  check((await page("return document.querySelector('#secMusic').dataset.glow;")) === 'glow', 'Settings → Appearance → Music background steps from None to Glow');
   await page(`document.querySelectorAll('.settings .drow')[${mbRow}].click(); document.querySelectorAll('.settings .drow')[${mbRow}].click(); document.querySelectorAll('.settings .drow')[${mbRow}].click();`);
-  check((await page("return document.querySelector('#secMusic').dataset.glow;")) === 'glow', '…and round again to Glow');
+  check((await page("return document.querySelector('#secMusic').dataset.glow;")) === 'none', '…and round again to None');
   // Up to Background, the first row.
   await key('ArrowUp');
   await key('Enter');

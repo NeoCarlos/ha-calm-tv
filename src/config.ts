@@ -33,10 +33,11 @@ const DeviceSchema = v.object({
 });
 
 /**
- * How the album's colour shows behind the Music screen: a glow around the cover, the screen washed
- * in it, a solid colour in place of the photo (as in the Music panel), or none.
+ * How the album's colour shows behind the Music screen: not at all (the default: just the photo),
+ * a glow around the cover, the screen washed in it, or a solid colour in place of the photo (as in
+ * the Music panel). Settings steps through them in this order.
  */
-export const MUSIC_BACKGROUNDS = ['glow', 'wash', 'solid', 'none'] as const;
+export const MUSIC_BACKGROUNDS = ['none', 'glow', 'wash', 'solid'] as const;
 
 export type MusicBackground = (typeof MUSIC_BACKGROUNDS)[number];
 
@@ -83,7 +84,7 @@ const ConfigSchema = v.object({
    * The Music screen and panel: `players` are the speakers, as { name, entity } (default: every
    * Music Assistant player), `library` names the media browser's top folders that get a button
    * (default: Music Assistant's Artists … Audiobooks), and `background` is how the album's colour
-   * shows behind the Music screen (default "glow"; each TV can change it in Settings).
+   * shows behind the Music screen (default "none"; each TV can change it in Settings).
    */
   music: v.optional(
     v.object({

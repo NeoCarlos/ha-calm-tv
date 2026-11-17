@@ -30,8 +30,9 @@
 - **Music screen** (with `"music"` in calm-tv.json, after Smart Home): the album art with the song,
   artist and time beneath it, and the main controls on a frosted bar. After a few seconds without a
   key press the bar fades and the art settles to the middle (the first OK, ← or → only wakes it).
-  Nothing playing, nothing shown. The album's colour glows around the cover; `"background"` under
-  `music` (or **Settings → Music background**) picks glow, wash, solid or none. On the dashboard,
+  Nothing playing, nothing shown. The album's colour can show behind it: `"background"` under
+  `music` (or **Settings → Appearance → Music background**) picks none (the default), glow, wash or
+  solid. On the dashboard,
   Music is a tab.
 - **Settings → Appearance** gathers everything about how Calm TV looks: Background, Music
   background, video backgrounds, frosted glass, screen transitions and the frame-rate counter (it

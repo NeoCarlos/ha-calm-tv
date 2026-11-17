@@ -47,6 +47,8 @@ try {
 
     if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
 
+    if (m.method === 'Fetch.requestPaused') ws.send(JSON.stringify({ id: 1e6 + Math.floor(Math.random() * 1e6), method: 'Fetch.failRequest', params: { requestId: m.params.requestId, errorReason: 'BlockedByClient' } }));
+
     if (m.method === 'Runtime.exceptionThrown') errors.push(m.params.exceptionDetails.exception?.description ?? m.params.exceptionDetails.text);
 
     if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') errors.push(m.params.args.map((a) => a.value ?? a.description).join(' '));
@@ -142,6 +144,21 @@ try {
   mode = 'remote';
   await open('demo', 1920, 1080);
   check(await has('#secApps.is-active'), 'starts on the Apps screen');
+  // The screens wrap round too: ↑ on the first goes to the last, ↓ comes back.
+  await key('ArrowUp');
+  const lastScreen = await page("return document.querySelector('.section.is-active')?.id;");
+  await key('ArrowDown');
+  check(lastScreen === 'secWeather' && await has('#secApps.is-active'), `↑ on the first screen goes to the last (${lastScreen}), ↓ comes back`);
+  // Holding ↑ (as the TV sends it): the first press wraps to the last screen, the repeats go on up
+  // through the screens, and stop at the first instead of circling again.
+  const up = { key: 'ArrowUp', code: 'ArrowUp', windowsVirtualKeyCode: KEYS.ArrowUp };
+  for (let i = 0; i < 9; i++) {
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', ...up });
+    await sleep(60);
+  }
+  await call('Input.dispatchKeyEvent', { type: 'keyUp', ...up });
+  await sleep(300);
+  check(await has('#secApps.is-active'), 'holding ↑ goes round once and stops at the first screen');
   // A screen name this version doesn't know (from a newer calm-tv.json) is skipped, not fatal.
   const decoded = await page(`const { decodeConfig } = await import('/src/config.ts');
     const c = decodeConfig(JSON.stringify({ screens: ['apps', 'some-future-screen', 'weather'], rooms: [{ name: 'Den', groups: [] }] }));
@@ -149,6 +166,25 @@ try {
   check(decoded === '[["apps","weather"],1]', `an unknown screen name is skipped, and the rest of calm-tv.json still loads (${decoded})`);
   await key('ArrowDown');
   check(await has('#secHome.is-active'), '↓ goes to Smart Home');
+  // The rooms wrap around like the dock: ← on the first goes to the last, → comes back.
+  const roomFocus = () => page("return Number(document.querySelector('#secHome .is-focus')?.dataset.item);");
+  const firstRoom = await roomFocus();
+  await key('ArrowLeft');
+  const wrapped = await roomFocus();
+  const lastRoom = await page("return document.querySelectorAll('#secHome [data-item]').length - 1;");
+  await key('ArrowRight');
+  check(firstRoom === 0 && wrapped === lastRoom && (await roomFocus()) === 0, `the rooms wrap: ← from the first goes to the last (${wrapped} of ${lastRoom})`);
+  // Held, as the TV's remote sends it: key-downs with no repeat flag and no key-up until the end. It
+  // stops at the last room instead of wrapping round.
+  const right = { key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: KEYS.ArrowRight };
+  for (let i = 0; i < lastRoom + 3; i++) {
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', ...right });
+    await sleep(60);
+  }
+  await call('Input.dispatchKeyEvent', { type: 'keyUp', ...right });
+  check((await roomFocus()) === lastRoom, `holding → stops at the last room, as the TV sends it (on ${await roomFocus()})`);
+  await key('ArrowRight');
+  check((await roomFocus()) === 0, '…and a new press then wraps to the first');
 
   await key('Enter');
   check(await has('.detail.open:not(.settings)'), 'OK opens a room');
@@ -186,32 +222,82 @@ try {
   await key('ArrowUp');
   // Held, → stops at the end of the dock (pressed one at a time it wraps round): the gear. Sent the
   // way the TV's remote sends a held button: key-downs with no repeat flag, then one key-up.
-  const right = { key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: KEYS.ArrowRight };
+  const heldRight = { key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: KEYS.ArrowRight };
   for (let i = 0; i < 14; i++) {
-    await call('Input.dispatchKeyEvent', { type: 'keyDown', ...right });
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', ...heldRight });
     await sleep(60);
   }
-  await call('Input.dispatchKeyEvent', { type: 'keyUp', ...right });
+  await call('Input.dispatchKeyEvent', { type: 'keyUp', ...heldRight });
   await sleep(200);
   await key('Enter');
   await sleep(500);
   check(await has('.settings.open'), 'OK on the gear opens Settings');
   await allReachable('.settings.open', 'Settings');
-  await key('ArrowDown');
+  // Appearance: the background, the Music background and the look choices, in one sub-menu.
   await key('Enter');
-  check((await text('.settings .detail-title')) === 'Performance', 'OK opens a Settings sub-menu');
+  check((await text('.settings .detail-title')) === 'Appearance', 'OK opens a Settings sub-menu (Appearance)');
+  await allReachable('.settings.open', 'Appearance');
   await key('Escape');
   check((await text('.settings .detail-title')) === 'Settings', 'Back returns to Settings');
-  await key('ArrowUp');
+  await key('Enter');
+  // Music background: OK steps to the next choice, and the Music screen follows.
+  const mbRow = await page("return [...document.querySelectorAll('.settings .drow')].findIndex((r) => r.querySelector('.dname')?.textContent === 'Music background');");
+  await page(`document.querySelectorAll('.settings .drow')[${mbRow}].click();`);
+  check((await page("return document.querySelector('#secMusic').dataset.glow;")) === 'glow', 'Settings → Appearance → Music background steps from None to Glow');
+  await page(`document.querySelectorAll('.settings .drow')[${mbRow}].click(); document.querySelectorAll('.settings .drow')[${mbRow}].click(); document.querySelectorAll('.settings .drow')[${mbRow}].click();`);
+  check((await page("return document.querySelector('#secMusic').dataset.glow;")) === 'none', '…and round again to None');
+  const waveRow = await page("return [...document.querySelectorAll('.settings .drow')].findIndex((r) => r.querySelector('.dname')?.textContent === 'Music wave');");
+  const waveOn = await page("return document.querySelector('#secMusic').dataset.wave;");
+  await page(`document.querySelectorAll('.settings .drow')[${waveRow}].click();`);
+  const waveOff = await page("return document.querySelector('#secMusic').dataset.wave;");
+  await page(`document.querySelectorAll('.settings .drow')[${waveRow}].click();`);
+  const fadeRow = await page("return [...document.querySelectorAll('.settings .drow')].findIndex((r) => r.querySelector('.dname')?.textContent === 'Fade when idle');");
+  const fadeStatus = () => page(`return document.querySelectorAll('.settings .drow')[${fadeRow}].querySelector('.dstatus').textContent;`);
+  const fadeOn = await fadeStatus();
+  await page(`document.querySelectorAll('.settings .drow')[${fadeRow}].click();`);
+  const fadeOff = await fadeStatus();
+  await page(`document.querySelectorAll('.settings .drow')[${fadeRow}].click();`);
+  check(fadeOn.startsWith('On') && fadeOff.startsWith('Off') && (await fadeStatus()).startsWith('On'), 'Fade when idle is on by default, and OK turns it off and on');
+  check(waveOn === 'on' && waveOff === 'off' && (await page("return document.querySelector('#secMusic').dataset.wave;")) === 'on', 'Music wave is on by default, and OK turns it off and on');
+  const fxRow = await page("return [...document.querySelectorAll('.settings .drow')].findIndex((r) => r.querySelector('.dname')?.textContent === 'Visual effects');");
+  const fx = () => page(`return document.querySelectorAll('.settings .drow')[${fxRow}].querySelector('.dstatus').textContent;`);
+  const fxBefore = await fx();
+  await page(`document.querySelectorAll('.settings .drow')[${fxRow}].click();`);
+  const fxOff = await fx();
+  await page(`document.querySelectorAll('.settings .drow')[${fxRow}].click();`);
+  check(fxBefore.startsWith('On') && fxOff.startsWith('Off') && (await fx()).startsWith('On'), `Visual effects switches glass and fades together (${fxOff.split(' · ')[1]})`);
+  // Up from Visual effects to Background, the first row.
+  for (let i = 0; i < 4; i++) await key('ArrowUp');
   await key('Enter');
   check(await has('.bgpick.open'), 'Background opens the picker');
   await allReachable('.bgpick.open', 'background picker');
   await key('Escape');
   check(!(await has('.bgpick.open')), 'Back closes the picker');
 
-  await key('ArrowLeft');
+  check(!(await page("return [...document.querySelectorAll('#secApps .tile')].some((t) => /music/i.test(t.getAttribute('aria-label') ?? ''));")), 'the dock has no Music tile');
+
+  // The Music screen: the art and the main controls; More opens the Music panel.
+  await key('ArrowDown');
+  await key('ArrowDown');
+  await sleep(600);
+  check(await has('#secMusic.is-active') && await has('#secMusic .mx-art img.loaded') && !(await has('#secMusic.no-cover')), 'the Music screen shows the album art once it has loaded');
+  const playLabel = () => page("return document.querySelector('#secMusic .mxb.is-focus')?.getAttribute('aria-label');");
+  const wasLabel = await playLabel();
   await key('Enter');
-  check(await has('.music.open'), 'OK on Music opens the Music panel');
+  check(wasLabel === 'Pause' && (await playLabel()) === 'Play', `OK on play/pause pauses (${wasLabel} → ${await playLabel()})`);
+  await key('Enter');
+  // Resting: after 8 s without input every screen's bar fades; the first key, any key, only wakes it.
+  await sleep(9000);
+  const rested = await page("return document.documentElement.classList.contains('calm');");
+  await key('ArrowUp');
+  check(rested && !(await page("return document.documentElement.classList.contains('calm');")) && await has('#secMusic.is-active'),
+    'after 8 s the screens rest; ↑ then only wakes them (still on Music)');
+  await page("document.documentElement.classList.add('calm');");
+  await key('Enter');
+  check((await playLabel()) === 'Pause', 'resting, OK only wakes the screens (the music keeps playing)');
+  for (let i = 0; i < 4; i++) await key('ArrowRight');
+  await key('Enter');
+  check(await has('.music.open'), 'More opens the Music panel');
   await allReachable('.music.open', 'Music');
   // → along a row of buttons goes to the next one, not diagonally to a closer one on the staggered row below.
   await page("document.querySelector('.music [data-focus=\"library-0\"]').dispatchEvent(new PointerEvent('pointerover', { pointerType: 'mouse', bubbles: true }));");
@@ -237,7 +323,7 @@ try {
   await key('Escape');
   check(!(await has('.music.browsing')), 'Back leaves the folder');
   await key('Escape');
-  check(!(await has('.music.open')), 'Back closes Music');
+  check(!(await has('.music.open')) && await has('#secMusic.is-active'), 'Back closes the panel, back on the Music screen');
 
   // ---------- the ★ side panel: a garage door moves only on a deliberate second OK ----------
   await open('demo&panel', 684, 1080);
@@ -265,13 +351,20 @@ try {
 
   // ---------- the Home Assistant dashboard: taps only ----------
   mode = 'touch';
+  // The demo's album cover can't be fetched here, like covers a TV can't reach on some networks.
+  // Only the image request fails: the dev server also serves a small module for the cover's address.
+  await call('Fetch.enable', { patterns: [{ urlPattern: '*album-echoes*', resourceType: 'Image' }] });
   await open('demo&dash', 1280, 800, true);
   check(await has('#dashboardBar') && await has('#secHome.is-active'), 'starts on Home, with the tab bar');
-  await tap('#dashboardBar .tb-tab:nth-child(2)');
+  await tap('#dashboardBar .tb-tab:nth-child(3)');
   check(await has('#secCalendar.is-active'), 'the Calendar tab shows Calendar');
   await swipe(640, 300, 0, 200);
-  check(await has('#secHome.is-active'), 'swiping down goes back to Home');
+  check(await has('#secMusic.is-active'), 'swiping down goes back a screen (Music)');
+  await tap('#dashboardBar .tb-tab:nth-child(1)');
 
+  await page("document.documentElement.classList.add('calm');");
+  await tap('#secHome [data-item="0"]');
+  check(!(await has('.detail.open')) && !(await page("return document.documentElement.classList.contains('calm');")), 'resting, a tap only wakes the screens');
   await tap('#secHome [data-item="0"]');
   check(await has('.detail.open:not(.settings)'), 'tapping a room opens it');
   await tap('.detail.open [data-focus="device-0-0"]');
@@ -319,18 +412,22 @@ try {
     check(Math.abs((await rowLeft()) - dragged) < 200, `tapping a card doesn’t snap the row back (${dragged} → ${await rowLeft()}px)`);
   }
   await swipe(row.x, row.y, 0, -200);
-  check(await has('#secCalendar.is-active'), 'swiping up on the rooms still changes screens');
+  check(await has('#secMusic.is-active'), 'swiping up on the rooms still changes screens');
   await tap('#dashboardBar .tb-tab:nth-child(1)');
 
-  await tap('#dashboardBar .tb-music');
-  check(await has('.music.open'), 'the Music tab opens Music');
+  await tap('#dashboardBar .tb-tab:nth-child(2)');
+  check(await has('#secMusic.is-active'), 'the Music tab shows the Music screen');
+  check(await has('#secMusic.no-cover .mx-art-empty') && !(await has('#secMusic .mx-art img')), 'a cover that can\u2019t be fetched shows the note placeholder, not an empty frame');
+  await call('Fetch.disable');
+  await tap('#secMusic .mxb.more');
+  check(await has('.music.open'), 'tapping More opens the Music panel');
   await tap('.music .mcat:nth-child(4)');
   await sleep(300);
   check(await has('.music.browsing .mcard'), 'tapping a library button opens it');
   await tap('.music-grid .mcard');
   await sleep(300);
   check(await has('.music.browsing .mcard'), 'tapping a playlist opens it');
-  await tap('#dashboardBar .tb-tab:nth-child(3)');
+  await tap('#dashboardBar .tb-tab:nth-child(4)');
   check(!(await has('.music.open')) && await has('#secWeather.is-active'), 'a screen tab closes Music and shows that screen');
   await tap('#secWeather [data-item="0"]');
   await tap('#dashboardBar .tb-tab:nth-child(1)');
@@ -338,7 +435,8 @@ try {
   await tap('#secHome [data-item="0"]');
   await tap('#dashboardBar .tb-tab:nth-child(1)');
   check(!(await has('.detail.open')), 'the tab of the screen on show closes a room on top of it');
-  await tap('#dashboardBar .tb-music');
+  await tap('#dashboardBar .tb-tab:nth-child(2)');
+  await tap('#secMusic .mxb.more');
   await tap('.music .mcat:nth-child(4)');
   await sleep(300);
   await tap('.music-grid .mcard');
@@ -351,6 +449,8 @@ try {
   await tap('#dashboardBar .tb-icon');
   check(await has('.settings.open'), 'the gear opens Settings');
   check(!(await page("return [...document.querySelectorAll('.settings .dname')].some((e) => e.textContent === 'TV settings');")), 'Settings leaves out the TV-only rows');
+  await tap('.settings .drow');
+  check((await text('.settings .detail-title')) === 'Appearance', 'tapping Appearance opens it');
   await tap('.settings .drow');
   check(await has('.bgpick.open'), 'tapping Background opens the picker');
   await tap('.bgpick-done');

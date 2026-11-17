@@ -1,7 +1,7 @@
-# Set up the doorbell window and the Music panel
+# Set up the doorbell window and the Music screen
 
 This guide connects two optional features to *your* Home Assistant: the doorbell window that pops
-up over whatever you're watching, and the Music panel for Music Assistant. You find your own entity
+up over whatever you're watching, and the Music screen for Music Assistant. You find your own entity
 ids in Home Assistant, then put them in `calm-tv.json`, the file the TV reads from Home Assistant's
 `www` folder (see [configuration.md](configuration.md)).
 
@@ -126,11 +126,17 @@ right after.
 If nothing pops up over other apps, Calm TV's accessibility service is off (an app update turns it
 off). On the TV: **Settings → Accessibility → Calm TV: Home button → On**, then open Calm TV once.
 
-## The Music panel
+## The Music screen
 
-A **Music** tile in the dock (just left of Settings) opens what's playing, play/pause, skip,
-shuffle, the queue, volume, the speakers, speaker grouping, and library buttons (Artists, Albums,
-Tracks, Playlists, Radio, Podcasts, Audiobooks) that you can browse and play from. It needs
+The **Music** screen (↓ from Smart Home) is a calm view of what's playing: the album art on its
+own, and a frosted bar with the song, previous / play-pause / next and volume. Like every screen, it
+rests after a few seconds without a key press: the bar fades away and the art and caption settle to
+the middle; the first key only brings the bar back. With nothing playing, a
+placeholder cover with a music note stands in for the art.
+
+**More** on the bar opens the Music panel: shuffle, the queue, the speakers, speaker grouping, and
+library buttons (Artists, Albums, Tracks, Playlists, Radio, Podcasts, Audiobooks) that you can
+browse and play from. Back returns to the Music screen. It needs
 [Music Assistant](https://music-assistant.io) set up in Home Assistant.
 
 ### In calm-tv.json
@@ -150,8 +156,7 @@ Tracks, Playlists, Radio, Podcasts, Audiobooks) that you can browse and play fro
 - `library` (optional): which library buttons to show, for example
   `"library": ["Albums", "Playlists", "Radio"]`. Leave it out for all seven.
 
-To put the Music tile somewhere else in the dock, add it to `"apps"` where you want it:
-`{ "name": "Music", "open": "music" }`. You can also move it with **Settings → Arrange dock**.
+To move the Music screen, or leave it out, list it in `"screens"` (see configuration.md).
 
 ### Using it with the remote
 

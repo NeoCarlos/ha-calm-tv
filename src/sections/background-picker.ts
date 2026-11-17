@@ -2,7 +2,7 @@ import { child } from '../dom';
 import { FocusGroup } from '../focus';
 import { hint } from '../hints';
 // Choose the background: a strip of thumbnails along the bottom, of videos while video backgrounds
-// are on (Settings → Performance), of photos otherwise. While it's open the screens fade away, so
+// are on (Settings → Appearance), of photos otherwise. While it's open the screens fade away, so
 // the chosen background shows full screen behind it.
 
 export interface BgChoice {

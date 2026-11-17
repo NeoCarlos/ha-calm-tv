@@ -1,6 +1,6 @@
 import { native } from '../native';
 import { ha, lastSignedOut } from '../ha';
-import { settings, dashboardMode } from '../config';
+import { settings, dashboardMode, MUSIC_BACKGROUNDS, type MusicBackground } from '../config';
 import { zones } from '../home-data';
 import { showSetup } from '../setup';
 import { showMaSetup } from '../ma-setup';
@@ -13,6 +13,8 @@ import { apps, hasDockOrder, resetDockOrder } from '../apps';
 import {
   glass, glassSource, hasOverrides, resetToConfig, setGlass, setShowFps,
   setTransitions, setVideos, showFps, transitions, transitionsSource, videosOn, videosSource,
+  musicBackground, musicBackgroundSource, setMusicBackground, musicWave, musicWaveSource, setMusicWave,
+  fadeWhenIdle, fadeSource, setFadeWhenIdle,
 } from '../look';
 
 // Line icons, matching the room panels' style.
@@ -29,12 +31,12 @@ const ICONS = {
   chevron: line('<path d="M9 5l7 7-7 7"/>'),
   ha: line('<path d="M3 11l9-7 9 7"/><path d="M5 9.5V20h14V9.5"/><circle cx="12" cy="14" r="2"/><path d="M12 16v4"/>'),
   link: line('<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>'),
+  rest: line('<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>'),
+  wave: line('<path d="M2 12c2.5-4 4.5-4 7 0s4.5 4 7 0 4.5-4 6 0"/>'),
   music: line('<path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>'),
   file: line('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>'),
-  gauge: line('<path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/><circle cx="12" cy="16" r="1.2"/>'),
   video: line('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/>'),
   glass: line('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 15l7-7M12 16l4-4"/>'),
-  fade: line('<rect x="3" y="6" width="11" height="12" rx="2"/><path d="M17 8v8M20 10v4"/>'),
   counter: line('<path d="M4 18h16M6 15l3-4 3 2 5-6"/>'),
   arrange: line('<rect x="3" y="8" width="5" height="8" rx="1.5"/><rect x="10" y="8" width="5" height="8" rx="1.5"/><path d="M18 12h4M20 10l2 2-2 2"/>'),
   reset: line('<path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/>'),
@@ -65,10 +67,15 @@ interface Menu {
 
 const onOff = (on: boolean) => (on ? 'On' : 'Off');
 
+/** The Music screen's backgrounds, as Settings names them. */
+const MUSIC_BACKGROUND_NAMES: Record<MusicBackground, string> = {
+  glow: 'Glow around the cover', wash: 'Washed in its colour', solid: 'Solid colour', none: 'None',
+};
+
 /**
  * Calm TV's own settings, opened from the gear tile at the end of the app dock.
  * Reuses the room panel's look (.detail, .drow), as a single narrower column. Rows can open a
- * sub-menu (Performance, Home Assistant) in place of the list; Back returns to the list above.
+ * sub-menu (Appearance, Home Assistant) in place of the list; Back returns to the list above.
  */
 export class SettingsPanel {
   private readonly el: HTMLElement;
@@ -99,9 +106,33 @@ export class SettingsPanel {
       : ha.status === 'offline' ? 'Can’t reach Home Assistant'
       : `Connected${ha.userName ? ` as ${ha.userName}` : ''}`;
 
-    const performance: Menu = {
-      title: 'Performance',
+    // Everything about how Calm TV looks, in one place: the background, the Music screen's, and the
+    // choices that trade looks for smoothness on slower TVs.
+    const appearance: Menu = {
+      title: 'Appearance',
       rows: [
+        {
+          icon: ICONS.wallpaper,
+          name: 'Background',
+          status: () => `${this.bg.name()} · ${this.bg.mode() === 'video' ? 'video' : 'photo'}${hint('chooseBackgroundRow')}`,
+          run: () => {
+            this.close();
+            this.bg.openPicker();
+          },
+        },
+        {
+          icon: ICONS.music,
+          name: 'Music background',
+          status: () => `${MUSIC_BACKGROUND_NAMES[musicBackground()]} · ${musicBackgroundSource()}`,
+          // OK steps through the choices.
+          run: () => setMusicBackground(MUSIC_BACKGROUNDS[(MUSIC_BACKGROUNDS.indexOf(musicBackground()) + 1) % MUSIC_BACKGROUNDS.length]),
+        },
+        {
+          icon: ICONS.wave,
+          name: 'Music wave',
+          status: () => `${onOff(musicWave())} · under the song, how far it's played · ${musicWaveSource()}`,
+          run: () => setMusicWave(!musicWave()),
+        },
         {
           icon: ICONS.video,
           name: 'Video backgrounds',
@@ -109,17 +140,31 @@ export class SettingsPanel {
           run: () => setVideos(!videosOn()),
         },
         {
+          // Frosted glass and screen fades together: the two effects that cost a slower TV the most.
+          // calm-tv.json can still set them apart ("display"); then this row says which is on.
           icon: ICONS.glass,
-          name: 'Frosted glass',
-          status: () =>
-            `${glass() === 'blur' ? 'On' : 'Off (tinted)'} · ${glassSource()}${videosOn() ? '' : ' · free over photos'}`,
-          run: () => setGlass(glass() === 'blur' ? 'tint' : 'blur'),
+          name: 'Visual effects',
+          status: () => {
+            const frosted = glass() === 'blur';
+            const fades = transitions() === 'fade';
+            const how = frosted && fades ? 'On · frosted glass, fading screens'
+              : !frosted && !fades ? 'Off · tinted glass, instant screens (lightest)'
+              : `Partly on · ${frosted ? 'frosted glass' : 'tinted glass'}, ${fades ? 'fading' : 'instant'} screens`;
+            const from = glassSource() === transitionsSource() ? ` · ${glassSource()}` : '';
+
+            return how + from;
+          },
+          run: () => {
+            const on = !(glass() === 'blur' && transitions() === 'fade');
+            setGlass(on ? 'blur' : 'tint');
+            setTransitions(on ? 'fade' : 'instant');
+          },
         },
         {
-          icon: ICONS.fade,
-          name: 'Screen transitions',
-          status: () => `${transitions() === 'fade' ? 'Fade' : 'Instant'} · ${transitionsSource()}`,
-          run: () => setTransitions(transitions() === 'fade' ? 'instant' : 'fade'),
+          icon: ICONS.rest,
+          name: 'Fade when idle',
+          status: () => `${onOff(fadeWhenIdle())} · after a few seconds, only the clock, weather or album art stay · ${fadeSource()}`,
+          run: () => setFadeWhenIdle(!fadeWhenIdle()),
         },
         {
           icon: ICONS.counter,
@@ -130,7 +175,7 @@ export class SettingsPanel {
         {
           icon: ICONS.reset,
           name: 'Reset to calm-tv.json',
-          status: () => (hasOverrides() ? 'Undo this TV’s changes above' : 'Nothing changed on this TV'),
+          status: () => (hasOverrides() ? 'Undo this TV’s changes above (the background stays)' : 'Nothing changed on this TV'),
           run: () => resetToConfig(),
         },
       ],
@@ -222,19 +267,10 @@ export class SettingsPanel {
       rows: [
         {
           icon: ICONS.wallpaper,
-          name: 'Background',
-          status: () => `${this.bg.name()} · ${this.bg.mode() === 'video' ? 'video' : 'photo'}${hint('chooseBackgroundRow')}`,
-          run: () => {
-            this.close();
-            this.bg.openPicker();
-          },
-        },
-        {
-          icon: ICONS.gauge,
-          name: 'Performance',
+          name: 'Appearance',
           status: () =>
-            `Video ${videosOn() ? 'on' : 'off'} · ${glass() === 'blur' ? 'frosted' : 'tinted'} glass · ${transitions() === 'fade' ? 'fade' : 'instant'}`,
-          menu: performance,
+            `${this.bg.name()} · ${this.bg.mode() === 'video' ? 'video' : 'photo'} · ${glass() === 'blur' ? 'frosted' : 'tinted'} glass`,
+          menu: appearance,
         },
         {
           icon: ICONS.arrange,
@@ -297,6 +333,9 @@ export class SettingsPanel {
         },
       ],
     };
+
+    // Without "music" in calm-tv.json there's no Music screen to choose a background for.
+    if (!settings.config.music) appearance.rows = appearance.rows.filter((r) => !r.name.startsWith('Music '));
 
     // The dashboard has no dock, Google TV home or TV settings.
     if (dashboardMode) this.root.rows = this.root.rows.filter((r) => !['Arrange dock', 'Home button', 'Google TV home', 'TV settings'].includes(r.name));

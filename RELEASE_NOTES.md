@@ -28,13 +28,32 @@
   Music panel) connects the TV to Music Assistant with its address and a token, kept on the TV only.
   Optional: it adds the whole queue (Home Assistant only passes what's playing and what's next),
   where OK jumps to a song. A token can also be given with `adb … --es maToken <token>`.
-- **Music Assistant logo** for the dock's Music tile.
 - **Music panel:** shuffle and queue buttons; a Group speakers button above the speakers, with
   Play everywhere; OK on the chosen speaker opens its own volume slider; the volume buttons turn
   every grouped speaker; speakers and library on frosted sheets like the dock, fixed-size speaker
   cards with scrolling names, bigger library buttons (3 across) and podcast icon; everything else
   fades back while grouping; Up from the controls reaches the library.
-- **Music panel:** a Music tile in the dock (with `"music"` in calm-tv.json) opens now playing,
+- **Music screen** (with `"music"` in calm-tv.json, after Smart Home): the album art with the song,
+  artist and time beneath it, and the main controls on a frosted bar. Resting, the bar fades and the
+  art settles to the middle.
+  Nothing playing: a placeholder cover with a music note, and no words. The album's colour can show behind it: `"background"` under
+  `music` (or **Settings → Appearance → Music background**) picks none (the default), glow, wash or
+  solid. A thin wave under the time lights up as the song plays and drifts while it does (**Music
+  wave**, on by default). On the dashboard,
+  Music is a tab.
+- **Every row wraps around**, like the dock: ← on the first room, day, event or Music button goes to
+  the last, and → on the last to the first. So do the screens: ↑ on the first goes to the last, and
+  ↓ on the last to the first (a swipe too, on the dashboard). Holding the arrow stops at the end, on the TV too: its
+  remote's held buttons aren't marked as repeats, so Calm TV tells them apart itself (src/keys.ts).
+- **Fade when idle:** after 8 seconds without a key press, every screen rests: its bar fades away
+  and only the clock, the weather, the album art… stay. The first key or tap only brings the bar
+  back, so ↑ or OK never acts by accident. Settings → Appearance, or `"fade"` under `display`.
+- **Settings → Appearance** gathers everything about how Calm TV looks: Background, Music
+  background and wave, video backgrounds, visual effects and the frame-rate counter (it replaces
+  Performance, and Background moves into it). **Visual effects** switches frosted glass and screen
+  fades together; calm-tv.json's `display` can still set them apart. The menu is more compact, and
+  scrolls if it ever gets taller than the screen.
+- **Music panel**, under More on the Music screen: now playing,
   controls, speakers and library buttons (Artists, Albums, Playlists, Radio…) that open a browsable grid, through Home Assistant (made for Music Assistant). In demo mode too.
   The group button picks speakers to play along with the chosen one (media_player.join / unjoin).
 - **Arrange dock:** Settings → Arrange dock moves tiles with the remote (OK picks up, ←/→ moves, OK puts down). The order is kept on the TV; "Back to the original order" resets it.

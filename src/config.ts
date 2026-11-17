@@ -34,8 +34,17 @@ const DeviceSchema = v.object({
   control: v.optional(v.pipe(EntityId, v.startsWith('cover.', 'should be a cover, like "cover.garage_door"'))),
 });
 
+/**
+ * How the album's colour shows behind the Music screen: not at all (the default: just the photo),
+ * a glow around the cover, the screen washed in it, or a solid colour in place of the photo (as in
+ * the Music panel). Settings steps through them in this order.
+ */
+export const MUSIC_BACKGROUNDS = ['none', 'glow', 'wash', 'solid'] as const;
+
+export type MusicBackground = (typeof MUSIC_BACKGROUNDS)[number];
+
 /** The screens, in their default order (↓ moves through them). */
-export const SCREENS = ['apps', 'smarthome', 'calendar', 'weather'] as const;
+export const SCREENS = ['apps', 'smarthome', 'music', 'calendar', 'weather'] as const;
 
 export type ScreenName = (typeof SCREENS)[number];
 
@@ -67,22 +76,25 @@ const ConfigSchema = v.object({
     v.array(
       v.object({
         name: v.string(),
-        /** The Android TV app to open. Or leave it out and set `open: "music"` for Calm TV's Music panel. */
+        /** The Android TV app to open. */
         package: v.optional(v.string()),
-        open: v.optional(v.picklist(['music'], 'should be "music"')),
         icon: v.optional(v.string()),
       }),
     ),
   ),
   /**
-   * The Music panel (a Music tile in the dock): `players` are the speakers, as { name, entity }
-   * (default: every Music Assistant player), and `library` names the media browser's top folders
-   * that get a button (default: Music Assistant's Artists … Audiobooks).
+   * The Music screen and panel: `players` are the speakers, as { name, entity } (default: every
+   * Music Assistant player), `library` names the media browser's top folders that get a button
+   * (default: Music Assistant's Artists … Audiobooks), and `background` is how the album's colour
+   * shows behind the Music screen (default "none"; each TV can change it in Settings).
    */
   music: v.optional(
     v.object({
       players: v.optional(v.array(v.object({ name: v.string(), entity: EntityId }))),
       library: v.optional(v.array(v.string())),
+      background: v.optional(v.picklist(MUSIC_BACKGROUNDS, `should be one of ${MUSIC_BACKGROUNDS.join(', ')}`)),
+      /** The wave under the time on the Music screen (default true). */
+      wave: v.optional(v.boolean()),
     }),
   ),
   /** Weather entity for the Weather screen and the Smart Home "Outside" line. */
@@ -143,6 +155,8 @@ const ConfigSchema = v.object({
       videos: v.optional(v.boolean('should be true or false')),
       /** How screens change: "fade" (the default) or "instant" (no animation; lightest on the TV). */
       transitions: v.optional(v.picklist(['fade', 'instant'], 'should be "fade" or "instant"')),
+      /** After a few seconds without a key press, the screens' bars fade and only the essentials stay (default true). */
+      fade: v.optional(v.boolean('should be true or false')),
     }),
   ),
   /** Extra backgrounds, e.g. files in Home Assistant's www folder ("/local/beach.jpg"). */
@@ -363,7 +377,8 @@ export async function loadConfig(): Promise<void> {
  */
 export function screenOrder(): ScreenName[] {
   const listed = settings.config.screens ?? SCREENS;
-  const rest = [...new Set(listed.filter((s) => s !== 'apps'))];
+  // The Music screen needs "music" in calm-tv.json (its speakers).
+  const rest = [...new Set(listed.filter((s) => s !== 'apps' && (s !== 'music' || !!settings.config.music)))];
 
   if (dashboardMode) return rest.length ? rest : ['smarthome'];
 

@@ -80,7 +80,7 @@ const SCENES = {
   },
   calendar: {
     background: 'Stylized Forest Brook',
-    setup: [['ArrowDown', 600], ['ArrowDown', 2500]],
+    setup: [['ArrowDown', 600], ['ArrowDown', 600], ['ArrowDown', 2500]],
     steps: [
       [null, 1500],
       ['ArrowRight', 900], ['ArrowRight', 900], ['ArrowRight', 900], ['ArrowRight', 900],
@@ -89,32 +89,29 @@ const SCENES = {
   },
   weather: {
     background: 'Mountain Lake Sunset',
-    setup: [['ArrowDown', 600], ['ArrowDown', 600], ['ArrowDown', 2500]],
+    setup: [['ArrowDown', 600], ['ArrowDown', 600], ['ArrowDown', 600], ['ArrowDown', 2500]],
     steps: [
       [null, 1500],
       ['ArrowRight', 1100], ['ArrowRight', 1100], ['ArrowRight', 1100], ['ArrowRight', 1100], ['ArrowRight', 1800],
     ],
   },
-  // The dock's Music tile (just left of Settings) → a playlist → Play all, then a second speaker
-  // joins the group.
+  // The Music screen (the art and the bar), More → the kitchen speaker joins the group, and back
+  // to the Music screen.
   music: {
     background: 'Stylized Forest Brook',
-    setup: [['ArrowRight', 200], ['ArrowRight', 200], ['ArrowRight', 200], ['ArrowRight', 200], ['ArrowRight', 200], ['ArrowRight', 200], ['ArrowRight', 1500]],
+    setup: [['ArrowDown', 600], ['ArrowDown', 1500]],
     steps: [
-      [null, 800],
-      ['Enter', 1800],
-      // Down the speakers to the library, then Playlists (second row).
-      ['ArrowDown', 500], ['ArrowDown', 500], ['ArrowDown', 700], ['ArrowDown', 900],
-      ['Enter', 1600],
-      ['Enter', 1600],
+      [null, 2500],
+      // Along the bar to More.
+      ['ArrowRight', 400], ['ArrowRight', 400], ['ArrowRight', 400], ['ArrowRight', 900],
       ['Enter', 2200],
-      ['Escape', 900], ['Escape', 1000],
       // Up to the Group speakers button above the speakers, then add the kitchen.
-      ['ArrowUp', 400], ['ArrowUp', 400], ['ArrowUp', 400], ['ArrowUp', 400], ['ArrowUp', 900],
+      ['ArrowUp', 1000],
       ['Enter', 1300],
       ['Enter', 2200],
-      ['Escape', 1800],
       ['Escape', 1500],
+      // Back to the Music screen.
+      ['Escape', 3000],
     ],
   },
   backgrounds: {

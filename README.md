@@ -62,13 +62,14 @@ of rain.
 
 ### Music
 
-An optional Music tile in the dock opens what's playing, with play/pause, skip and volume, and your
-speakers. Browse your library by artist, album or playlist and play it on any speaker, or group
-speakers to play together. Made for [Music Assistant](https://music-assistant.io), through Home
+An optional Music screen shows what's playing as just the album art over your background, with
+play/pause, skip and volume on a frosted bar that fades away when you're not using it. **More**
+opens your speakers and library: browse by artist, album or playlist and play it on any speaker, or
+group speakers to play together. Made for [Music Assistant](https://music-assistant.io), through Home
 Assistant's own media players. Contributed by [autokey-git](https://github.com/autokey-git); see
 [doorbell-and-music.md](docs/doorbell-and-music.md) to set it up.
 
-![Opening Music from the dock, playing the Sunday Morning playlist on the living room speaker, then adding the kitchen speaker to play along](docs/images/demo-music.webp)
+![The Music screen with an album cover and its controls, then More: adding the kitchen speaker to play along with the living room, and back to the Music screen](docs/images/demo-music.webp)
 
 ### Make it yours
 
@@ -89,8 +90,8 @@ On the Streamer that holds 60 fps at rest, dipping to about 52 fps while switchi
 video. Other Google TV and Android TV devices (Android 12 or newer) should run it, but I haven't
 tried any, and cheaper ones with less memory, like the Chromecast with Google TV, may struggle.
 
-You can check on your own TV: **Settings → Performance** has switches for video backgrounds,
-frosted glass and screen transitions, and a frame-rate counter, so
+You can check on your own TV: **Settings → Appearance** has switches for video backgrounds and
+visual effects (frosted glass and screen fades), and a frame-rate counter, so
 you can flip a setting and see the difference straight away. Each TV keeps its own choices; to set
 a default for every TV, use `display` in `calm-tv.json`. Your mileage may vary.
 

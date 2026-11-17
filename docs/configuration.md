@@ -47,7 +47,7 @@ default app dock.
   "calendar": { "events": "calendar.family", "meals": "calendar.meal_plan" },
   "doorbell": { "window": false, "camera": "camera.front_door", "ringing": "input_boolean.doorbell_ringing" },
   "rooms": [ … ],         // the Smart Home bar
-  "display": { "glass": "blur", "videos": true, "transitions": "fade" },
+  "display": { "glass": "blur", "videos": true, "transitions": "fade", "fade": true },
   "backgrounds": { "photos": [ … ], "videos": [ … ] }
 }
 ```
@@ -82,11 +82,12 @@ default app dock.
 "screens": ["apps", "smarthome", "weather"]
 ```
 
-- The four screens are `apps`, `smarthome`, `calendar` and `weather`. ↓ moves through them in the
-  order listed. This example has no Calendar.
+- The screens are `apps`, `smarthome`, `music`, `calendar` and `weather`. ↓ moves through them in
+  the order listed. This example has no Music or Calendar.
+- `music` shows only with a `music` section (below).
 - `apps` is always shown, and always first: it holds Settings. If you leave it out, it's added back.
 - A screen you leave out isn't loaded at all (no calendar or forecast requests).
-- Leave `screens` out for all four, in the order above.
+- Leave `screens` out for all of them, in the order above.
 
 ### `weather`
 
@@ -138,7 +139,7 @@ never connects, the quick picture stays.
 While the window is over another app, **Back** closes it (and doesn't reach the app underneath).
 It also closes by itself when `ringing` turns off.
 
-### `music`: the Music panel
+### `music`: the Music screen
 
 ```json
 {
@@ -149,9 +150,10 @@ It also closes by itself when `ringing` turns off.
 }
 ```
 
-With `music` in the file, a **Music** tile appears at the end of the dock, next to Settings (or wherever an `apps` entry
-`{ "name": "Music", "open": "music" }` puts it). It opens a panel with what the chosen speaker is
-playing (art, title, progress), play/pause, previous/next, volume and grouping, the speakers, and
+With `music` in the file, a **Music** screen comes after Smart Home (see `screens`): the album art
+alone, and a frosted bar with the song, previous / play-pause / next and volume, which fades away
+after a few seconds without a key press. **More** opens the Music panel: what the chosen speaker is
+playing (art, title, progress), the controls and grouping, the speakers, and
 a row of library buttons (Artists, Albums, Tracks, Playlists, Radio, Podcasts, Audiobooks). Each button opens a grid you can browse
 into (an artist's albums, an album's tracks, with "Play all") and play from, on the chosen speaker. Made for **Music Assistant**, but it only uses Home
 Assistant's media player services and media browser, so other players work too.
@@ -160,6 +162,14 @@ Assistant's media player services and media browser, so other players work too.
 - `library`: which of the media browser's top folders get a button, by exact name, in this order.
   Default `["Artists", "Albums", "Tracks", "Playlists", "Radio", "Podcasts", "Audiobooks"]` (Music
   Assistant's), so Home Assistant's other media sources (cameras, text-to-speech…) stay out.
+- `background`: how the album's colour shows behind the Music screen. `"none"` (the default) leaves
+  your photo as it is, `"glow"` lights the background around the cover, `"wash"` washes the whole
+  screen in its colour, and `"solid"` puts the colour in place of your photo (like the Music panel).
+  Each TV can change it in **Settings → Appearance → Music background**.
+- `wave`: the thin wave under the time, with the part already played lit. It drifts while music
+  plays and lies flat when paused (it shows the song's progress, not the sound: the music never goes
+  through the TV). `true` by default; `false` hides it. Each TV can change it in
+  **Settings → Appearance → Music wave**.
 
 ### `doors`: door pop-ups
 
@@ -263,8 +273,8 @@ services → Entities.
 { "glass": "blur", "videos": true, "transitions": "fade" }
 ```
 
-These are **defaults for every TV**. Each TV can override any of them in **Settings → Performance**,
-whose rows say whether a value is the default, from calm-tv.json, or set on this TV. *Reset to calm-tv.json* there undoes a
+These are **defaults for every TV**. Each TV can override any of them in **Settings → Appearance**
+(`glass` and `transitions` together, as *Visual effects*), whose rows say whether a value is the default, from calm-tv.json, or set on this TV. *Reset to calm-tv.json* there undoes a
 TV's own changes.
 
 - `glass`: how the bars along the bottom look.
@@ -272,11 +282,15 @@ TV's own changes.
     free, because the blur is pre-computed. Over a video it's a live blur, which costs a few frames per
     second while switching screens on a TV.
   - `"tint"`: plain dark glass with no blur. The lightest option, and the same darkness as the frosted bars.
-- `videos`: `true` (the default) shows a looping video background, and Settings → Background offers
+- `videos`: `true` (the default) shows a looping video background, and Settings → Appearance → Background offers
   videos; `false` shows a photo, and the picker offers photos. Each kind remembers its own choice,
   so turning videos off and on again returns to the same clip.
 - `transitions`: how screens change. `"fade"` (the default) cross-fades; `"instant"` switches with no
   animation, the lightest option on slow devices.
+- `fade`: `true` (the default) lets the screens rest. After 8 seconds without a key press, every
+  screen's bar fades away and only the essentials stay: the clock, the weather, the album art. The
+  first key (or tap) only brings the bar back, so ↑ or OK never does anything by accident. `false`
+  keeps the bars up (Settings → Appearance → *Fade when idle*).
 
 ### `backgrounds`: extra photos and videos
 
@@ -288,7 +302,7 @@ TV's own changes.
 ```
 
 Paths starting with `/` are on Home Assistant (its `www` folder is `/local/`). Full `http(s)://`
-addresses also work. They're added after the built-in backgrounds in Settings → Background.
+addresses also work. They're added after the built-in backgrounds in Settings → Appearance → Background.
 
 - **Photos:** about 2560 px wide and landscape.
 - **Videos:** 1080p H.264 MP4, no audio, ideally under 20 MB, made with the `ffmpeg` command in

@@ -74,9 +74,11 @@ export class AppsSection implements Section {
 
   /** The dock changed (Settings → Choose apps): new tiles. Returns the focused column, kept in range. */
   rebuild(col: number): number {
+    // On the Settings tile (the last), stay on it as apps come and go before it.
+    const onSettings = col === this.tiles.length - 1;
     this.buildTiles();
 
-    return Math.max(0, Math.min(col, this.tiles.length - 1));
+    return onSettings ? this.tiles.length - 1 : Math.max(0, Math.min(col, this.tiles.length - 1));
   }
 
   count(): number {

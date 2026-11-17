@@ -529,6 +529,8 @@ try {
   await sleep(500);
   await key('Enter');
   check(!(await rows())[2]?.status.startsWith('On the dock') && (await tiles()) === dockBefore, 'OK again takes it off');
+  await key('Escape'); await key('Escape'); await key('Escape');
+  check(await page("const t = [...document.querySelectorAll('.gb-track .tile')]; return t.at(-1).classList.contains('is-focus');"), 'leaving Settings, the Settings tile still has the focus');
 
   check(errors.length === 0, `no errors in the page${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
   ws.close();

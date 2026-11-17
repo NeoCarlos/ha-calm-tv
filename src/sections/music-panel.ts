@@ -103,7 +103,8 @@ export function artTint(url: string): Promise<string | null> {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onerror = () => {
-      console.warn('Album art colour: the picture could not be read', url);
+      // Only the host: Home Assistant's picture addresses carry an access token.
+      console.warn('Album art colour: the picture could not be read, from', new URL(url, location.href).host);
       resolve(null);
     };
     img.onload = () => {
@@ -294,7 +295,7 @@ export class MusicPanel {
               <div class="music-h music-spk-h">Speakers</div>
               <div class="music-note"></div>
             </div>
-            <div class="music-spk-wrap"><div class="music-speakers"></div><div class="music-spk-track"><i></i></div></div>
+            <div class="music-spk-wrap" data-nowrap><div class="music-speakers"></div><div class="music-spk-track"><i></i></div></div>
             <div class="music-h music-lib-h">Library</div>
             <div class="music-cats"></div>
           </div>
@@ -309,6 +310,8 @@ export class MusicPanel {
     mount.appendChild(this.el);
     this.nav = new FocusGroup(this.el, {
       onBack: () => this.back(),
+      // ← and → go round between the library and the controls level with it (the speakers don't).
+      wrap: 'sideways',
       onKey: (e) => this.sliderKey(e),
       onFocus: (id) => {
         // The focused speaker's group lights up, and a long name scrolls (see render).
@@ -639,6 +642,9 @@ export class MusicPanel {
         type: 'call_service', domain: 'music_assistant', service: 'get_queue',
         target: { entity_id: p.entity }, return_response: true,
       }));
+
+      // The queue may have closed, or another speaker's opened, while this was on its way.
+      if (!this.queueOpen || this.queueFor !== p.entity) return;
       this.queue = reply.response?.[p.entity] ?? null;
       this.queueMsg = this.queue ? '' : 'No queue';
 

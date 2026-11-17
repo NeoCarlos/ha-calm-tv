@@ -47,6 +47,13 @@ adb shell settings put secure accessibility_enabled 1
 
 Press Home. You should land on Calm TV.
 
+**After every update of the app, turn the service on again.** Android switches an accessibility
+service off whenever its app is reinstalled or updated (`adb install`, `npm run tv:install`, a new
+APK). Until it's back on, Home goes to Google's home screen, and the doorbell window, door pop-ups and
+the ★ panel don't show over other apps. Calm TV says so the first time it opens after such an update,
+and **Settings → Home button** shows whether it's on and opens the TV's settings for it. On the TV:
+**Settings → System → Accessibility → Calm TV: Home button → On**. (Or the adb commands above.)
+
 - **Back to Google's home screen** at any time: Calm TV → Settings → **Google TV home**.
   Opening Calm TV from Google's apps row switches back.
 - **Remove it completely:** `adb uninstall io.github.neocarlos.hacalmtv`, then remove the service from
@@ -97,6 +104,8 @@ npm run tv:install                     # or build and install on the connected T
 These are **debug** builds, signed with your machine's debug key. Installing a build signed with a
 different key over an existing install fails. Run `adb uninstall io.github.neocarlos.hacalmtv` first; that also
 clears the saved address and sign-in.
+
+After installing, turn the Home button service on again (see step 3): an update switches it off.
 
 `npm run build` alone only builds the web page into `dist/`. The TV app carries its own copy, made by
 `build:android`, so always use `tv:apk` or `tv:install` for the TV.

@@ -22,6 +22,7 @@ const line = (d: string) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 
 const ICONS = {
+  home: line('<path d="M4 11l8-6 8 6v8a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z"/>'),
   google: line('<path d="M4 11l8-6 8 6"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/>'),
   tv: line('<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>'),
   wallpaper: line('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="8.5" r="1.5"/>'),
@@ -251,11 +252,15 @@ export class SettingsPanel {
           },
           run: () => {
             this.close();
-            showMaSetup();
+            // When the setup closes, come back here (Settings → Home Assistant → Music Assistant).
+            showMaSetup(() => this.reopen(homeAssistant, 'Music Assistant'));
           },
         },
       ],
     };
+
+    // Without "music" in calm-tv.json there's no Music panel, so nothing to connect Music Assistant to.
+    if (!settings.config.music) homeAssistant.rows = homeAssistant.rows.filter((r) => r.name !== 'Music Assistant');
 
     this.root = {
       title: 'Settings',
@@ -298,6 +303,17 @@ export class SettingsPanel {
         },
         { icon: ICONS.ha, name: 'Home Assistant', status: connection, menu: homeAssistant },
         {
+          icon: ICONS.home,
+          name: 'Home button',
+          status: () => (native?.homeServiceOn?.()
+            ? 'On · Home returns here, and the doorbell, door pop-ups and ★ show over other apps'
+            : 'Off · Android turns it off after every update · OK, then Calm TV: Home button → On'),
+          run: () => {
+            this.close();
+            native?.openAccessibilitySettings?.();
+          },
+        },
+        {
           icon: ICONS.google,
           name: 'Google TV home',
           status: () => (onTv ? 'Switch to Google’s home screen. Open Calm TV from its apps to come back.' : 'Only on the TV'),
@@ -322,7 +338,9 @@ export class SettingsPanel {
     if (!settings.config.music) appearance.rows = appearance.rows.filter((r) => !r.name.startsWith('Music '));
 
     // The dashboard has no dock, Google TV home or TV settings.
-    if (dashboardMode) this.root.rows = this.root.rows.filter((r) => !['Arrange dock', 'Google TV home', 'TV settings'].includes(r.name));
+    if (dashboardMode) this.root.rows = this.root.rows.filter((r) => !['Arrange dock', 'Home button', 'Google TV home', 'TV settings'].includes(r.name));
+    // Only a TV app new enough to say whether the Home button service is on.
+    if (!native?.homeServiceOn) this.root.rows = this.root.rows.filter((r) => r.name !== 'Home button');
 
     this.el = document.createElement('div');
     this.el.className = 'detail settings';
@@ -382,6 +400,17 @@ export class SettingsPanel {
     this.open = true;
     // Visible first, so the rows can take the focus as they're built.
     this.el.classList.add('open');
+    this.build();
+  }
+
+  /** Opens Settings on a sub-menu, with the focus on one of its rows (by name). */
+  private reopen(menu: Menu, rowName: string): void {
+    this.show();
+    const i = this.root.rows.findIndex((r) => r.menu === menu);
+
+    if (i < 0) return;
+    this.level.focus = i;
+    this.stack.push({ menu, focus: Math.max(0, menu.rows.findIndex((r) => r.name === rowName)) });
     this.build();
   }
 

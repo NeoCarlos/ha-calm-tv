@@ -93,7 +93,8 @@ default app dock.
 
 A Home Assistant weather entity. **Open-Meteo** is recommended: it gives about 7 days of hourly
 forecast. Met.no, Home Assistant's default, only gives 48 hours, so the hour chart is empty from
-the third day on. Defaults to `weather.home`.
+the third day on. Defaults to `weather.home`. Its icon and temperature also sit beside the clock on the
+home screen.
 
 ### `calendar`
 
@@ -170,6 +171,52 @@ Assistant's media player services and media browser, so other players work too.
   through the TV). `true` by default; `false` hides it. Each TV can change it in
   **Settings → Appearance → Music wave**.
 
+### `doors`: door pop-ups
+
+```json
+{
+  "entities": [
+    { "name": "Front door", "entity": "binary_sensor.front_door" },
+    { "name": "Back door", "entity": "binary_sensor.back_door" }
+  ]
+}
+```
+
+When one of these opens, a small pop-up with an open door and its name shows in the top-right
+corner for 5 seconds, **even over other apps**, without pausing anything. If the door is still open
+after `leftOpen` seconds (default 10), it comes back with a red **!** and "Left open", and stays
+until the door closes. Several doors stack. A door closing never pops up, and a sensor that
+flickers as the door shuts is ignored.
+
+Two limits: if a door's sensor drops out (unavailable) while "Left open" is up, the pop-up goes
+and only comes back the next time the door opens; and over other apps, "Left open" is taken down
+after 30 minutes, even if the door is still open, so a pop-up can never be stuck on screen.
+
+- `entities`: open/closed sensors (`on` = open). Doors only: windows would pop up all day.
+- `leftOpen`: seconds before "Left open" (at least 5).
+- `popup`: `false` turns the pop-ups off but keeps the doors in the ★ side panel.
+
+### The ★ side panel
+
+On a Google TV remote, the **★** button (it normally opens Google's own side panel) opens Calm TV's
+panel on the right, over whatever is playing. The show keeps playing. It lists, from this file:
+
+- **Climate**: every `climate` device. OK on one, then ↑ ↓ change the set point. A thermostat
+  holding a range (heat/cool) shows both: ← → pick Heat or Cool, OK opens it, ↑ ↓ change it.
+- **Doors**: the `doors` entities, open or closed.
+- **Each room's other open/closed sensors** (e.g. the garage doors). A sensor with `control` (a
+  `cover.*`) opens or closes that cover, never by accident: OK, then OK again on the same door, at
+  least half a second later and within 4 seconds, with no other key between. While the door is
+  moving, the same two presses stop it. If its state can't be read, it doesn't move, and if Home
+  Assistant refuses, the row says so.
+- **Music**: what's playing on the `music` speakers, with play/pause.
+- **Cameras**: snapshots every few seconds; OK shows one big and live.
+
+While it's open the arrows, OK and Back go to the panel; volume and play/pause still reach the
+show. **Back**, **★** or **Home** closes it, and it closes by itself after a minute untouched. Calm
+TV only takes over ★ once it has your Home Assistant's address; until then ★ opens Google's panel. Needs the
+Home button accessibility service (Settings → Accessibility → Calm TV), like the doorbell window.
+
 ### `rooms`: the Smart Home bar, in order
 
 ```jsonc
@@ -206,7 +253,7 @@ Each device is `{ "type", "entity", "name" }` plus a few optional extras:
 | `scene` | `select.*` whose options are scenes (e.g. from the Hue integration) | A scene picker |
 | `camera` | `camera.*` that supports WebRTC (Nest, go2rtc, most modern integrations) | Live video |
 | `lock` | `lock.*` | **Status only**, like "Locked (Keypad) · 93% battery". Optional `batteries`, `operator` (a sensor saying how it was locked), `keypad` (a keypad battery sensor) |
-| `sensor` | `sensor.*` or `binary_sensor.*` | Status only: a value with its unit, Open/Closed, or "Someone there"/"Clear" for occupancy sensors |
+| `sensor` | `sensor.*` or `binary_sensor.*` | Status only: a value with its unit, Open/Closed, or "Someone there"/"Clear" for occupancy sensors. Optional `control`: a `cover.*` (e.g. the garage door this sensor watches) that the ★ side panel opens and closes |
 
 `name` defaults to the entity id. Entity ids are listed in Home Assistant under Settings → Devices &
 services → Entities.

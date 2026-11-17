@@ -689,7 +689,8 @@ html.glass-tint .mq-list { -webkit-backdrop-filter: none; backdrop-filter: none;
   border-radius: 32px; overflow: hidden; box-shadow: 0 50px 120px -30px rgba(0, 0, 0, 0.75);
   transition: opacity 0.6s ease, transform var(--drift) ease;
 }
-#secMusic .mx-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#secMusic .mx-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity 0.4s ease; }
+#secMusic .mx-art img.loaded { opacity: 1; }
 #secMusic .mx-art:empty { opacity: 0; }
 /* No cover: a note on a square of the bars' frosted glass, the size and shape of a cover. The glass
    is a .gb like the bars, so it follows the photo, video and Visual effects the same way. */

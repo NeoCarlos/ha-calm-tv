@@ -47,6 +47,8 @@ try {
 
     if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
 
+    if (m.method === 'Fetch.requestPaused') ws.send(JSON.stringify({ id: 1e6 + Math.floor(Math.random() * 1e6), method: 'Fetch.failRequest', params: { requestId: m.params.requestId, errorReason: 'BlockedByClient' } }));
+
     if (m.method === 'Runtime.exceptionThrown') errors.push(m.params.exceptionDetails.exception?.description ?? m.params.exceptionDetails.text);
 
     if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') errors.push(m.params.args.map((a) => a.value ?? a.description).join(' '));
@@ -265,7 +267,8 @@ try {
   // The Music screen: the art and the main controls; More opens the Music panel.
   await key('ArrowDown');
   await key('ArrowDown');
-  check(await has('#secMusic.is-active') && await has('#secMusic .mx-art img'), 'the Music screen shows the album art');
+  await sleep(600);
+  check(await has('#secMusic.is-active') && await has('#secMusic .mx-art img.loaded') && !(await has('#secMusic.no-cover')), 'the Music screen shows the album art once it has loaded');
   const playLabel = () => page("return document.querySelector('#secMusic .mxb.is-focus')?.getAttribute('aria-label');");
   const wasLabel = await playLabel();
   await key('Enter');
@@ -305,6 +308,9 @@ try {
 
   // ---------- the Home Assistant dashboard: taps only ----------
   mode = 'touch';
+  // The demo's album cover can't be fetched here, like covers a TV can't reach on some networks.
+  // Only the image request fails: the dev server also serves a small module for the cover's address.
+  await call('Fetch.enable', { patterns: [{ urlPattern: '*album-echoes*', resourceType: 'Image' }] });
   await open('demo&dash', 1280, 800, true);
   check(await has('#dashboardBar') && await has('#secHome.is-active'), 'starts on Home, with the tab bar');
   await tap('#dashboardBar .tb-tab:nth-child(3)');
@@ -368,6 +374,8 @@ try {
 
   await tap('#dashboardBar .tb-tab:nth-child(2)');
   check(await has('#secMusic.is-active'), 'the Music tab shows the Music screen');
+  check(await has('#secMusic.no-cover .mx-art-empty') && !(await has('#secMusic .mx-art img')), 'a cover that can\u2019t be fetched shows the note placeholder, not an empty frame');
+  await call('Fetch.disable');
   await tap('#secMusic .mxb.more');
   check(await has('.music.open'), 'tapping More opens the Music panel');
   await tap('.music .mcat:nth-child(4)');

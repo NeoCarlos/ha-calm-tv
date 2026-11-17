@@ -758,7 +758,10 @@ export class MusicPanel {
 
     if (pic !== this.artUrl) {
       this.artUrl = pic;
-      child(this.el, '.music-art').innerHTML = pic ? `<img src="${esc(pic)}" alt="">` : `<div class="music-art-empty">${ICON.note}</div>`;
+      const box = child(this.el, '.music-art');
+      box.innerHTML = pic ? `<img src="${esc(pic)}" alt="">` : `<div class="music-art-empty">${ICON.note}</div>`;
+      // A cover the TV can't load shows the note too, not an empty frame.
+      box.querySelector('img')?.addEventListener('error', () => { if (this.artUrl === pic) box.innerHTML = `<div class="music-art-empty">${ICON.note}</div>`; });
       void artTint(pic).then((rgb) => {
         if (this.artUrl === pic) this.el.style.setProperty('--art-tint', rgb ?? '40, 46, 52');
       });

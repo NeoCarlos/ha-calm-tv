@@ -144,10 +144,25 @@ export class MusicSection implements Section {
 
     if (pic !== this.artUrl) {
       this.artUrl = pic;
-      // No cover (nothing playing, or a stream without one): a note on frosted glass like the bars'
-      // (#mxfrost), so the screen still reads as Music.
-      child(this.el, '.mx-art').innerHTML = pic ? `<img src="${esc(pic)}" alt="">` : `<div class="mx-art-empty">${ICON.note}</div>`;
-      this.el.classList.toggle('no-cover', !pic);
+      // Until a cover has loaded (or when there's none: nothing playing, a stream without one, or a
+      // picture the TV can't reach), a note on frosted glass like the bars' (#mxfrost) stands in, so
+      // the screen still reads as Music. The cover fades in over it once it's there.
+      const art = child(this.el, '.mx-art');
+      art.innerHTML = `<div class="mx-art-empty">${ICON.note}</div>`;
+      this.el.classList.add('no-cover');
+
+      if (pic) {
+        const img = new Image();
+        img.alt = '';
+        img.addEventListener('load', () => {
+          if (this.artUrl !== pic) return;
+          img.classList.add('loaded');
+          this.el.classList.remove('no-cover');
+        });
+        img.addEventListener('error', () => img.remove());
+        img.src = pic;
+        art.appendChild(img);
+      }
       this.el.classList.remove('tinted');
 
       void artTint(pic).then((rgb) => {

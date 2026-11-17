@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- **Dashboard mode** (`?dash`): the app for a touch screen, as a Home Assistant dashboard. A tab bar
+  (time, screens, now playing, Music, Settings) replaces the Apps screen; everything can be tapped,
+  dimmers are dragged, the thermostat has − and +, and swiping changes screens. Inside a dashboard
+  it uses Home Assistant's own sign-in. `npm run publish:ha` puts it in Home Assistant's www folder
+  and updates the dashboard's address. See docs/dashboard.md.
+- **One input layer for every panel** (`src/focus.ts`): rooms, Settings, Music and the background
+  picker now share how the remote, touch and a mouse work, so OK and a tap always do the same thing.
+  On the TV, the arrows move to the nearest item by position, and going back the way you came
+  returns to where you were. An arrow keeps to its row (or column) when there's anything in it,
+  and a button held on the TV's remote (whose repeats aren't marked as such) stops at the end of a
+  row or menu instead of wrapping, and presses OK only once (src/keys.ts).
+- **`npm test`:** type-checks and drives the demo with the remote and with taps; it runs on every
+  pull request. A pull request template lists what to check.
+- After signing in with Home Assistant's login page, the address keeps its other settings (it used
+  to drop all of them).
+- Settings: the round button in a sub-menu now goes back a level when clicked, as Back does.
 - **Faster Settings:** moving up and down the Settings menu (and room panels) no longer repaints
   the frosted panel: the highlight is its own layer that only fades, like the dock's.
 - **Music Assistant in Settings:** Settings → Home Assistant → Music Assistant (or the gear in the

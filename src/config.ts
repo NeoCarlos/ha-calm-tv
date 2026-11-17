@@ -166,6 +166,15 @@ const NativeConfigResult = v.object({
  */
 export const demoMode = import.meta.env.VITE_DEMO_SITE === '1' || new URLSearchParams(location.search).has('demo');
 
+/**
+ * Dashboard mode (index.html?dash): for a touch screen at arm's length, such as a docked tablet. A tab
+ * bar under the screens replaces the Apps screen and the remote's arrows; everything can be tapped.
+ */
+export const dashboardMode = new URLSearchParams(location.search).has('dash');
+
+/** True when this page is served by Home Assistant itself, from its www folder (/local/…). */
+const servedByHa = !import.meta.env.DEV && location.pathname.startsWith('/local/');
+
 const CACHE_KEY = 'ct.config';
 const HA_URL_KEY = 'ct.haUrl';
 
@@ -193,6 +202,9 @@ function readHaUrl(): string {
   // The doorbell window and the ★ side panel over other apps have their own, smaller bridges.
   if (window.CalmTvDoorbell?.getHaUrl) return window.CalmTvDoorbell.getHaUrl();
   if (window.CalmTvPanel?.getHaUrl) return window.CalmTvPanel.getHaUrl();
+
+  // Served from Home Assistant's www folder: Home Assistant is this page's own server.
+  if (servedByHa) return location.origin;
 
   try {
     return devHaUrl || localStorage.getItem(HA_URL_KEY) || '';
@@ -250,9 +262,10 @@ export function decodeConfig(text: string): CalmTvConfig {
   throw new Error(`${where(first)}: ${first.message}`);
 }
 
-async function fetchProjectFile(): Promise<string> {
+/** calm-tv.json from `url`: the project folder in a browser, or Home Assistant's www folder. */
+async function fetchConfigFile(url: string): Promise<string> {
   try {
-    const r = await fetch('calm-tv.json', { cache: 'no-store' });
+    const r = await fetch(url, { cache: 'no-store' });
 
     // The dev server answers unknown paths with the page itself; only take real JSON.
     if (r.ok && (r.headers.get('content-type') ?? '').includes('json')) return await r.text();
@@ -291,8 +304,13 @@ export async function loadConfig(): Promise<void> {
     } else {
       settings.error = 'the TV app sent an unreadable answer';
     }
+  } else if (servedByHa) {
+    text = await fetchConfigFile('/local/calm-tv.json');
+    source = text ? 'Home Assistant' : '';
+
+    if (!text) settings.error = 'no calm-tv.json in Home Assistant’s www folder';
   } else {
-    text = await fetchProjectFile();
+    text = await fetchConfigFile('calm-tv.json');
     source = text ? 'this project folder' : '';
 
     if (!text) settings.error = 'no calm-tv.json in the project folder';
@@ -329,11 +347,18 @@ export async function loadConfig(): Promise<void> {
   }
 }
 
-/** The screens to show, in order: calm-tv.json's "screens" (or all four), always starting with Apps. */
+/**
+ * The screens to show, in order: calm-tv.json's "screens" (or all four), always starting with Apps.
+ * The dashboard has no Apps screen: a web page can't open other apps, and its tab bar holds Music and
+ * Settings instead.
+ */
 export function screenOrder(): ScreenName[] {
   const listed = settings.config.screens ?? SCREENS;
+  const rest = [...new Set(listed.filter((s) => s !== 'apps'))];
 
-  return ['apps', ...new Set(listed.filter((s) => s !== 'apps'))];
+  if (dashboardMode) return rest.length ? rest : ['smarthome'];
+
+  return ['apps', ...rest];
 }
 
 /** A path on Home Assistant ("/local/x.jpg") as a full address; full addresses are kept. */

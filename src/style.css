@@ -671,7 +671,79 @@ html.glass-tint .mq-list { -webkit-backdrop-filter: none; backdrop-filter: none;
 .mcard.focus .mcard-name { color: var(--ink); }
 .mcard.started .mcard-name::before { content: '▶ '; color: var(--warm); }
 .music-lib-msg { font-size: 22px; color: var(--ink-faint); padding: 8px 4px; }
-.music-hint { position: absolute; right: 110px; bottom: 42px; font-size: 20px; color: var(--ink-faint); }
+.music-hint { position: absolute; right: 110px; bottom: 42px; font: inherit; font-size: 20px; color: var(--ink-faint); background: none; border: 0; padding: 0; }
+
+/* Buttons only a touch screen needs: hidden on the TV, shown in dashboard mode (below). */
+.ctl-step, .bgpick-done { display: none; }
+
+/* ---------- Dashboard mode (index.html?dash; dashboard-bar.ts) ----------
+   The 1920×1080 screens sit above a tab bar; the remote's hints give way to things to tap. */
+html.dashboard #hint { display: none; }
+/* The screens don't scroll: a finger dragged up or down is a swipe to the next screen (app.ts),
+   not a page scroll the browser would otherwise take over (and cancel the swipe). */
+html.dashboard #sections { touch-action: none; }
+/* A row of cards on a touch screen: a real scrolling strip you can grab and throw (row-scroll.ts).
+   Sideways drags belong to it; up and down still change screens. */
+.touch-row { overflow-x: auto; overflow-y: hidden; touch-action: pan-x; overscroll-behavior-x: contain; scrollbar-width: none; }
+.touch-row::-webkit-scrollbar { display: none; }
+.touch-row > * { transition: none; }
+html.dashboard .tile, html.dashboard .drow, html.dashboard .mcard, html.dashboard .mcat, html.dashboard .mspk, html.dashboard .mbtn { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+html.dashboard * { -webkit-tap-highlight-color: transparent; }
+#dashboardBar {
+  position: fixed; left: 0; right: 0; bottom: 0; height: 76px; z-index: 100;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; padding: 0 20px;
+  background: rgba(8, 12, 15, 0.92); border-top: 1px solid rgba(255, 255, 255, 0.08); color: var(--ink);
+  font-family: 'Manrope', system-ui, sans-serif; user-select: none;
+}
+.tb-time { display: flex; align-items: baseline; gap: 12px; min-width: 0; white-space: nowrap; }
+.tb-clock { font-size: 26px; font-weight: 600; letter-spacing: -0.5px; }
+.tb-date { font-size: 15px; color: var(--ink-dim); overflow: hidden; text-overflow: ellipsis; }
+.tb-tabs { display: flex; gap: 6px; }
+.tb-end { display: flex; justify-content: flex-end; align-items: center; gap: 8px; min-width: 0; }
+.tb-btn {
+  display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 18px; border-radius: 24px; border: 0;
+  background: transparent; color: var(--ink-dim); font: inherit; font-size: 16px; font-weight: 600;
+}
+.tb-btn svg { width: 22px; height: 22px; flex: 0 0 auto; }
+.tb-btn.on { background: rgba(255, 255, 255, 0.14); color: var(--ink); }
+.tb-btn:active { background: rgba(255, 255, 255, 0.2); }
+.tb-icon { padding: 0 13px; }
+.tb-now {
+  display: flex; align-items: center; gap: 10px; height: 48px; max-width: 260px; padding: 0 14px; border-radius: 24px; border: 0;
+  background: rgba(255, 255, 255, 0.08); color: var(--ink); font: inherit; text-align: left; min-width: 0;
+}
+.tb-now[hidden] { display: none; }
+.tb-now-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.tb-now-text b, .tb-now-text em { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-now-text b { font-size: 14px; font-weight: 600; }
+.tb-now-text em { font-size: 12px; font-style: normal; color: var(--ink-dim); }
+.tb-eq { display: flex; align-items: flex-end; gap: 2px; height: 14px; flex: 0 0 auto; }
+.tb-eq i { width: 3px; background: var(--warm); border-radius: 1px; animation: tb-eq 1s ease-in-out infinite; }
+.tb-eq i:nth-child(2) { animation-delay: -0.3s; }
+.tb-eq i:nth-child(3) { animation-delay: -0.6s; }
+@keyframes tb-eq { 0%, 100% { height: 4px; } 50% { height: 14px; } }
+html.instant .tb-eq i { animation: none; height: 10px; }
+/* Narrow screens: the date gives way first, then the tab labels. */
+@media (max-width: 1100px) { .tb-date { display: none; } }
+@media (max-width: 820px) { .tb-btn span { display: none; } .tb-btn { padding: 0 13px; } }
+
+/* Touch controls in the panels */
+html.dashboard .ctl-step {
+  display: inline-flex; align-items: center; justify-content: center; align-self: center; width: 96px; height: 96px; margin: 0 28px;
+  border-radius: 50%; border: 0; background: rgba(255, 255, 255, 0.14); color: var(--ink); font: inherit; font-size: 64px; font-weight: 300; letter-spacing: 0;
+}
+html.dashboard .ctl-step:active { background: rgba(255, 255, 255, 0.26); }
+html.dashboard .ctl-light .ctl-bar { height: 44px; border-radius: 22px; width: 520px; touch-action: none; cursor: pointer; }
+html.dashboard .ctl-light .ctl-name { cursor: pointer; }
+html.dashboard .music-hint, html.dashboard .bgpick-done {
+  display: inline-block; padding: 12px 30px; border-radius: 30px; background: rgba(255, 255, 255, 0.14); color: var(--ink); font-weight: 600; font-size: 24px;
+}
+html.dashboard .bgpick-head { pointer-events: auto; }
+html.dashboard .bgpick-done { margin-left: auto; }
+/* Settings: the remote reads "Back to close", a finger taps the round button. */
+.settings .detail-close { display: none; }
+html.dashboard .settings .detail-close { display: flex; }
+html.dashboard .settings .detail-hint { display: none; }
 
 /* Door pop-ups (doors.ts): small glass cards in the top-right corner, newest at the bottom. */
 .door-pops { position: absolute; right: 56px; top: 56px; z-index: 70; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; pointer-events: none; }

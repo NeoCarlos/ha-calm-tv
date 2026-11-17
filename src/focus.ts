@@ -1,3 +1,5 @@
+import { isHeld } from './keys';
+
 // The shared input layer for Calm TV's panels (a room, Settings, Music, the background picker…).
 //
 // A panel marks each thing you can land on with `data-focus="<id>"` and gives it a click listener
@@ -114,7 +116,7 @@ export class FocusGroup {
 
     if (!dir) return;
     e.preventDefault();
-    this.move(dir, e.repeat);
+    this.move(dir, isHeld(e));
   }
 
   /** Moves the focus one step `dir`, to the nearest item that way; at an edge it stays put, or wraps (see `wrap`). */
@@ -180,7 +182,8 @@ function farthest(from: HTMLElement, items: HTMLElement[], dir: Direction): HTML
 
 /**
  * The nearest item from `from` towards `dir`. Items lined up with it (overlapping across the
- * direction of travel) win over closer ones off to the side, so moving down a column stays in it.
+ * direction of travel) always win over ones off to the side, so moving along a row stays in it, and
+ * down a column too; only when nothing is lined up does the nearest one off to the side count.
  */
 export function nearest(from: HTMLElement, items: HTMLElement[], dir: Direction): HTMLElement | null {
   const a = from.getBoundingClientRect();
@@ -203,7 +206,9 @@ export function nearest(from: HTMLElement, items: HTMLElement[], dir: Direction)
       ? Math.max(0, b.left - a.right, a.left - b.right)
       : Math.max(0, b.top - a.bottom, a.top - b.bottom);
 
-    const score = along + across * 3;
+    // Lined up (overlapping across the way you move) always wins: → from the first button of a row
+    // goes to the next one, never diagonally to a closer button on a staggered row below.
+    const score = (across > 0 ? 100000 : 0) + along + across * 3;
 
     if (score < bestScore) {
       bestScore = score;

@@ -10,7 +10,9 @@
 - **One input layer for every panel** (`src/focus.ts`): rooms, Settings, Music and the background
   picker now share how the remote, touch and a mouse work, so OK and a tap always do the same thing.
   On the TV, the arrows move to the nearest item by position, and going back the way you came
-  returns to where you were.
+  returns to where you were. An arrow keeps to its row (or column) when there's anything in it,
+  and a button held on the TV's remote (whose repeats aren't marked as such) stops at the end of a
+  row or menu instead of wrapping, and presses OK only once (src/keys.ts).
 - **`npm test`:** type-checks and drives the demo with the remote and with taps; it runs on every
   pull request. A pull request template lists what to check.
 - After signing in with Home Assistant's login page, the address keeps its other settings (it used

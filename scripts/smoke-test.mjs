@@ -179,8 +179,15 @@ try {
   await key('Escape');
 
   await key('ArrowUp');
-  // Held, → stops at the end of the dock (pressed one at a time it wraps round): the gear.
-  for (let i = 0; i < 14; i++) await key('ArrowRight', true);
+  // Held, → stops at the end of the dock (pressed one at a time it wraps round): the gear. Sent the
+  // way the TV's remote sends a held button: key-downs with no repeat flag, then one key-up.
+  const right = { key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: KEYS.ArrowRight };
+  for (let i = 0; i < 14; i++) {
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', ...right });
+    await sleep(60);
+  }
+  await call('Input.dispatchKeyEvent', { type: 'keyUp', ...right });
+  await sleep(200);
   await key('Enter');
   await sleep(500);
   check(await has('.settings.open'), 'OK on the gear opens Settings');
@@ -201,6 +208,11 @@ try {
   await key('Enter');
   check(await has('.music.open'), 'OK on Music opens the Music panel');
   await allReachable('.music.open', 'Music');
+  // → along a row of buttons goes to the next one, not diagonally to a closer one on the staggered row below.
+  await page("document.querySelector('.music [data-focus=\"library-0\"]').dispatchEvent(new PointerEvent('pointerover', { pointerType: 'mouse', bubbles: true }));");
+  await key('ArrowRight');
+  check((await page("return document.querySelector('.music .focus')?.dataset.focus;")) === 'library-1', 'Music library: → from Artists goes to Albums, the next one in its row');
+  await page("document.querySelector('.music [data-focus=\"speaker-0\"]').dispatchEvent(new PointerEvent('pointerover', { pointerType: 'mouse', bubbles: true }));");
   await key('ArrowDown');
   await key('ArrowDown');
   await key('ArrowRight');

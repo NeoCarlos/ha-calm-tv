@@ -244,8 +244,16 @@ try {
   // Rows are grabbed and dragged like any touch list (row-scroll.ts), not stepped one card per swipe.
   const rowLeft = () => page("return Math.round(document.querySelector('#secHome .touch-row').scrollLeft);");
   const row = await page("const r = document.querySelector('#secHome .touch-row').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 };");
-  await call('Input.synthesizeScrollGesture', { x: row.x, y: row.y, xDistance: -300, yDistance: 0, gestureSourceType: 'touch', speed: 1200 });
-  await sleep(600);
+  // A finger moving in small steps, as on a real screen (Chrome on Linux ignores synthesizeScrollGesture).
+  await call('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: row.x, y: row.y }] });
+
+  for (let i = 1; i <= 15; i++) {
+    await call('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: row.x - i * 20, y: row.y }] });
+    await sleep(16);
+  }
+
+  await call('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await sleep(800);
   const dragged = await rowLeft();
   const why = dragged > 100 ? '' : await page(`const s = document.querySelector('#secHome .touch-row');
     const at = document.elementFromPoint(${row.x}, ${row.y});

@@ -161,6 +161,10 @@ Assistant's media player services and media browser, so other players work too.
 - `library`: which of the media browser's top folders get a button, by exact name, in this order.
   Default `["Artists", "Albums", "Tracks", "Playlists", "Radio", "Podcasts", "Audiobooks"]` (Music
   Assistant's), so Home Assistant's other media sources (cameras, text-to-speech…) stay out.
+- `background`: how the album's colour shows behind the Music screen. `"glow"` (the default) lights
+  the background around the cover, `"wash"` washes the whole screen in its colour, `"solid"` puts
+  the colour in place of your photo (like the Music panel), and `"none"` leaves the photo as it is.
+  Each TV can change it in **Settings → Music background**.
 
 ### `rooms`: the Smart Home bar, in order
 

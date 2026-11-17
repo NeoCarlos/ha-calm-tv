@@ -32,6 +32,14 @@ const DeviceSchema = v.object({
   keypad: v.optional(EntityId),
 });
 
+/**
+ * How the album's colour shows behind the Music screen: a glow around the cover, the screen washed
+ * in it, a solid colour in place of the photo (as in the Music panel), or none.
+ */
+export const MUSIC_BACKGROUNDS = ['glow', 'wash', 'solid', 'none'] as const;
+
+export type MusicBackground = (typeof MUSIC_BACKGROUNDS)[number];
+
 /** The screens, in their default order (↓ moves through them). */
 export const SCREENS = ['apps', 'smarthome', 'music', 'calendar', 'weather'] as const;
 
@@ -72,14 +80,16 @@ const ConfigSchema = v.object({
     ),
   ),
   /**
-   * The Music panel (a Music tile in the dock): `players` are the speakers, as { name, entity }
-   * (default: every Music Assistant player), and `library` names the media browser's top folders
-   * that get a button (default: Music Assistant's Artists … Audiobooks).
+   * The Music screen and panel: `players` are the speakers, as { name, entity } (default: every
+   * Music Assistant player), `library` names the media browser's top folders that get a button
+   * (default: Music Assistant's Artists … Audiobooks), and `background` is how the album's colour
+   * shows behind the Music screen (default "glow"; each TV can change it in Settings).
    */
   music: v.optional(
     v.object({
       players: v.optional(v.array(v.object({ name: v.string(), entity: EntityId }))),
       library: v.optional(v.array(v.string())),
+      background: v.optional(v.picklist(MUSIC_BACKGROUNDS, `should be one of ${MUSIC_BACKGROUNDS.join(', ')}`)),
     }),
   ),
   /** Weather entity for the Weather screen and the Smart Home "Outside" line. */

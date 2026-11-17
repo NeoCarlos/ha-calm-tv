@@ -1,12 +1,13 @@
 import { ha } from '../ha';
 import { haPath, dashboardMode } from '../config';
+import { musicBackground, onLookChange } from '../look';
 import { child } from '../dom';
 import { artTint, ICON, speaker, type Control, type MusicPanel } from './music-panel';
 import type { Section } from './section';
 
 // The Music screen: a calm view of what's playing, like the Weather and Calendar screens. The album
-// art sits alone above the frosted bar, which holds the song and the main controls; after a few
-// seconds without a key press the bar fades away and only the art stays. Everything else (speakers,
+// art, with the song, the artist and the time beneath it, sits above the frosted bar of controls;
+// after a few seconds without a key press the bar fades away and only the art and its caption stay. Everything else (speakers,
 // grouping, the queue, the library) is one press away under More, in the Music panel
 // (music-panel.ts), which also does the work behind the buttons here.
 
@@ -19,13 +20,9 @@ const MORE = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12
 const BUTTONS = ['prev', 'playpause', 'next', 'volDown', 'volUp', 'more'] as const;
 type Button = (typeof BUTTONS)[number];
 
-/** How the album's colour shows over the background (`?glow=` while trying them out; see style.css). */
-const GLOWS = ['halo', 'wash', 'tint', 'off'] as const;
-type Glow = (typeof GLOWS)[number];
-const glowParam = new URLSearchParams(location.search).get('glow');
-const GLOW: Glow = GLOWS.find((g) => g === glowParam) ?? 'halo';
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 export class MusicSection implements Section {
   readonly el: HTMLElement;
@@ -42,16 +39,18 @@ export class MusicSection implements Section {
     this.el = document.createElement('section');
     this.el.className = 'section';
     this.el.id = 'secMusic';
-    this.el.dataset.glow = GLOW;
+    // How the album's colour shows behind it (Settings, or "background" under "music"; see style.css).
+    this.el.dataset.glow = musicBackground();
+    onLookChange(() => { this.el.dataset.glow = musicBackground(); });
     this.el.innerHTML = `
       <div class="mx-glow"></div>
       <div class="mx-art"></div>
+      <div class="mx-caption"><div class="mx-title"></div><div class="mx-artist"></div><div class="mx-time"></div></div>
       <div class="gb" id="mxbar">
         <div class="gb-mat"><div class="gb-img"></div><div class="gb-veil"></div></div>
         <div class="gb-edge"></div>
-        <div class="mx-progress"><i></i></div>
         <div class="mx-row">
-          <div class="mx-song"><div class="mx-title"></div><div class="mx-sub"></div></div>
+          <div class="mx-speaker"></div>
           <div class="mx-mid"></div>
           <div class="mx-end"><span class="mx-vol"></span></div>
         </div>
@@ -171,7 +170,8 @@ export class MusicSection implements Section {
     }
 
     child(this.el, '.mx-title').textContent = on ? a?.media_title ?? '' : '';
-    child(this.el, '.mx-sub').textContent = [on ? a?.media_artist : '', p?.name].filter(Boolean).join(' · ');
+    child(this.el, '.mx-artist').textContent = on ? a?.media_artist ?? '' : '';
+    child(this.el, '.mx-speaker').innerHTML = p ? `${ICON.volUp}<span>${esc(p.name)}</span>` : '';
 
     this.buttons.forEach((btn, i) => {
       const b = BUTTONS[i];
@@ -182,12 +182,12 @@ export class MusicSection implements Section {
     const vol = this.panel.level();
     child(this.el, '.mx-vol').textContent = vol === undefined ? '' : `${Math.round(vol * 100)}%`;
 
-    // A hairline along the top of the bar: how far into the song.
+    // How far into the song, under the artist ("1:04 / 4:07"); a stream with no length shows nothing.
     const dur = on ? a?.media_duration ?? 0 : 0;
     let pos = a?.media_position ?? 0;
 
     if (s?.state === 'playing' && a?.media_position_updated_at) pos += (Date.now() - Date.parse(a.media_position_updated_at)) / 1000;
-    child(this.el, '.mx-progress i').style.width = dur ? `${Math.min(100, (pos / dur) * 100)}%` : '0';
+    child(this.el, '.mx-time').textContent = dur ? `${mmss(Math.min(pos, dur))} / ${mmss(dur)}` : '';
   }
 }
 

@@ -673,20 +673,33 @@ html.glass-tint .mq-list { -webkit-backdrop-filter: none; backdrop-filter: none;
    The album art alone above the frosted bar; after a while without a key press the bar fades and only
    the art stays. Nothing playing: no art either, just the background. */
 #secMusic .mx-art {
-  position: absolute; left: 50%; top: 150px; width: 580px; height: 580px; transform: translateX(-50%);
+  position: absolute; left: 50%; top: 112px; width: 520px; height: 520px; transform: translateX(-50%);
   border-radius: 32px; overflow: hidden; box-shadow: 0 50px 120px -30px rgba(0, 0, 0, 0.75);
-  transition: opacity 0.6s ease;
+  transition: opacity 0.6s ease, transform var(--drift) ease;
 }
 #secMusic .mx-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
 #secMusic.idle .mx-art, #secMusic .mx-art:empty { opacity: 0; }
-#mxbar { left: 208px; top: 864px; width: 1504px; height: 128px; transition: opacity 0.35s ease, transform 0.35s ease; }
+/* The song under the art: it stays when the bar fades. */
+.mx-caption {
+  position: absolute; left: 50%; top: 666px; width: 1100px; transform: translateX(-50%); text-align: center;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45); transition: opacity 0.6s ease, transform var(--drift) ease;
+}
+/* When the bar fades, the art and its caption settle to the middle of the screen, in step with it. */
+#secMusic { --drift: 0.35s; }
+#secMusic.calm { --drift: 1.4s; }
+#secMusic.calm .mx-art, #secMusic.calm .mx-caption { transform: translate(-50%, 90px); }
+#secMusic.idle .mx-caption { opacity: 0; }
+.mx-title, .mx-artist { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mx-title { font-size: 38px; font-weight: 600; letter-spacing: -0.6px; color: var(--ink); }
+.mx-artist { margin-top: 4px; font-size: 24px; color: var(--ink-dim); }
+.mx-time { margin-top: 10px; font-size: 19px; color: var(--ink-faint); font-variant-numeric: tabular-nums; letter-spacing: 0.3px; }
+#mxbar { left: 208px; top: 864px; width: 1504px; height: 128px; transition: opacity 0.35s ease, transform var(--drift) ease; }
 #mxbar .gb-img { left: -208px; top: -864px; }
 #secMusic.calm #mxbar { opacity: 0; transform: translateY(18px); transition: opacity 1.4s ease, transform 1.4s ease; }
 .mx-row { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 24px; padding: 0 28px 0 44px; }
-.mx-song { min-width: 0; }
-.mx-title, .mx-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mx-title { font-size: 28px; font-weight: 600; letter-spacing: -0.4px; color: var(--ink); }
-.mx-sub { margin-top: 4px; font-size: 20px; color: var(--ink-dim); }
+.mx-speaker { min-width: 0; display: flex; align-items: center; gap: 12px; font-size: 22px; color: var(--ink-dim); }
+.mx-speaker svg { width: 28px; height: 28px; flex: 0 0 auto; opacity: 0.8; }
+.mx-speaker span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mx-mid, .mx-end { display: flex; align-items: center; gap: 10px; }
 .mx-end { justify-content: flex-end; }
 .mx-vol { min-width: 72px; text-align: center; font-size: 20px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
@@ -700,26 +713,39 @@ html.glass-tint .mq-list { -webkit-backdrop-filter: none; backdrop-filter: none;
 .mxb.more { width: auto; padding: 0 26px; margin-left: 14px; font-size: 22px; font-weight: 600; }
 .mxb.more svg { width: 30px; height: 30px; }
 .mxb.is-focus { opacity: 1; background: var(--plate); box-shadow: var(--plate-edge); }
-.mx-progress { position: absolute; left: 48px; right: 48px; top: 0; height: 3px; background: rgba(255, 255, 255, 0.1); }
-.mx-progress i { display: block; height: 100%; width: 0; background: rgba(255, 255, 255, 0.6); transition: width 1s linear; }
-#secMusic.idle .mx-progress { opacity: 0; }
 
-/* The album's colour over the background, while trying them out (?glow=halo|wash|tint|off):
-   halo, a soft light behind the art; wash, the whole screen washed in it, strongest behind the art;
-   tint, the background itself shifted to the album's hue. It fades in once the colour is read. */
-#secMusic .mx-glow { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 1.6s ease, background 1.6s ease; }
+/* The album's colour behind the Music screen (Settings, or "background" under "music"):
+   glow, a soft light behind and around the art; wash, the whole screen washed in it, strongest behind the art;
+   solid, the Music panel's colour in place of the background. It fades in once the colour is read. */
+#secMusic .mx-glow {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  --art-tint-c: rgb(var(--art-tint)); transition: opacity 1.6s ease, --art-tint-c 0.8s ease;
+}
 #secMusic.tinted:not(.idle) .mx-glow { opacity: 1; }
-#secMusic[data-glow='halo'] .mx-glow {
-  background: radial-gradient(circle 620px at 50% 41%, rgba(var(--art-tint), 0.55), rgba(var(--art-tint), 0.2) 55%, rgba(var(--art-tint), 0) 100%);
+#secMusic[data-glow='glow'] .mx-glow {
+  background: radial-gradient(circle 700px at 50% 35%, rgba(var(--art-tint), 0.7), rgba(var(--art-tint), 0.3) 50%, rgba(var(--art-tint), 0) 100%);
+}
+/* …and the cover itself gives off its colour, like a lit screen. */
+#secMusic[data-glow='glow'].tinted:not(.idle) .mx-art {
+  box-shadow: 0 0 140px 30px rgba(var(--art-tint), 0.55), 0 50px 120px -30px rgba(0, 0, 0, 0.75);
+  transition: opacity 0.6s ease, transform var(--drift) ease, box-shadow 1.6s ease;
 }
 #secMusic[data-glow='wash'] .mx-glow {
   background:
-    radial-gradient(ellipse 70% 80% at 50% 40%, rgba(var(--art-tint), 0.42), rgba(var(--art-tint), 0) 75%),
+    radial-gradient(ellipse 70% 80% at 50% 36%, rgba(var(--art-tint), 0.42), rgba(var(--art-tint), 0) 75%),
     linear-gradient(rgba(var(--art-tint), 0.16), rgba(var(--art-tint), 0.16));
 }
-#secMusic[data-glow='tint'] .mx-glow { background: rgb(var(--art-tint)); mix-blend-mode: color; }
-#secMusic[data-glow='tint'].tinted:not(.idle) .mx-glow { opacity: 0.55; }
-#secMusic[data-glow='off'] .mx-glow { display: none; }
+/* solid: the Music panel's own background (see .music-bg), centred on the cover. It hides the photo,
+   so the bar turns to dark glass over the colour instead of frosting the photo. */
+#secMusic[data-glow='solid'] .mx-glow {
+  background:
+    radial-gradient(ellipse 75% 85% at 50% 36%, rgba(4, 6, 8, 0) 45%, rgba(4, 6, 8, 0.45)),
+    radial-gradient(ellipse 80% 95% at 50% 36%, color-mix(in srgb, var(--art-tint-c) 95%, transparent), color-mix(in srgb, var(--art-tint-c) 55%, transparent) 55%, color-mix(in srgb, var(--art-tint-c) 12%, transparent) 95%),
+    #06080a;
+}
+#secMusic[data-glow='solid'] #mxbar .gb-img { transition: opacity 1.6s ease; }
+#secMusic[data-glow='solid'].tinted:not(.idle) #mxbar .gb-img { opacity: 0; }
+#secMusic[data-glow='none'] .mx-glow { display: none; }
 html.dashboard .mxb { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 
 /* ---------- Dashboard mode (index.html?dash; dashboard-bar.ts) ----------

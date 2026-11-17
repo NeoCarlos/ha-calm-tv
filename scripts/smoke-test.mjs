@@ -190,6 +190,13 @@ try {
   check((await text('.settings .detail-title')) === 'Performance', 'OK opens a Settings sub-menu');
   await key('Escape');
   check((await text('.settings .detail-title')) === 'Settings', 'Back returns to Settings');
+  // Music background: OK steps to the next choice, and the Music screen follows.
+  const mbRow = await page("return [...document.querySelectorAll('.settings .drow')].findIndex((r) => r.querySelector('.dname')?.textContent === 'Music background');");
+  await page(`document.querySelectorAll('.settings .drow')[${mbRow}].click();`);
+  check((await page("return document.querySelector('#secMusic').dataset.glow;")) === 'wash', 'Settings → Music background steps from Glow to Wash');
+  await page(`document.querySelectorAll('.settings .drow')[${mbRow}].click(); document.querySelectorAll('.settings .drow')[${mbRow}].click(); document.querySelectorAll('.settings .drow')[${mbRow}].click();`);
+  check((await page("return document.querySelector('#secMusic').dataset.glow;")) === 'glow', '…and round again to Glow');
+  await key('ArrowUp');
   await key('ArrowUp');
   await key('Enter');
   check(await has('.bgpick.open'), 'Background opens the picker');

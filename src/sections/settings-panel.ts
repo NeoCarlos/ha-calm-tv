@@ -1,6 +1,6 @@
 import { native } from '../native';
 import { ha, lastSignedOut } from '../ha';
-import { settings, dashboardMode } from '../config';
+import { settings, dashboardMode, MUSIC_BACKGROUNDS, type MusicBackground } from '../config';
 import { zones } from '../home-data';
 import { showSetup } from '../setup';
 import { showMaSetup } from '../ma-setup';
@@ -12,6 +12,7 @@ import { apps, hasDockOrder, resetDockOrder } from '../apps';
 import {
   glass, glassSource, hasOverrides, resetToConfig, setGlass, setShowFps,
   setTransitions, setVideos, showFps, transitions, transitionsSource, videosOn, videosSource,
+  musicBackground, musicBackgroundSource, setMusicBackground,
 } from '../look';
 
 // Line icons, matching the room panels' style.
@@ -62,6 +63,11 @@ interface Menu {
 }
 
 const onOff = (on: boolean) => (on ? 'On' : 'Off');
+
+/** The Music screen's backgrounds, as Settings names them. */
+const MUSIC_BACKGROUND_NAMES: Record<MusicBackground, string> = {
+  glow: 'Glow around the cover', wash: 'Washed in its colour', solid: 'Solid colour', none: 'None',
+};
 
 /**
  * Calm TV's own settings, opened from the gear tile at the end of the app dock.
@@ -231,6 +237,13 @@ export class SettingsPanel {
           menu: performance,
         },
         {
+          icon: ICONS.music,
+          name: 'Music background',
+          status: () => `${MUSIC_BACKGROUND_NAMES[musicBackground()]} · ${musicBackgroundSource()}`,
+          // OK steps through the choices.
+          run: () => setMusicBackground(MUSIC_BACKGROUNDS[(MUSIC_BACKGROUNDS.indexOf(musicBackground()) + 1) % MUSIC_BACKGROUNDS.length]),
+        },
+        {
           icon: ICONS.arrange,
           name: 'Arrange dock',
           status: () => `${hasDockOrder() ? 'Your order' : 'As in calm-tv.json'} · ${apps.length - 1} tiles · OK to move them`,
@@ -280,6 +293,9 @@ export class SettingsPanel {
         },
       ],
     };
+
+    // Without "music" in calm-tv.json there's no Music screen to choose a background for.
+    if (!settings.config.music) this.root.rows = this.root.rows.filter((r) => r.name !== 'Music background');
 
     // The dashboard has no dock, Google TV home or TV settings.
     if (dashboardMode) this.root.rows = this.root.rows.filter((r) => !['Arrange dock', 'Google TV home', 'TV settings'].includes(r.name));

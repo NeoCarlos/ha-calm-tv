@@ -1,11 +1,12 @@
 import * as v from 'valibot';
-import { demoMode, settings } from './config';
+import { demoMode, settings, MUSIC_BACKGROUNDS, type MusicBackground } from './config';
 
 /**
- * The look-and-performance choices: video backgrounds, frosted glass and screen transitions.
+ * The look-and-performance choices: video backgrounds, frosted glass, screen transitions, and the
+ * Music screen's background.
  *
- * Each comes from, in order: this TV's own choice (Settings → Performance, kept in localStorage),
- * else calm-tv.json's "display", else the built-in default (everything on).
+ * Each comes from, in order: this TV's own choice (Settings, kept in localStorage), else
+ * calm-tv.json ("display", or "music" for the Music background), else the built-in default.
  * So calm-tv.json sets a default for every TV, and each TV can still be tuned on the spot.
  */
 
@@ -24,6 +25,7 @@ const OverridesSchema = v.object({
   videos: v.fallback(v.nullable(v.boolean()), null),
   glass: v.fallback(v.nullable(v.picklist(['blur', 'tint'])), null),
   transitions: v.fallback(v.nullable(v.picklist(['fade', 'instant'])), null),
+  musicBackground: v.fallback(v.nullable(v.picklist(MUSIC_BACKGROUNDS)), null),
   /** A small frame-rate counter in the corner, for comparing settings on the TV. */
   showFps: v.fallback(v.boolean(), false),
 });
@@ -74,6 +76,10 @@ export function transitions(): Transitions {
   return overrides.transitions ?? display()?.transitions ?? 'fade';
 }
 
+export function musicBackground(): MusicBackground {
+  return overrides.musicBackground ?? settings.config.music?.background ?? 'glow';
+}
+
 export function showFps(): boolean {
   return overrides.showFps;
 }
@@ -89,6 +95,15 @@ export function glassSource(): Source {
 
 export function transitionsSource(): Source {
   return overrides.transitions !== null ? 'set on this TV' : display()?.transitions !== undefined ? 'from calm-tv.json' : 'default';
+}
+
+export function musicBackgroundSource(): Source {
+  return overrides.musicBackground !== null ? 'set on this TV' : settings.config.music?.background !== undefined ? 'from calm-tv.json' : 'default';
+}
+
+export function setMusicBackground(value: MusicBackground): void {
+  overrides.musicBackground = value;
+  changed();
 }
 
 export function setVideos(on: boolean): void {
@@ -113,7 +128,7 @@ export function setShowFps(on: boolean): void {
 
 /** True if this TV overrides any of calm-tv.json's choices. */
 export function hasOverrides(): boolean {
-  return overrides.videos !== null || overrides.glass !== null || overrides.transitions !== null;
+  return overrides.videos !== null || overrides.glass !== null || overrides.transitions !== null || overrides.musicBackground !== null;
 }
 
 /** Back to calm-tv.json's choices (or the defaults). The frame-rate counter is left as it is. */
@@ -121,5 +136,6 @@ export function resetToConfig(): void {
   overrides.videos = null;
   overrides.glass = null;
   overrides.transitions = null;
+  overrides.musicBackground = null;
   changed();
 }

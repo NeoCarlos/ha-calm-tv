@@ -298,7 +298,8 @@ class Sky {
     }
 
     const condition = this.preview.condition ?? ha.entities[sky.weather ?? WEATHER]?.state ?? 'sunny';
-    const weather = sky.effects === false ? CALM : weatherFor(condition);
+    // Weather drawing is experimental: only with "effects": true.
+    const weather = sky.effects !== true ? CALM : weatherFor(condition);
     this.state = { weights, weather, condition };
 
     if (this.phase !== this.lastPhase) {

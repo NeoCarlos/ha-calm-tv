@@ -346,10 +346,10 @@ With `sky` in the file, the background follows the real time of day and the weat
   real sunrise and sunset and blend in gradually. Any photo or video gets a code-only look: warmer at
   dawn and dusk, darker and bluer at night, with stars in the open sky when it's clear. A background
   whose name says when it was made ("…Sunset", "…Night") isn't tinted toward that time again.
-- **Weather** from `weather` (default the `weather` entity above): rain, much heavier rain when it
-  pours, snow with near and far flakes, fog, cloud cover lit for the time of day, and lightning flashes
-  with the odd forked bolt, drawn by the app over any background. `"effects": false` keeps the time of
-  day without them.
+- **Weather (experimental, off by default)** with `"effects": true`, from `weather` (default the
+  `weather` entity above): rain, much heavier rain when it pours, snow with near and far flakes, fog,
+  cloud cover lit for the time of day, and lightning flashes with the odd forked bolt, drawn by the app
+  over any background. It still needs work (snow and fog in particular), so it's off unless asked for.
 - **Scene map:** tell it where a background's sky, water and ground are, and the weather fits the
   picture: clouds and bolts stay in the sky (and the lake mirrors the clouds), raindrops ring on the
   water, fog lies at the water line, and snow slowly settles on the ground in front (and melts after).
@@ -375,7 +375,7 @@ With `sky` in the file, the background follows the real time of day and the weat
   The built-in **Alpine Lake Time of Day** is made this way, as a video and as photos.
 - **Only backgrounds with versions:** `"versionsOnly": true` leaves every background that doesn't
   have its own versions exactly as it is (no tint, no stars), so only those change with the time of
-  day. For just the time of day, with no tints and no weather: `{ "sky": { "effects": false, "versionsOnly": true } }`.
+  day. For just the versions, with no tints: `{ "sky": { "versionsOnly": true } }`.
 
 Without `sun.sun`, a rough day from the clock is used. To preview it in a browser:
 `?demo&sky=night&wx=snowy` (times: `dawn`, `day`, `dusk`, `night`; any Home Assistant weather condition).

@@ -117,8 +117,8 @@ const ConfigSchema = v.object({
   weather: v.optional(EntityId),
   /**
    * The living sky (off unless present): the background follows the time of day from `sun`
-   * (default sun.sun) and draws the weather from `weather` (default the Weather screen's entity).
-   * `effects: false` keeps the time of day but draws no rain, snow or fog. `versionsOnly: true` leaves
+   * (default sun.sun). `effects: true` (experimental) also draws the weather from `weather` (default
+   * the Weather screen's entity): rain, snow, fog, clouds. `versionsOnly: true` leaves
    * backgrounds without their own dawn/day/dusk/night versions exactly as they are (no tint or stars).
    */
   sky: v.optional(

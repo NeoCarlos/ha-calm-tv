@@ -73,7 +73,7 @@
   fades together; calm-tv.json's `display` can still set them apart. The menu is more compact, and
   scrolls if it ever gets taller than the screen.
 - **Living sky:** with `"sky"` in calm-tv.json the background follows the sun (warmer dawn and dusk, a
-  darker, bluer night with stars) and draws the weather over it: rain and pouring rain, snow with depth, fog, cloud cover and lightning
+  darker, bluer night with stars). With `"effects": true` (experimental) it also draws the weather over it: rain and pouring rain, snow with depth, fog, cloud cover and lightning
   bolts. A scene map (`map` in `backgrounds`) adds ripples on the water, clouds mirrored in it and snow settling on the ground. Backgrounds can also come in dawn/day/dusk/night versions (`NN-name.night.jpg`).
   Preview with `?demo&sky=night&wx=snowy`.
 - **Alpine Lake Time of Day:** a new built-in background, as video and as photos, with its own dawn,

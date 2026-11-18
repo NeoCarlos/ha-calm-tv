@@ -669,7 +669,7 @@ export function startDemo(): void {
 
   // The example home, with the doorbell window on (for ctDemo.ring) and no backgrounds from Home Assistant.
   const config = decodeConfig(exampleConfig);
-  settings.config = { ...config, doorbell: { ...config.doorbell, window: true }, backgrounds: undefined, sky: config.sky ?? {} };
+  settings.config = { ...config, doorbell: { ...config.doorbell, window: true }, backgrounds: undefined, sky: config.sky ?? { effects: new URLSearchParams(location.search).has('wx') } };
 
   // ?demo&areas: no "rooms", so they're built from the demo's Areas (see demoRegistry).
   if (new URLSearchParams(location.search).has('areas')) settings.config = { ...settings.config, rooms: undefined };

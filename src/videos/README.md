@@ -4,6 +4,8 @@ Looping clips dropped here are built into the app and appear under **Videos** in
 Settings → Background. They're found automatically, like the photos in `../wallpapers/`.
 
 - **Name:** `NN-some-name.mp4` → shown as "Some Name", ordered by the number.
+- **Times of day:** `NN-name.dawn.mp4`, `.day.mp4`, `.dusk.mp4`, `.night.mp4` are one background whose
+  version follows the sun when `"sky"` is in calm-tv.json (see docs/configuration.md).
 - **Thumbnail:** a `.jpg` with the same name, 480×270 (made by the commands below).
 - **Size:** 1080p, H.264, **no audio**, ideally **under 20 MB** each. Each clip is loaded into
   memory to loop smoothly, and the app grows by the size of every clip you add.
@@ -44,7 +46,8 @@ camera can show double edges during the blend. Both included clips were made thi
 **Without rebuilding:** put clips in Home Assistant's `www` folder and list them under
 `backgrounds.videos` in `calm-tv.json` (docs/configuration.md).
 
-Two clips are included, `00-mountain-lake-sunset.mp4` and `01-stylized-forest-brook.mp4`, made for
-this project and covered by its MIT licence. Any other clip in this folder is ignored by git unless you whitelist it by name in
+Three backgrounds are included: `00-mountain-lake-sunset.mp4`, `01-stylized-forest-brook.mp4` and
+`02-alpine-lake-time-of-day` (four clips, `.dawn`, `.day`, `.dusk` and `.night.mp4`, which the living
+sky switches between by the sun; dawn and dusk share one sunrise clip), made for this project and covered by its MIT licence. Any other clip in this folder is ignored by git unless you whitelist it by name in
 `.gitignore`. Free stock-video sites generally allow personal use but not republishing the files, so
 only commit a clip you made or clearly have the rights to share.

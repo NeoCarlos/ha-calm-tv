@@ -55,7 +55,10 @@ The included backgrounds, "Mountain Lake Sunset" and "Stylized Forest Brook" (th
 `src/wallpapers/`, the clips and thumbnails in `src/videos/`, and the README animation), were made for
 this project with Google Flow and are covered by the project's MIT licence. So is the placeholder
 doorbell view that demo mode's cameras show (`src/demo-media/doorbell-camera.mp4`), also made for
-the project. No third-party photos or video
+the project. "Alpine Lake Time of Day" (`src/videos/02-alpine-lake-time-of-day.*` and its first-frame
+stills in `src/wallpapers/`) was made for this project by autokey-git with Kling AI on a paid plan,
+which gives the creator the rights to the output, and is shared under the project's MIT licence.
+No third-party photos or video
 clips are included; `src/wallpapers/README.md` and `src/videos/README.md` explain how to add your own.
 
 ## Libraries

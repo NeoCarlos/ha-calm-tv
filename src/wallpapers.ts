@@ -1,4 +1,5 @@
 import type { Wallpaper } from './types';
+import { groupByPhase } from './variants';
 
 // Auto-discover every image dropped into src/wallpapers/.
 // Add real photos there (jpg/png/webp) and they appear automatically — no code changes needed.
@@ -17,7 +18,8 @@ function prettyName(path: string): string {
     .replace(/[-_]+/g, ' ')
     .trim();
 
-  return base ? base.replace(/\b\w/g, (c) => c.toUpperCase()) : file;
+  // Small words stay lowercase after the first ("Alpine Lake Time of Day").
+  return base ? base.replace(/\b\w+/g, (w, i: number) => (i > 0 && /^(of|and|to|the|a|in|at)$/.test(w) ? w : w[0].toUpperCase() + w.slice(1))) : file;
 }
 
 // Last-resort fallback so the app always has something to show.
@@ -30,8 +32,11 @@ const FALLBACK: Wallpaper = {
     ),
 };
 
-const found: Wallpaper[] = Object.keys(modules)
-  .sort()
-  .map((path) => ({ name: prettyName(path), url: modules[path] }));
+// "NN-name.dawn.jpg", "NN-name.night.jpg"…: one photo with a version per time of day (variants.ts).
+const found: Wallpaper[] = groupByPhase(Object.keys(modules).sort(), (path) => modules[path]).map((s) => ({
+  name: prettyName(s.key),
+  url: s.url,
+  variants: s.variants,
+}));
 
 export const wallpapers: Wallpaper[] = found.length > 0 ? found : [FALLBACK];

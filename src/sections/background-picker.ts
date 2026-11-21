@@ -13,7 +13,14 @@ export interface BgChoice {
 export interface BgOption extends BgChoice {
   name: string;
   thumb: string;
+  /** It has versions for the times of day, and follows them (see sky.ts). */
+  timeOfDay?: boolean;
 }
+
+/** The badge on a background that follows the time of day: half sun, half moon. */
+const TIME_OF_DAY = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor"/>`
+  + `<path d="M12 4a8 8 0 0 1 0 16" fill="none" stroke="currentColor" stroke-width="2"/>`
+  + `<path d="M12 1.5v1.5M4.6 4.6l1 1M1.5 12h1.5M4.6 19.4l1-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
 
 const TILE_W = 288;
 const TILE_GAP = 24;
@@ -70,7 +77,10 @@ export class BackgroundPicker {
       const x = i * (TILE_W + TILE_GAP);
       el.className = 'bgpick-tile';
       el.style.left = `${x}px`;
-      el.innerHTML = `<div class="bgpick-img" style="background-image:url('${opt.thumb}')"></div><div class="bgpick-name">${esc(opt.name)}</div>`;
+      el.innerHTML = `<div class="bgpick-img" style="background-image:url('${opt.thumb}')">`
+        + `${opt.timeOfDay ? `<span class="bgpick-tod">${TIME_OF_DAY}</span>` : ''}</div>`
+        + `<div class="bgpick-name">${esc(opt.name)}</div>`
+        + `${opt.timeOfDay ? '<div class="bgpick-sub">Changes with the time of day</div>' : ''}`;
       el.dataset.focus = `background-${i}`;
       el.addEventListener('click', () => this.pick(i));
       this.track.appendChild(el);

@@ -17,12 +17,21 @@ src/videos/*
 !src/videos/00-mountain-lake-sunset.jpg
 !src/videos/01-stylized-forest-brook.mp4
 !src/videos/01-stylized-forest-brook.jpg
+!src/videos/02-alpine-lake-time-of-day.dawn.mp4
+!src/videos/02-alpine-lake-time-of-day.day.mp4
+!src/videos/02-alpine-lake-time-of-day.dusk.mp4
+!src/videos/02-alpine-lake-time-of-day.night.mp4
+!src/videos/02-alpine-lake-time-of-day.jpg
 
 # Photos: only ones we own are committed (others still build into your own app from this folder).
 src/wallpapers/*
 !src/wallpapers/README.md
 !src/wallpapers/00-mountain-lake-sunset.jpg
 !src/wallpapers/01-stylized-forest-brook.jpg
+!src/wallpapers/02-alpine-lake-time-of-day.dawn.jpg
+!src/wallpapers/02-alpine-lake-time-of-day.day.jpg
+!src/wallpapers/02-alpine-lake-time-of-day.dusk.jpg
+!src/wallpapers/02-alpine-lake-time-of-day.night.jpg
 
 # Demo mode's placeholder camera view and album cover (made for the project).
 src/demo-media/*

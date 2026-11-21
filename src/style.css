@@ -75,6 +75,10 @@ html.picking #sections, html.picking #hint { opacity: 0; pointer-events: none; }
 .bgpick-tile.chosen .bgpick-img::after { content: '✓'; position: absolute; right: 10px; top: 10px; width: 34px; height: 34px; border-radius: 50%; background: #fff; color: #1b1f22; font-size: 20px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 .bgpick-name { margin-top: 16px; font-size: 21px; font-weight: 600; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5); }
 .bgpick-tile.focus .bgpick-name { color: var(--ink); }
+/* A background that follows the time of day (sky.ts): a badge on its thumbnail, and a line under its name. */
+.bgpick-tod { position: absolute; left: 10px; top: 10px; width: 34px; height: 34px; border-radius: 50%; background: rgba(12, 16, 20, 0.62); color: #f4e9c8; display: flex; align-items: center; justify-content: center; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.bgpick-tod svg { width: 22px; height: 22px; }
+.bgpick-sub { margin-top: 4px; font-size: 17px; font-weight: 500; color: var(--ink-faint); white-space: nowrap; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5); }
 html.bg-video:not(.glass-tint) .gb-mat { -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 /* "display": { "glass": "tint" }: plain dark glass instead of frosted, over photos and videos alike. */
 html.glass-tint .gb-img { display: none; }

@@ -584,6 +584,17 @@ try {
     return { photos: n(wallpapers).map((b) => Object.keys(b.variants ?? {}).sort().join()), clips: n(videos).map((b) => Object.keys(b.variants ?? {}).sort().join()) };`);
   check(JSON.stringify(versions) === JSON.stringify({ photos: ['dawn,day,dusk,night'], clips: ['dawn,day,dusk,night'] }), `Alpine Lake is one photo and one video, each with four versions (${JSON.stringify(versions)})`);
   check(!(await has('#skyTint')) && !(await page("return document.documentElement.classList.contains('sky-on');")), 'the plain demo leaves other backgrounds as they are (no tint layers)');
+  // Without "sky" in the setup, Alpine Lake still follows the time of day.
+  const noSky = await page(`const { sky } = await import('/src/sky.ts'); const { settings } = await import('/src/config.ts'); const { wallpapers } = await import('/src/wallpapers.ts');
+    const a = wallpapers.find((b) => b.name === 'Alpine Lake Time of Day'); sky.setPreview('night'); const url = sky.pick(a.name, a.url, a.variants).url; sky.setPreview();
+    return { sky: settings.config.sky ?? null, url };`);
+  check(noSky.sky === null && noSky.url.includes('.night.'), `without "sky" in the setup, Alpine Lake follows the time of day (${noSky.url.split('/').pop()})`);
+  // Its tile in the background picker says so.
+  await key('ArrowLeft'); await key('Enter'); await sleep(500);
+  await pick('Appearance'); await pick('Background'); await sleep(600);
+  const tod = await page("return [...document.querySelectorAll('.bgpick-tile')].filter((t) => t.querySelector('.bgpick-tod')).map((t) => t.querySelector('.bgpick-name').textContent + ' / ' + t.querySelector('.bgpick-sub')?.textContent);");
+  check(tod.length === 1 && tod[0] === 'Alpine Lake Time of Day / Changes with the time of day', `the picker marks Alpine Lake as following the time of day (${tod.join(' | ')})`);
+  await key('Escape'); await sleep(300);
   await open('demo&sky=night', 1920, 1080);
   const night = await page(`const { sky } = await import('/src/sky.ts'); const { wallpapers } = await import('/src/wallpapers.ts');
     const a = wallpapers.find((b) => b.name === 'Alpine Lake Time of Day'); return sky.pick(a.name, a.url, a.variants).url;`);

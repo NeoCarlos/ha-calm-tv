@@ -72,8 +72,9 @@ export class CalmTv {
       qs('#stage'),
       () =>
         this.bgMode === 'video'
-          ? videos.map((v, index) => ({ kind: 'video' as const, index, name: v.name, thumb: v.thumb }))
-          : wallpapers.map((w, index) => ({ kind: 'photo' as const, index, name: w.name, thumb: w.url })),
+          ? videos.map((v, index) => ({ kind: 'video' as const, index, name: v.name, thumb: v.thumb, timeOfDay: !!v.variants }))
+          // A photo with versions shows the one for now.
+          : wallpapers.map((w, index) => ({ kind: 'photo' as const, index, name: w.name, thumb: sky.pick(w.name, w.url, w.variants).url, timeOfDay: !!w.variants })),
       () => ({ kind: this.bgMode, index: this.bgMode === 'video' ? this.vid : this.wp }),
       (c) => this.chooseBackground(c),
     );

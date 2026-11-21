@@ -16,8 +16,9 @@ import type { SkyFx, SceneMap, Rgb } from './sky-fx';
  *    scene map, raindrops ring on the water, snow settles on the ground and clouds stay in the sky.
  *
  * It's all a few layers between the background and the screens, so it works over every background
- * (yours too), and the frosted bars blur it like anything else behind them. Off unless calm-tv.json
- * has "sky". By default only backgrounds with their own versions change: the colour layers, the
+ * (yours too), and the frosted bars blur it like anything else behind them. Backgrounds with their
+ * own versions (Alpine Lake Time of Day) always follow the time of day: choosing one is enough.
+ * Everything else is left as it is unless calm-tv.json's "sky" asks for more: the colour layers, the
  * stars and the weather (sky-fx.ts, loaded only then) need "grade" or "effects".
  */
 
@@ -194,7 +195,8 @@ class Sky {
 
   /** Adds the sky's layers just above the background, under the film grain and the screens. */
   mount(stage: HTMLElement): void {
-    this.enabled = settings.config.sky !== undefined;
+    // Always on: a background with versions for the times of day follows them once it's chosen.
+    this.enabled = true;
 
     if (!this.enabled || this.stage) return;
     this.stage = stage;

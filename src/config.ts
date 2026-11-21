@@ -117,8 +117,8 @@ const ConfigSchema = v.object({
   /** Weather entity for the Weather screen and the Smart Home "Outside" line. */
   weather: v.optional(EntityId),
   /**
-   * The living sky (off unless present): backgrounds with their own dawn/day/dusk/night versions
-   * follow the time of day from `sun` (default sun.sun). Others stay exactly as they are, unless
+   * The living sky's options. Backgrounds with their own dawn/day/dusk/night versions always follow
+   * the time of day, from `sun` (default sun.sun). Others stay exactly as they are, unless
    * `grade: true` tints them for the time of day (warmer dawn and dusk, a darker night with stars).
    * `effects: true` (experimental) also draws the weather from `weather` (default the Weather
    * screen's entity): rain, snow, fog, clouds. (`versionsOnly: true`, from before `grade`, is the

@@ -64,7 +64,7 @@ default app dock.
   "doorbell": { "window": false, "camera": "camera.front_door", "ringing": "input_boolean.doorbell_ringing" },
   "rooms": [ … ],         // the Smart Home bar
   "display": { "glass": "blur", "videos": true, "transitions": "fade", "fade": true },
-  "sky": { "sun": "sun.sun" },   // the living sky: time of day and weather on the background
+  "sky": { "grade": true },      // the living sky: tint every background for the time of day (optional)
   "backgrounds": { "photos": [ … ], "videos": [ … ] }
 }
 ```
@@ -337,14 +337,17 @@ TV's own changes.
 ### `sky`: the living sky
 
 ```json
-{ "sky": {} }
+{ "sky": { "grade": true } }
 ```
 
-With `sky` in the file, backgrounds that come in versions for each time of day (like the built-in
-**Alpine Lake Time of Day**) show the one for now. Every other background stays exactly as it is.
+Backgrounds that come in versions for each time of day, like the built-in **Alpine Lake Time of
+Day**, follow the time of day by themselves: choose one in Settings → Appearance → Background (its
+tile has a sun-and-moon badge and says "Changes with the time of day"). No setup needed. Every other
+background stays exactly as it is. `sky` is for the rest:
 
-- **Time of day** from the sun's height (`sun`, default `sun.sun`), so dawn and dusk arrive with the
-  real sunrise and sunset, and a background changes to its next version slowly.
+- **Time of day** from the sun's height (`sun`, default `sun.sun`; a rough day from the clock
+  without it), so dawn and dusk arrive with the real sunrise and sunset, and a background changes to
+  its next version slowly.
 - **A tint for every background (optional):** `"grade": true` gives backgrounds without their own
   versions a code-only look as well: warmer at dawn and dusk, darker and bluer at night, with stars
   in the open sky when it's clear. A background whose name says when it was made ("…Sunset",
@@ -375,7 +378,7 @@ With `sky` in the file, backgrounds that come in versions for each time of day (
   `NN-name.dawn.jpg`, `NN-name.day.jpg`, `NN-name.dusk.jpg` and `NN-name.night.jpg` (or `.mp4`) in
   `src/wallpapers/` or `src/videos/`. They show as one background, and the version for the time of
   day replaces the code-only look. From Home Assistant, add `"dawn"`, `"dusk"` and `"night"` addresses
-  next to `"url"` in `backgrounds` below.
+  next to `"url"` in `backgrounds` below. These need no `sky`.
   The built-in **Alpine Lake Time of Day** is made this way, as a video and as photos.
 - `"versionsOnly": true` (from an earlier version) is now the default; it's still accepted.
 
@@ -392,7 +395,7 @@ These previews turn on `grade` (and `wx` the weather); plain `?demo` only change
 }
 ```
 
-With [`sky`](#sky-the-living-sky), each can also have `"dawn"`, `"dusk"` and `"night"` versions:
+Each can also have `"dawn"`, `"dusk"` and `"night"` versions, and then follows the time of day (see [`sky`](#sky-the-living-sky)):
 `{ "name": "Our beach", "url": "/local/calm-tv/beach.jpg", "night": "/local/calm-tv/beach-night.jpg" }`.
 
 Paths starting with `/` are on Home Assistant (its `www` folder is `/local/`). Full `http(s)://`

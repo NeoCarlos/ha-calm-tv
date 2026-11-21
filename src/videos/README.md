@@ -5,7 +5,7 @@ Settings → Background. They're found automatically, like the photos in `../wal
 
 - **Name:** `NN-some-name.mp4` → shown as "Some Name", ordered by the number.
 - **Times of day:** `NN-name.dawn.mp4`, `.day.mp4`, `.dusk.mp4`, `.night.mp4` are one background whose
-  version follows the sun when `"sky"` is in calm-tv.json (see docs/configuration.md).
+  version follows the sun once it's chosen (see `sky` in docs/configuration.md).
 - **Thumbnail:** a `.jpg` with the same name, 480×270 (made by the commands below).
 - **Size:** 1080p, H.264, **no audio**, ideally **under 20 MB** each. Each clip is loaded into
   memory to loop smoothly, and the app grows by the size of every clip you add.

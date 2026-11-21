@@ -669,7 +669,14 @@ export function startDemo(): void {
 
   // The example home, with the doorbell window on (for ctDemo.ring) and no backgrounds from Home Assistant.
   const config = decodeConfig(exampleConfig);
-  settings.config = { ...config, doorbell: { ...config.doorbell, window: true }, backgrounds: undefined, sky: config.sky ?? { effects: new URLSearchParams(location.search).has('wx') } };
+  // The living sky follows Alpine Lake's own versions only, so the demo's other backgrounds look as
+  // they always have; ?sky=night or ?wx=snowy previews the code-only grade (and the weather).
+  const q = new URLSearchParams(location.search);
+  const skyPreview = q.has('sky') || q.has('wx');
+  settings.config = {
+    ...config, doorbell: { ...config.doorbell, window: true }, backgrounds: undefined,
+    sky: config.sky ?? (skyPreview ? { grade: true, effects: q.has('wx') } : {}),
+  };
 
   // ?demo&areas: no "rooms", so they're built from the demo's Areas (see demoRegistry).
   if (new URLSearchParams(location.search).has('areas')) settings.config = { ...settings.config, rooms: undefined };

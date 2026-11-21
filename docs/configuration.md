@@ -340,12 +340,16 @@ TV's own changes.
 { "sky": {} }
 ```
 
-With `sky` in the file, the background follows the real time of day and the weather:
+With `sky` in the file, backgrounds that come in versions for each time of day (like the built-in
+**Alpine Lake Time of Day**) show the one for now. Every other background stays exactly as it is.
 
 - **Time of day** from the sun's height (`sun`, default `sun.sun`), so dawn and dusk arrive with the
-  real sunrise and sunset and blend in gradually. Any photo or video gets a code-only look: warmer at
-  dawn and dusk, darker and bluer at night, with stars in the open sky when it's clear. A background
-  whose name says when it was made ("…Sunset", "…Night") isn't tinted toward that time again.
+  real sunrise and sunset, and a background changes to its next version slowly.
+- **A tint for every background (optional):** `"grade": true` gives backgrounds without their own
+  versions a code-only look as well: warmer at dawn and dusk, darker and bluer at night, with stars
+  in the open sky when it's clear. A background whose name says when it was made ("…Sunset",
+  "…Night") isn't tinted toward that time again. It's off by default: a photo's own sunset still
+  glows under a night tint.
 - **Weather (experimental, off by default)** with `"effects": true`, from `weather` (default the
   `weather` entity above): rain, much heavier rain when it pours, snow with near and far flakes, fog,
   cloud cover lit for the time of day, and lightning flashes with the odd forked bolt, drawn by the app
@@ -373,12 +377,11 @@ With `sky` in the file, the background follows the real time of day and the weat
   day replaces the code-only look. From Home Assistant, add `"dawn"`, `"dusk"` and `"night"` addresses
   next to `"url"` in `backgrounds` below.
   The built-in **Alpine Lake Time of Day** is made this way, as a video and as photos.
-- **Only backgrounds with versions:** `"versionsOnly": true` leaves every background that doesn't
-  have its own versions exactly as it is (no tint, no stars), so only those change with the time of
-  day. For just the versions, with no tints: `{ "sky": { "versionsOnly": true } }`.
+- `"versionsOnly": true` (from an earlier version) is now the default; it's still accepted.
 
 Without `sun.sun`, a rough day from the clock is used. To preview it in a browser:
 `?demo&sky=night&wx=snowy` (times: `dawn`, `day`, `dusk`, `night`; any Home Assistant weather condition).
+These previews turn on `grade` (and `wx` the weather); plain `?demo` only changes Alpine Lake.
 
 ### `backgrounds`: extra photos and videos
 

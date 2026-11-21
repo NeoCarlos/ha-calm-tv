@@ -72,13 +72,15 @@
   Performance, and Background moves into it). **Visual effects** switches frosted glass and screen
   fades together; calm-tv.json's `display` can still set them apart. The menu is more compact, and
   scrolls if it ever gets taller than the screen.
-- **Living sky:** with `"sky"` in calm-tv.json the background follows the sun (warmer dawn and dusk, a
-  darker, bluer night with stars). With `"effects": true` (experimental) it also draws the weather over it: rain and pouring rain, snow with depth, fog, cloud cover and lightning
-  bolts. A scene map (`map` in `backgrounds`) adds ripples on the water, clouds mirrored in it and snow settling on the ground. Backgrounds can also come in dawn/day/dusk/night versions (`NN-name.night.jpg`).
+- **Living sky:** with `"sky"` in calm-tv.json, backgrounds that come in dawn/day/dusk/night
+  versions (`NN-name.night.jpg`, or `"night"` next to `"url"` in `backgrounds`) follow the real sunrise
+  and sunset. Others stay as they are, unless `"grade": true` tints them too (warmer dawn and dusk, a
+  darker, bluer night with stars). With `"effects": true` (experimental) it also draws the weather:
+  rain and pouring rain, snow with depth, fog, cloud cover and lightning bolts; a scene map (`map` in
+  `backgrounds`) adds ripples on the water, clouds mirrored in it and snow settling on the ground.
   Preview with `?demo&sky=night&wx=snowy`.
 - **Alpine Lake Time of Day:** a new built-in background, as video and as photos, with its own dawn,
   day, dusk and night versions that change with the real sunrise and sunset (with `"sky"` on).
-  `"sky": {"versionsOnly": true}` keeps the other backgrounds exactly as they are.
 - **Music panel**, under More on the Music screen: now playing,
   controls, speakers and library buttons (Artists, Albums, Playlists, Radio…) that open a browsable grid, through Home Assistant (made for Music Assistant). In demo mode too.
   The group button picks speakers to play along with the chosen one (media_player.join / unjoin).

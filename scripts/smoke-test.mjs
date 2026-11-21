@@ -576,6 +576,20 @@ try {
   await page("localStorage.removeItem('ct.configStored');");
   errors.length = errorsBefore; // the start without a Home Assistant address isn't what's tested here
 
+  // The living sky (sky.ts, variants.ts): Alpine Lake's versions, and the demo's usual look.
+  mode = 'living sky';
+  await open('demo', 1920, 1080);
+  const versions = await page(`const { wallpapers } = await import('/src/wallpapers.ts'); const { videos } = await import('/src/videos.ts');
+    const n = (list) => list.filter((b) => b.name === 'Alpine Lake Time of Day');
+    return { photos: n(wallpapers).map((b) => Object.keys(b.variants ?? {}).sort().join()), clips: n(videos).map((b) => Object.keys(b.variants ?? {}).sort().join()) };`);
+  check(JSON.stringify(versions) === JSON.stringify({ photos: ['dawn,day,dusk,night'], clips: ['dawn,day,dusk,night'] }), `Alpine Lake is one photo and one video, each with four versions (${JSON.stringify(versions)})`);
+  check(!(await has('#skyTint')) && !(await page("return document.documentElement.classList.contains('sky-on');")), 'the plain demo leaves other backgrounds as they are (no tint layers)');
+  await open('demo&sky=night', 1920, 1080);
+  const night = await page(`const { sky } = await import('/src/sky.ts'); const { wallpapers } = await import('/src/wallpapers.ts');
+    const a = wallpapers.find((b) => b.name === 'Alpine Lake Time of Day'); return sky.pick(a.name, a.url, a.variants).url;`);
+  check(night.includes('.night.'), `?sky=night shows Alpine Lake's night version (${night.split('/').pop()})`);
+  check(await page("return document.documentElement.classList.contains('sky-on');"), '?sky= previews the tint for other backgrounds too');
+
   check(errors.length === 0, `no errors in the page${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
   ws.close();
 } finally {

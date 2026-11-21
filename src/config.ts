@@ -45,13 +45,13 @@ export const MUSIC_BACKGROUNDS = ['none', 'glow', 'wash', 'solid'] as const;
 
 export type MusicBackground = (typeof MUSIC_BACKGROUNDS)[number];
 
-/** The screens, in their default order (↓ moves through them). */
-/** A background's versions for the times of day (see variants.ts). */
+/** A list of [x, y] points (0–1 across and down the screen): one outline in a scene map. */
 const Outline = v.optional(v.array(v.tuple([v.number(), v.number()]), 'should be a list of [x, y] points'));
 /** Where a background's sky, water and ground are, for the living sky's weather (sky-fx.ts). */
 const SceneMapSchema = v.optional(
   v.object({ sky: Outline, water: Outline, ground: Outline, fog: v.optional(v.number()) }),
 );
+/** A background's versions for the times of day (see variants.ts), and its scene map. */
 const PHASE_URLS = {
   dawn: v.optional(v.string()),
   day: v.optional(v.string()),
@@ -60,6 +60,7 @@ const PHASE_URLS = {
   map: SceneMapSchema,
 };
 
+/** The screens, in their default order (↓ moves through them). */
 export const SCREENS = ['apps', 'smarthome', 'music', 'calendar', 'weather'] as const;
 
 export type ScreenName = (typeof SCREENS)[number];
@@ -116,16 +117,19 @@ const ConfigSchema = v.object({
   /** Weather entity for the Weather screen and the Smart Home "Outside" line. */
   weather: v.optional(EntityId),
   /**
-   * The living sky (off unless present): the background follows the time of day from `sun`
-   * (default sun.sun). `effects: true` (experimental) also draws the weather from `weather` (default
-   * the Weather screen's entity): rain, snow, fog, clouds. `versionsOnly: true` leaves
-   * backgrounds without their own dawn/day/dusk/night versions exactly as they are (no tint or stars).
+   * The living sky (off unless present): backgrounds with their own dawn/day/dusk/night versions
+   * follow the time of day from `sun` (default sun.sun). Others stay exactly as they are, unless
+   * `grade: true` tints them for the time of day (warmer dawn and dusk, a darker night with stars).
+   * `effects: true` (experimental) also draws the weather from `weather` (default the Weather
+   * screen's entity): rain, snow, fog, clouds. (`versionsOnly: true`, from before `grade`, is the
+   * default now; it's still accepted and turns `grade` off.)
    */
   sky: v.optional(
     v.object({
       sun: v.optional(EntityId),
       weather: v.optional(EntityId),
       effects: v.optional(v.boolean('should be true or false')),
+      grade: v.optional(v.boolean('should be true or false')),
       versionsOnly: v.optional(v.boolean('should be true or false')),
     }),
   ),

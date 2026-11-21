@@ -4,7 +4,7 @@ import { settings } from './config';
 import { WEATHER } from './home-data';
 import { attributes } from './ha-data';
 import { PHASES, type Phase, type Variants } from './variants';
-import { SkyFx, W, H, type SceneMap, type Rgb } from './sky-fx';
+import type { SkyFx, SceneMap, Rgb } from './sky-fx';
 
 /**
  * The living sky: the background follows the time of day and the weather.
@@ -17,8 +17,16 @@ import { SkyFx, W, H, type SceneMap, type Rgb } from './sky-fx';
  *
  * It's all a few layers between the background and the screens, so it works over every background
  * (yours too), and the frosted bars blur it like anything else behind them. Off unless calm-tv.json
- * has "sky" (always on in demo mode).
+ * has "sky". By default only backgrounds with their own versions change: the colour layers, the
+ * stars and the weather (sky-fx.ts, loaded only then) need "grade" or "effects".
  */
+
+/** The sky's options from calm-tv.json: whether the code-only grade and the weather are drawn. */
+function options(): { grade: boolean; effects: boolean } {
+  const s = settings.config.sky ?? {};
+
+  return { grade: s.grade === true && s.versionsOnly !== true, effects: s.effects === true };
+}
 
 export { PHASES, type Phase };
 
@@ -166,9 +174,12 @@ export interface SkyState {
 class Sky {
   enabled = false;
   private stage: HTMLElement | null = null;
-  private tint!: HTMLElement;
-  private glow!: HTMLElement;
+  /** The colour layers and the canvas, with "grade" or "effects" (null: only versions change). */
+  private tint: HTMLElement | null = null;
+  private glow: HTMLElement | null = null;
   private fx: SkyFx | null = null;
+  /** The sun and weather entities as last seen: other entities changing don't touch the sky. */
+  private seen: unknown[] = [];
   private scene: { name: string; native: Phase; horizon: number; map?: SceneMap; versioned: boolean } = {
     name: '',
     native: 'day',
@@ -187,6 +198,35 @@ class Sky {
 
     if (!this.enabled || this.stage) return;
     this.stage = stage;
+    const params = new URLSearchParams(location.search);
+    const p = params.get('sky');
+    this.preview = {
+      phase: PHASES.find((x) => x === p),
+      condition: params.get('wx') ?? undefined,
+    };
+
+    const { grade, effects } = options();
+
+    if (grade || effects) void this.addLayers(stage, Number(params.get('snowcover')));
+
+    ha.onEntities(() => {
+      // Only the sun and the weather matter here (Home Assistant sends a new object when one changes).
+      const sky = settings.config.sky ?? {};
+      const now = [ha.entities[sky.sun ?? 'sun.sun'], ha.entities[sky.weather ?? WEATHER]];
+
+      if (now.every((x, i) => x === this.seen[i])) return;
+      this.seen = now;
+      this.update();
+    });
+    window.setInterval(() => this.update(), 60000);
+    window.addEventListener('ct-pause', () => this.pause(true));
+    window.addEventListener('ct-resume', () => this.pause(false));
+    document.addEventListener('visibilitychange', () => this.pause(document.hidden));
+    this.update();
+  }
+
+  /** The colour layers and the weather canvas (sky-fx.ts is loaded only for them). */
+  private async addLayers(stage: HTMLElement, snowCover: number): Promise<void> {
     const before = stage.querySelector('#grain');
     const layer = (id: string, tag = 'div') => {
       const el = document.createElement(tag);
@@ -198,6 +238,8 @@ class Sky {
     };
     this.tint = layer('skyTint');
     this.glow = layer('skyGlow');
+    document.documentElement.classList.add('sky-on');
+    const { SkyFx, W, H } = await import('./sky-fx');
     const canvas = document.createElement('canvas');
     canvas.className = 'layer sky-layer';
     canvas.id = 'skyFx';
@@ -207,30 +249,15 @@ class Sky {
     stage.insertBefore(canvas, before);
     this.fx = new SkyFx(canvas);
     this.fx.setMap(this.scene.map, this.scene.horizon);
-    document.documentElement.classList.add('sky-on');
 
-    const params = new URLSearchParams(location.search);
-    const p = params.get('sky');
-    this.preview = {
-      phase: PHASES.find((x) => x === p),
-      condition: params.get('wx') ?? undefined,
-    };
     // ?snowcover=0.8 starts with snow already on the ground (it otherwise takes minutes to settle).
-    const cover = Number(params.get('snowcover'));
-
-    if (cover) this.fx.presetSnow(cover);
-
-    ha.onEntities(() => this.update());
-    window.setInterval(() => this.update(), 60000);
-    window.addEventListener('ct-pause', () => this.pause(true));
-    window.addEventListener('ct-resume', () => this.pause(false));
-    document.addEventListener('visibilitychange', () => this.pause(document.hidden));
+    if (snowCover) this.fx.presetSnow(snowCover);
     this.update();
   }
 
   /**
    * The background now showing: its name decides which time of day it already is. `versioned` says
-   * it has its own dawn/day/dusk/night versions (with `versionsOnly`, only those follow the time of day).
+   * it has its own dawn/day/dusk/night versions (without `grade`, only those follow the time of day).
    */
   setScene(name: string, native: Phase = nativePhase(name), map?: SceneMap, versioned = false): void {
     const m = map ?? MAPS[name];
@@ -282,7 +309,7 @@ class Sky {
   private lastPhase: Phase | null = null;
 
   private update(): void {
-    if (!this.enabled || !this.fx) return;
+    if (!this.enabled) return;
     const sky = settings.config.sky ?? {};
     const sun = ha.entities[sky.sun ?? 'sun.sun'];
     let weights: Weights;
@@ -314,12 +341,14 @@ class Sky {
 
   /** Sets the colour layers and starts or stops the moving ones. */
   private paint(): void {
+    // Without "grade" or "effects" there's nothing to draw: only versions change.
+    if (!this.tint || !this.glow) return;
     const { weights, weather } = this.state;
     const native = this.scene.native;
     // A background already made for a time of day isn't graded toward it again. One made at dawn or
     // dusk can still darken into night, but no tint turns a sunset into midday, so it stays as it is.
-    // With versionsOnly, a background without its own versions is left exactly as it is.
-    const untouched = settings.config.sky?.versionsOnly === true && !this.scene.versioned;
+    // Without "grade", a background without its own versions is left exactly as it is.
+    const untouched = !options().grade && !this.scene.versioned;
     const grade = (p: Phase): Phase =>
       untouched ? 'day' : native === 'day' ? p : native !== 'night' && p === 'night' ? 'night' : 'day';
     let tint = [0, 0, 0];
